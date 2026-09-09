@@ -1,6 +1,25 @@
 /**
  * @contextlab/store — everything in one SQLite file at ~/.contextlab/data.db.
  *
- * Populated in day 1 block 4: db.js, migrations/, queries/.
+ * The only package that touches the database.
+ *
+ * @module
  */
-export {}
+
+export { closeDatabase, defaultDbPath, openDatabase } from './db.js'
+export { MIGRATIONS, runMigrations, schemaVersion } from './migrations.js'
+export {
+  attributionFor,
+  costByDay,
+  costByProject,
+  escapeFtsQuery,
+  findRepeatedBlocks,
+  getComposition,
+  getSession,
+  listFindings,
+  listSessions,
+  listTurns,
+  searchBlocks,
+  systemSegments,
+} from './read.js'
+export { localDay, recordTurn, refreshSessionTotals, replaceFindings } from './write.js'

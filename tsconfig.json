@@ -3,6 +3,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*.js", "packages/*/test/**/*.js", "*.js"],
+  "include": ["packages/*/src/**/*.js", "*.js"],
   "exclude": ["**/node_modules", "**/dist", "apps/web"]
 }

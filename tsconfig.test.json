@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    /*
+     * Tests index into query results constantly — `rows[0].tokens` on a row we
+     * just inserted. Production code keeps the strict check; making tests
+     * defend against an index that cannot be missing adds noise, not safety.
+     */
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["packages/*/test/**/*.js"],
+  "exclude": ["**/node_modules", "**/dist"]
+}

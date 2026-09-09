@@ -154,3 +154,38 @@ recording them would invent sessions that never happened and skew every average.
 
 The list lives in `IGNORED_PATH_MARKERS`, next to the routing table, and is applied
 in `shouldCapture` — one place, easy to audit when a provider adds another one.
+
+---
+
+## Content is stored once per session, not once per turn
+
+Coding agents resend the entire conversation on every turn. Storing each turn's
+messages as its own rows means a 50-turn session writes the same 60,000-token
+`npm install` log fifty times — the database grows quadratically with session
+length, for no new information.
+
+So `blocks` holds each distinct piece of content once per session, keyed by
+`(session_id, hash)`, and `turn_blocks` records which turns contained it.
+
+The size saving is a side effect. The real reason is that the product's single
+best insight — *"this tool result has been re-sent 34 times and cost you $4.10"* —
+becomes `COUNT(*)` on an indexed join instead of a scan-and-compare across turns.
+The schema makes the flagship feature cheap.
+
+**Consequence:** ingesting a turn must hash content before writing. That work
+happens in `core`, where it is a pure function and testable.
+
+---
+
+## Session totals are derived, never incremented
+
+`refreshSessionTotals` recomputes a session's row from its turns after every
+insert, rather than adding to a running total.
+
+Incrementing is faster and wrong in exactly the situation that will happen: a
+capture gets ingested twice, or a turn is deleted, and the session row quietly
+disagrees with the turns beneath it. A tool whose headline number contradicts its
+own detail view is worse than one that is slow.
+
+At the scale of one developer's sessions the recompute is a few hundred
+microseconds on an indexed column.
