@@ -189,3 +189,37 @@ own detail view is worse than one that is slow.
 
 At the scale of one developer's sessions the recompute is a few hundred
 microseconds on an indexed column.
+
+---
+
+## Parsers measure characters, not tokens
+
+`parse/` returns `chars` on every block and no token counts at all. Tokenizing
+happens one step later, in its own module.
+
+Two reasons. Tokenization needs a model name to pick an encoder, and the model
+is not reliably known until the response has been read — Gemini keeps it in the
+URL, and every provider may serve a more specific version than was requested. And
+a parser that tokenizes cannot be tested without loading an encoder, which turns
+a microsecond test into a slow one.
+
+Characters are also the honest intermediate: they are exactly what a tokenizer
+would consume, so nothing is lost by deferring.
+
+---
+
+## Images get a flat 1,600-token estimate and are never measured
+
+Image data arrives as base64 inside the JSON body. Stringifying a screenshot to
+count it inflates the number roughly a hundredfold — one pasted image reads as
+400,000 tokens and the entire composition chart becomes fiction.
+
+So image blocks carry no text at all through the parser. They are counted, not
+measured, at 1,600 tokens each — about one 512x512 tile.
+
+Real screenshots run 2,000-6,400, so this under-counts. That is deliberate: for a
+tool whose job is to tell you what is expensive, inventing cost is a worse failure
+than slightly understating it.
+
+**Revisit** when we can read image dimensions cheaply, which would let us apply
+each provider's real tile formula.
