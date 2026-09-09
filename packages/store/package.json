@@ -1,0 +1,20 @@
+{
+  "name": "@contextlab/store",
+  "version": "0.1.0",
+  "description": "SQLite schema, migrations and FTS5 queries. The only package that touches the DB.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0"
+  }
+}

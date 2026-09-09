@@ -1,0 +1,19 @@
+{
+  "name": "@contextlab/format",
+  "version": "0.1.0",
+  "description": "The contextlab capture format: JSON Schema, validator, OTLP converters.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "schema",
+    "SPEC.md"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

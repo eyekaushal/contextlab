@@ -105,3 +105,18 @@ service on a NAS or server — a real but secondary use case. Shipping container
 orchestration for a localhost CLI would be complexity without a matching need.
 
 **Deferred:** an optional Dockerfile, if users ask.
+
+---
+
+## `engines` floor is Node 20.9, not Node 22
+
+We target Node 22 and develop on it. The published `engines` floor is `>=20.9.0`
+anyway, because nothing we use requires 22 — `node:sqlite`, the one built-in that
+would have forced it, is not in play since we ship `better-sqlite3` for FTS5.
+
+An unnecessary engine floor on a CLI is a support ticket: it turns "your tool
+doesn't work" into a version argument on an LTS release that a lot of people are
+still on.
+
+**Consequence:** no Node-22-only syntax or built-ins anywhere. If we ever want one,
+the floor moves deliberately and this entry gets rewritten.

@@ -1,0 +1,48 @@
+{
+  "name": "contextlab",
+  "version": "0.1.0",
+  "description": "See what is actually filling your AI coding agent's context window — and what to change to fix it.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "contextlab": "./bin/contextlab.js"
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "keywords": [
+    "llm",
+    "context-window",
+    "tokens",
+    "cost",
+    "claude-code",
+    "codex",
+    "aider",
+    "observability"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eyekaushal/contextlab.git"
+  },
+  "homepage": "https://github.com/eyekaushal/contextlab#readme",
+  "bugs": {
+    "url": "https://github.com/eyekaushal/contextlab/issues"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "@contextlab/core": "workspace:*",
+    "@contextlab/proxy": "workspace:*",
+    "@contextlab/server": "workspace:*",
+    "@contextlab/store": "workspace:*",
+    "commander": "^14.0.0",
+    "ink": "^6.0.0",
+    "react": "^19.1.0"
+  }
+}
