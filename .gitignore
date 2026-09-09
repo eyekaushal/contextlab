@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Local working notes — never committed
+notes/
+
+# Data
+*.db
+*.db-journal
+*.sqlite
+data/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+*.log
+
+# Test output
+coverage/
