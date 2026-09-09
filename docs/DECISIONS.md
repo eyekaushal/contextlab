@@ -120,3 +120,37 @@ still on.
 
 **Consequence:** no Node-22-only syntax or built-ins anywhere. If we ever want one,
 the floor moves deliberately and this entry gets rewritten.
+
+---
+
+## The capture is a copy, never the thing being forwarded
+
+The proxy sits in the request path of somebody's coding agent. The worst failure
+available to it is not a missing number — it is breaking a request that would
+otherwise have worked.
+
+So forwarding and capturing never share a code path:
+
+- The request body is buffered **whole**, with no size cap, and forwarded exactly
+  as received. Only the *copy* kept for the capture file is capped.
+- Response chunks are written to the tool first, then appended to the capture
+  buffer. If the capture buffer hits its ceiling we stop collecting and keep
+  forwarding.
+- Everything from building the capture to writing it sits inside a `try/catch`
+  that runs after the response has already been delivered. A capture failure is
+  logged and dropped.
+
+**Consequence:** a capture can be truncated, or absent, and the agent still gets a
+correct answer. The reverse — a complete capture and a corrupted API call — is not
+a trade we are willing to make.
+
+---
+
+## Utility endpoints are forwarded but not captured
+
+`count_tokens`, `loadCodeAssist`, `retrieveUserQuota` and friends are API calls, so
+they must be forwarded or the tool breaks. They are not conversation turns, so
+recording them would invent sessions that never happened and skew every average.
+
+The list lives in `IGNORED_PATH_MARKERS`, next to the routing table, and is applied
+in `shouldCapture` — one place, easy to audit when a provider adds another one.
