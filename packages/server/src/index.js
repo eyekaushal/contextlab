@@ -1,3 +1,4 @@
+export { ingestCapture, ingestDirectory } from './ingest.js'
 /**
  * @contextlab/server — the brain, on :4041.
  *
@@ -16,3 +17,4 @@ export {
   refreshPricing,
   refreshPricingInBackground,
 } from './pricing.js'
+export { buildSessionSummary } from './summary.js'

@@ -89,7 +89,7 @@ contextlab doctor     preflight checks
 - [x] npm name `contextlab` claimed
 - [x] GitHub repo created, git identity configured, push verified
 - [x] Day 1 — foundation (proxy, capture, store, parsers)
-- [ ] Day 2 — analysis (compose, attribute, rules, CLI)
+- [x] Day 2 — analysis (compose, attribute, rules, CLI)
 - [ ] Day 3 — dashboard (4 screens)
 - [ ] Day 4 — format spec, tests, docs, publish
 

@@ -15,6 +15,7 @@ export {
   costByProject,
   escapeFtsQuery,
   findRepeatedBlocks,
+  findRepeatedCalls,
   getComposition,
   getSession,
   listFindings,

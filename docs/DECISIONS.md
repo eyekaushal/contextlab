@@ -412,3 +412,44 @@ A rule that throws is skipped and reported through an `onError` callback rather
 than taking the report down with it. Nine findings and one logged failure is a
 better outcome than a stack trace, and these rules run against wire formats that
 change without notice.
+
+---
+
+## The CLI ingests on every command, with no background service
+
+Each command opens the database and folds in whatever the proxy has captured
+since last time, before reading anything.
+
+The alternative is a daemon that watches the capture directory. That means a
+process to start, supervise, and explain — and a class of bug where the numbers
+are stale because something died quietly. Ingest costs milliseconds for a
+handful of files, so paying it on every command buys away the whole problem.
+
+**Consequence:** `contextlab why` is correct the moment an agent exits, with
+nothing running in between. The server on :4041 exists for the dashboard, not
+because the CLI needs it.
+
+---
+
+## The watch TUI degrades to a snapshot outside a terminal
+
+Ink takes over the screen and reads keys in raw mode. Neither exists when stdout
+is a pipe, and Ink throws rather than degrading — so `contextlab watch | tee log`
+crashed with "Raw mode is not supported".
+
+`watch` now checks `process.stdout.isTTY` and prints the same numbers as plain
+lines when there is no terminal. A tool that dies when you pipe it is a tool
+people stop trusting for scripts.
+
+---
+
+## Ink without JSX
+
+The watch screen is built with `createElement` rather than JSX.
+
+JSX needs a build step, and the project ships plain JavaScript that runs from
+source — that is what makes the proxy auditable and the install `npx contextlab`.
+Adding a bundler for one terminal screen would trade that away for syntax sugar.
+
+**Cost:** the render tree is more verbose. **Accepted**, because it is one shallow
+screen and the alternative changes how the whole project is built.

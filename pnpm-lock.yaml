@@ -42,10 +42,17 @@ importers:
         version: 14.0.3
       ink:
         specifier: ^6.0.0
-        version: 6.8.0(react@19.2.8)
+        version: 6.8.0(@types/react@19.3.0)(react@19.2.8)
       react:
         specifier: ^19.1.0
         version: 19.2.8
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.12
+        version: 7.6.13
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
 
   packages/core:
     dependencies:
@@ -462,6 +469,9 @@ packages:
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
 
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
   '@vitest/expect@3.2.7':
     resolution: {integrity: sha512-E8eBXaKibuvH2pSZErOjdVb5vF4PbKYcrnluBTYxEk1l/VhhwZg1kZQsdtjq+CsF5CFydf2Rdkz7jDHKSisi3w==}
 
@@ -569,6 +579,9 @@ packages:
   convert-to-spaces@2.0.1:
     resolution: {integrity: sha512-rcQ1bsQO9799wq24uE5AM2tAILy4gXGIK/njFWcVQkGNZ96edlpY+A7bjwvzjYvLDyzmG1MmMLZhpcsb+klNMQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1246,6 +1259,10 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/react@19.3.0':
+    dependencies:
+      csstype: 3.2.3
+
   '@vitest/expect@3.2.7':
     dependencies:
       '@types/chai': 5.2.3
@@ -1357,6 +1374,8 @@ snapshots:
 
   convert-to-spaces@2.0.1: {}
 
+  csstype@3.2.3: {}
+
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
@@ -1447,7 +1466,7 @@ snapshots:
 
   ini@1.3.8: {}
 
-  ink@6.8.0(react@19.2.8):
+  ink@6.8.0(@types/react@19.3.0)(react@19.2.8):
     dependencies:
       '@alcalzone/ansi-tokenize': 0.2.5
       ansi-escapes: 7.3.0
@@ -1475,6 +1494,8 @@ snapshots:
       wrap-ansi: 9.0.2
       ws: 8.21.3
       yoga-layout: 3.2.1
+    optionalDependencies:
+      '@types/react': 19.3.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate

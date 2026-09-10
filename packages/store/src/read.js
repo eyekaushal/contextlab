@@ -250,9 +250,13 @@ export function costByProject(db, options = {}) {
 /**
  * Cost traced to named things — MCP servers, tools, files.
  *
+ * Pass `turnId` to scope it to a single turn. `why` needs that: showing a
+ * session's totals beside one turn's context makes the attribution look larger
+ * than the window it is supposedly inside.
+ *
  * @param {Db} db
  * @param {string} sessionId
- * @param {{ entityType?: string, limit?: number }} [options]
+ * @param {{ entityType?: string, turnId?: string, limit?: number }} [options]
  * @returns {Record<string, unknown>[]}
  */
 export function attributionFor(db, sessionId, options = {}) {
@@ -269,6 +273,7 @@ export function attributionFor(db, sessionId, options = {}) {
       FROM attribution
       WHERE session_id = @sessionId
         AND (@entityType IS NULL OR entity_type = @entityType)
+        AND (@turnId IS NULL OR turn_id = @turnId)
       GROUP BY entity_type, entity_name
       ORDER BY cost_usd DESC, tokens DESC
       LIMIT @limit
@@ -276,6 +281,7 @@ export function attributionFor(db, sessionId, options = {}) {
   ).all({
     sessionId,
     entityType: options.entityType ?? null,
+    turnId: options.turnId ?? null,
     limit: options.limit ?? 50,
   })
 }
@@ -312,4 +318,41 @@ export function systemSegments(db, turnId) {
     db,
     'SELECT * FROM system_segments WHERE turn_id = ? ORDER BY position',
   ).all(turnId)
+}
+
+/**
+ * Tool calls made more than once with identical arguments.
+ *
+ * A retry loop looks exactly like this: same tool, same input, several turns.
+ * Grouping on the block hash means identical calls collapse to one row whose
+ * count is the number of attempts.
+ *
+ * @param {Db} db
+ * @param {string} sessionId
+ * @param {{ minCount?: number, limit?: number }} [options]
+ * @returns {Record<string, unknown>[]}
+ */
+export function findRepeatedCalls(db, sessionId, options = {}) {
+  return prepare(
+    db,
+    `
+      SELECT
+        b.tool_name,
+        b.preview,
+        b.file_path,
+        SUM(b.tokens)         AS tokens,
+        COUNT(tb.turn_id)     AS count
+      FROM blocks b
+      JOIN turn_blocks tb ON tb.block_id = b.id
+      WHERE b.session_id = @sessionId AND b.block_type = 'tool_use'
+      GROUP BY b.id
+      HAVING count >= @minCount
+      ORDER BY count DESC, tokens DESC
+      LIMIT @limit
+    `,
+  ).all({
+    sessionId,
+    minCount: options.minCount ?? 2,
+    limit: options.limit ?? 20,
+  })
 }

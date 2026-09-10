@@ -1,7 +1,7 @@
 {
   "name": "contextlab",
   "version": "0.1.0",
-  "description": "See what is actually filling your AI coding agent's context window — and what to change to fix it.",
+  "description": "See what is actually filling your AI coding agent's context window \u2014 and what to change to fix it.",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.js",
@@ -44,5 +44,9 @@
     "commander": "^14.0.0",
     "ink": "^6.0.0",
     "react": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/react": "^19.0.0"
   }
 }
