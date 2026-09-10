@@ -260,9 +260,12 @@ export function attributionFor(db, sessionId, options = {}) {
     db,
     `
       SELECT entity_type, entity_name,
-        SUM(tokens)   AS tokens,
-        SUM(cost_usd) AS cost_usd,
-        SUM(calls)    AS calls
+        SUM(tokens)            AS tokens,
+        SUM(cost_usd)          AS cost_usd,
+        SUM(calls)             AS calls,
+        SUM(definition_tokens) AS definition_tokens,
+        SUM(call_tokens)       AS call_tokens,
+        SUM(result_tokens)     AS result_tokens
       FROM attribution
       WHERE session_id = @sessionId
         AND (@entityType IS NULL OR entity_type = @entityType)

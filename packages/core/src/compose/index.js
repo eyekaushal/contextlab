@@ -29,8 +29,10 @@ export { classifyBlock, classifyMessage } from './classify.js'
  * @property {number} tokens
  * @property {string} type
  * @property {string} [text]
+ * @property {string} [id]        tool_use id
  * @property {string} [name]
- * @property {string} [toolUseId]
+ * @property {string} [toolUseId] tool_result -> the tool_use it answers
+ * @property {number} [imageTokens]
  * @property {Record<string, unknown>} [input]
  * @property {string} [content]
  * @property {number} chars

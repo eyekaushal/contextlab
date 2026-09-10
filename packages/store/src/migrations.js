@@ -293,10 +293,21 @@ CREATE TABLE pricing_meta (
 );
 `
 
+const ATTRIBUTION_BREAKDOWN = `
+-- Split attributed tokens by where they came from. The distinction is the
+-- product: a server whose tokens are ALL definitions and whose call count is
+-- zero is pure waste, while the same total spent on results is work you asked
+-- for.
+ALTER TABLE attribution ADD COLUMN definition_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE attribution ADD COLUMN call_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE attribution ADD COLUMN result_tokens INTEGER NOT NULL DEFAULT 0;
+`
+
 /** @type {Migration[]} */
 export const MIGRATIONS = [
   { version: 1, name: 'initial schema', sql: INITIAL },
   { version: 2, name: 'model prices', sql: PRICING },
+  { version: 3, name: 'attribution breakdown', sql: ATTRIBUTION_BREAKDOWN },
 ]
 
 /**

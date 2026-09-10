@@ -87,7 +87,8 @@
  * @property {{ kind: string, label: string, tokens: number, hash?: string,
  *              preview?: string }[]} [systemSegments]
  * @property {{ entityType: string, entityName: string, tokens?: number,
- *              costUsd?: number, calls?: number }[]} [attribution]
+ *              costUsd?: number, calls?: number, definitionTokens?: number,
+ *              callTokens?: number, resultTokens?: number }[]} [attribution]
  */
 
 /**
@@ -242,8 +243,9 @@ export function recordTurn(db, record) {
 
     const attribution = db.prepare(`
       INSERT INTO attribution
-        (turn_id, session_id, entity_type, entity_name, tokens, cost_usd, calls)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (turn_id, session_id, entity_type, entity_name, tokens, cost_usd, calls,
+         definition_tokens, call_tokens, result_tokens)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     for (const row of record.attribution ?? []) {
       attribution.run(
@@ -254,6 +256,9 @@ export function recordTurn(db, record) {
         row.tokens ?? 0,
         row.costUsd ?? 0,
         row.calls ?? 0,
+        row.definitionTokens ?? 0,
+        row.callTokens ?? 0,
+        row.resultTokens ?? 0,
       )
     }
 

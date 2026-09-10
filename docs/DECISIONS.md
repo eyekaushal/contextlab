@@ -317,3 +317,51 @@ Cache rates matter here more than they look: at Anthropic's 0.1x read rate, a
 100,000-token cached read is $0.03, not $0.30. Pricing cached tokens as fresh
 input makes a well-cached session look ten times worse than it was — and coding
 agents cache aggressively, so this is the common case, not an edge one.
+
+---
+
+## Attribution joins tool results back to their calls
+
+A tool result arrives as its own content block carrying nothing but the id of
+the call it answers. The 60,000-token `npm install` log does not say it came
+from `Bash`, and the file contents do not say which file they are.
+
+So attribution walks the conversation in order, remembers every `tool_use` by
+id, and joins each result back to it. That join is what turns "tool results are
+91% of your context" into "the Bash call on turn 3 is 89% of your context, and
+it has been re-sent on every turn since".
+
+Without it every result lands in one anonymous pile and the feature is a
+restatement of the composition chart.
+
+---
+
+## Entities deliberately overlap, so the shares do not add to 100%
+
+One `Read` result is attributed three times: to the tool `Read`, to the file
+`/repo/src/auth.js`, and — if it came from an MCP server — to that server.
+
+This is intentional. The four entity types answer four different questions, and
+each needs the full cost of the thing it names. Splitting a result between them
+would make every individual number too small to act on.
+
+`attributedTokens` is therefore larger than `totalTokens` and is not a
+percentage. `share` is each entity's fraction of the context window, and the
+shares are not expected to sum to one.
+
+---
+
+## Definition tokens are tracked separately from result tokens
+
+Every attributed entity records `definitionTokens`, `callTokens` and
+`resultTokens` alongside the total, and migration 3 adds the same three columns
+to the stored table.
+
+The distinction is the entire product. An MCP server whose tokens are *all*
+definitions and whose call count is zero is pure waste — its schema is re-sent
+on every turn for nothing, and the fix is one line in `.mcp.json`. The same
+number of tokens spent on results is work the user asked for, and removing it
+would be wrong.
+
+A single `tokens` column cannot tell those two apart, and the recommendation
+would be a coin flip.

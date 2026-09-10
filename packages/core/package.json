@@ -10,7 +10,8 @@
     "./parse": "./src/parse/index.js",
     "./tokenize": "./src/tokenize.js",
     "./compose": "./src/compose/index.js",
-    "./pricing": "./src/pricing/index.js"
+    "./pricing": "./src/pricing/index.js",
+    "./attribute": "./src/attribute/index.js"
   },
   "files": [
     "src"
