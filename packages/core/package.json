@@ -11,7 +11,8 @@
     "./tokenize": "./src/tokenize.js",
     "./compose": "./src/compose/index.js",
     "./pricing": "./src/pricing/index.js",
-    "./attribute": "./src/attribute/index.js"
+    "./attribute": "./src/attribute/index.js",
+    "./prescribe": "./src/prescribe/index.js"
   },
   "files": [
     "src"

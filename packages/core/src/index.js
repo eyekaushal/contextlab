@@ -11,6 +11,7 @@
 export * from './attribute/index.js'
 export * from './compose/index.js'
 export * from './parse/index.js'
+export * from './prescribe/index.js'
 export * from './pricing/index.js'
 export * from './tokenize.js'
 export * from './tools.js'

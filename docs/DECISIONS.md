@@ -365,3 +365,50 @@ would be wrong.
 
 A single `tokens` column cannot tell those two apart, and the recommendation
 would be a coin flip.
+
+---
+
+## A finding must name the change, not the problem
+
+Every rule returns `title`, `detail`, `fix`, `wastedTokens` and `wastedCostUsd`.
+The `fix` field is the reason the engine exists, and it is checked by a test that
+asserts every finding carries one.
+
+"Your context is large" is a restatement of the gauge the user is already looking
+at. "Remove playwright from .mcp.json — it adds 10,876 tokens to every turn and
+you have never called it" is a change they can make in ten seconds. A rule that
+cannot produce the second sentence does not belong in the engine.
+
+This is also why the rules read a `SessionSummary` rather than the raw data: the
+summary already has the joins — result to call, call to file, tool to server —
+that let a rule name a specific thing.
+
+---
+
+## Waste is what the user could have avoided, never the total
+
+Each rule claims a deliberately narrow number:
+
+- a stuck tool result claims the **re-sends**, not the first legitimate send
+- a bloated memory file claims the **excess** over a reasonable size, not the file
+- a repeated read claims the **repeat**, not the first read
+- an unused MCP server claims **all** of it, because none of it was ever used
+- approaching the context limit claims **nothing** — it is a warning, and nothing
+  has been spent badly yet
+
+Inflating waste by claiming the whole number would make the headline larger and
+the tool untrustworthy the first time someone checked the arithmetic. The
+conservative figure is the one that survives scrutiny.
+
+---
+
+## Rules are ranked by money, and are total functions
+
+`runRules` sorts by `wastedCostUsd` because "what should I fix first" is a
+question about cost, not about severity. Severity only breaks ties, so a
+zero-cost warning still outranks a zero-cost note.
+
+A rule that throws is skipped and reported through an `onError` callback rather
+than taking the report down with it. Nine findings and one logged failure is a
+better outcome than a stack trace, and these rules run against wire formats that
+change without notice.
