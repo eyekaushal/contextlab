@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { closeDatabase, openDatabase } from '../src/db.js'
-import { runMigrations, schemaVersion } from '../src/migrations.js'
+import { MIGRATIONS, runMigrations, schemaVersion } from '../src/migrations.js'
 import {
   attributionFor,
   costByDay,
@@ -89,7 +89,7 @@ function ingest(db, turnId, blocks, turn = {}) {
 describe('migrations', () => {
   it('creates the schema and records the version', () => {
     const db = openDatabase(':memory:')
-    expect(schemaVersion(db)).toBe(1)
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length)
     const tables = many(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
@@ -98,13 +98,14 @@ describe('migrations', () => {
     expect(tables).toContain('turns')
     expect(tables).toContain('blocks')
     expect(tables).toContain('findings')
+    expect(tables).toContain('model_prices')
     closeDatabase(db)
   })
 
   it('is safe to run twice', () => {
     const db = openDatabase(':memory:')
     expect(runMigrations(db)).toEqual([])
-    expect(schemaVersion(db)).toBe(1)
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length)
     closeDatabase(db)
   })
 

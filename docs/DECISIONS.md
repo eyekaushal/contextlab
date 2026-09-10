@@ -267,3 +267,53 @@ The first time it drifts, the pie chart disagrees with the number above it, and
 a measurement tool that contradicts itself is worth nothing.
 
 Deriving costs one pass over blocks we have already walked.
+
+---
+
+## Prices live in SQLite, not a second JSON file
+
+The working notes suggested caching the refreshed price table to
+`~/.contextlab/pricing.json`. It goes in SQLite instead.
+
+`ARCHITECTURE.md` says `~/.contextlab` holds a config file, a temporary capture
+directory, and one database — "SQLite. everything. one file." A second file that
+has to be read, parsed and version-checked on every cost calculation is exactly
+the flat-file pattern non-negotiable #3 rejects.
+
+The bundled snapshot stays a JS module, because it is source, not state.
+
+---
+
+## Three layers of price, so a cost figure is never blocked
+
+```
+bundled snapshot   packages/core/src/pricing/snapshot.js   470 models, generated
+stored table       SQLite, refreshed weekly from models.dev
+user override      config.toml (later)
+```
+
+`currentPriceTable` returns the newest of these synchronously and never touches
+the network, so `contextlab cost` works on a plane, on first run, and when
+models.dev is down. `refreshPricingInBackground` improves the answer afterwards
+and cannot throw — a price list we failed to reach is not something to interrupt
+someone about.
+
+The snapshot is regenerated with `node scripts/update-pricing-snapshot.mjs`, and
+`fromModelsDev` is shared between that script and the runtime refresher, so their
+two copies of the format cannot drift apart.
+
+---
+
+## Both cost figures are always computed; the caller picks
+
+`computeCost` returns `actual` and `equivalent` on every turn.
+
+A Claude Max or ChatGPT Plus user pays nothing extra for a given turn — showing
+them "$3.20" is simply false. But they still need the equivalent API figure,
+because it is the only way to compare two sessions or rank what to fix. Choosing
+one number at the arithmetic layer would force the UI to recompute the other.
+
+Cache rates matter here more than they look: at Anthropic's 0.1x read rate, a
+100,000-token cached read is $0.03, not $0.30. Pricing cached tokens as fresh
+input makes a well-cached session look ten times worse than it was — and coding
+agents cache aggressively, so this is the common case, not an edge one.

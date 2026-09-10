@@ -15,7 +15,8 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.2.0"
+    "better-sqlite3": "^12.2.0",
+    "@contextlab/core": "workspace:*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12"

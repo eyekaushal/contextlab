@@ -260,8 +260,44 @@ CREATE TRIGGER blocks_fts_update AFTER UPDATE ON blocks BEGIN
 END;
 `
 
+const PRICING = `
+-- ---------------------------------------------------------------------------
+-- model_prices: the live price table, refreshed from models.dev.
+--
+-- It lives here rather than in a second JSON file because ARCHITECTURE.md is
+-- explicit that ~/.contextlab holds one database and nothing else that needs
+-- querying. Prices are USD per million tokens.
+-- ---------------------------------------------------------------------------
+CREATE TABLE model_prices (
+  provider     TEXT NOT NULL,
+  model_id     TEXT NOT NULL,
+  input        REAL NOT NULL,
+  output       REAL NOT NULL DEFAULT 0,
+  cache_read   REAL,
+  cache_write  REAL,
+  context      INTEGER,
+  max_output   INTEGER,
+  PRIMARY KEY (provider, model_id)
+);
+
+CREATE INDEX model_prices_model ON model_prices(model_id);
+
+-- One row, holding where the table came from and when. The UI stamps every
+-- cost figure with this date rather than implying the price is current.
+CREATE TABLE pricing_meta (
+  id           INTEGER PRIMARY KEY CHECK (id = 1),
+  updated_at   TEXT NOT NULL,
+  source       TEXT NOT NULL,
+  unit         TEXT NOT NULL,
+  fetched_at   INTEGER NOT NULL
+);
+`
+
 /** @type {Migration[]} */
-export const MIGRATIONS = [{ version: 1, name: 'initial schema', sql: INITIAL }]
+export const MIGRATIONS = [
+  { version: 1, name: 'initial schema', sql: INITIAL },
+  { version: 2, name: 'model prices', sql: PRICING },
+]
 
 /**
  * Apply every migration that has not run yet.

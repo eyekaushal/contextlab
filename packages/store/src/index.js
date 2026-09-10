@@ -8,6 +8,7 @@
 
 export { closeDatabase, defaultDbPath, openDatabase } from './db.js'
 export { MIGRATIONS, runMigrations, schemaVersion } from './migrations.js'
+export { loadPriceTable, pricingFetchedAt, savePriceTable } from './pricing.js'
 export {
   attributionFor,
   costByDay,
