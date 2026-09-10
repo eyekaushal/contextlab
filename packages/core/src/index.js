@@ -8,5 +8,7 @@
  * prescribe/, session-id.js.
  */
 
+export * from './compose/index.js'
 export * from './parse/index.js'
+export * from './tokenize.js'
 export * from './tools.js'

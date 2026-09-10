@@ -223,3 +223,47 @@ than slightly understating it.
 
 **Revisit** when we can read image dimensions cheaply, which would let us apply
 each provider's real tile formula.
+
+---
+
+## Estimate first, then correct against the provider's count
+
+Composition runs twice on every turn. `composeRequest` counts tokens locally
+with js-tiktoken; `rescaleToActual` then scales every part so the total is
+exactly what the provider says it billed.
+
+Neither half is sufficient alone. The local count is available while the request
+is still in flight, which is what makes a live gauge possible, but it is 5-10%
+off for Anthropic and Gemini because their tokenizers are proprietary. The
+provider's count is exact but arrives only as a single total — it says 142,314
+input tokens, not how they were spent.
+
+Scaling proportionally keeps the shape of the breakdown, which is what the user
+reads, while making the headline exactly right, which is what they pay.
+
+**Invariants, enforced by `distribute` and asserted in tests:**
+
+```
+totalTokens    === systemTokens + toolsTokens + messagesTokens
+messagesTokens === sum(message.tokens)
+message.tokens === sum(block.tokens)
+sum(categories) === totalTokens
+```
+
+Rounding each part independently drifts by a few tokens and breaks all four. So
+`distribute` floors every part and hands the remainder out largest-first: the sum
+is exact, and a part that was zero never gains a token it did not earn.
+
+---
+
+## Categories are computed from the final numbers, never tracked alongside them
+
+The eleven-way breakdown is derived in `withBreakdown` from the same block
+tokens the totals come from, after any rescaling.
+
+The alternative — maintaining a running tally as blocks are classified — creates
+a second source of truth that has to be kept in step through every correction.
+The first time it drifts, the pie chart disagrees with the number above it, and
+a measurement tool that contradicts itself is worth nothing.
+
+Deriving costs one pass over blocks we have already walked.

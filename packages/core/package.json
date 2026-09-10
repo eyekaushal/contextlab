@@ -7,12 +7,17 @@
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./parse": "./src/parse/index.js"
+    "./parse": "./src/parse/index.js",
+    "./tokenize": "./src/tokenize.js",
+    "./compose": "./src/compose/index.js"
   },
   "files": [
     "src"
   ],
   "engines": {
     "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "js-tiktoken": "^1.0.21"
   }
 }

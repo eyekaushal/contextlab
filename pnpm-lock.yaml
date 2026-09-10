@@ -47,7 +47,11 @@ importers:
         specifier: ^19.1.0
         version: 19.2.8
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      js-tiktoken:
+        specifier: ^1.0.21
+        version: 1.0.21
 
   packages/format: {}
 
@@ -685,6 +689,9 @@ packages:
     resolution: {integrity: sha512-cFeerHriAnhrQSbpAxL37W1wcJKUUX07HyLWZCW1URJT/ra3GyUTzBgUnh24TMVfNTV2Hij2HLxkPHFZfOZy5w==}
     engines: {node: '>=20'}
     hasBin: true
+
+  js-tiktoken@1.0.21:
+    resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
@@ -1470,6 +1477,10 @@ snapshots:
       get-east-asian-width: 1.6.0
 
   is-in-ci@2.0.0: {}
+
+  js-tiktoken@1.0.21:
+    dependencies:
+      base64-js: 1.5.1
 
   js-tokens@9.0.1: {}
 
