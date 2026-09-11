@@ -327,6 +327,37 @@ describe('the API', () => {
       expect(body.findings[0].wastedCostUsd).toBeGreaterThanOrEqual(0)
     })
 
+    it('ranks waste across every recent session', async () => {
+      const { body } = await get('/api/optimize?limit=10')
+      expect(body.scanned).toBe(1)
+      expect(body.reports.length).toBeGreaterThan(0)
+      expect(body.total.wastedCostUsd).toBeGreaterThan(0)
+
+      const costs = body.reports.map((/** @type {any} */ r) => r.total.wastedCostUsd)
+      expect(
+        [...costs].sort((/** @type {any} */ a, /** @type {any} */ b) => b - a),
+      ).toEqual(costs)
+    })
+
+    it('carries the numbers behind each claim, so it can be checked', async () => {
+      const { body } = await get(`/api/sessions/${sessionId}/optimize`)
+      const resent = body.findings.find(
+        (/** @type {any} */ f) => f.rule === 'stuck-oversized-result',
+      )
+      // tokens x turns is what the screen prints as its working out.
+      expect(resent.evidence.tokens).toBeGreaterThan(0)
+      expect(resent.evidence.turns).toBe(4)
+      expect(resent.wastedTokens).toBe(resent.evidence.tokens * 3)
+    })
+
+    it('returns stored evidence as an object, not a json string', async () => {
+      await get(`/api/sessions/${sessionId}/optimize`)
+      const { body } = await get('/api/findings')
+      // Freshly computed findings carry an object; stored ones held a string.
+      // The client should not have to tell them apart.
+      expect(typeof body.findings[0].evidence).not.toBe('string')
+    })
+
     it('gives every finding an actual fix', async () => {
       const { body } = await get(`/api/sessions/${sessionId}/optimize`)
       for (const finding of body.findings) {

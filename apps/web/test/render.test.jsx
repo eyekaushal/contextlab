@@ -260,3 +260,64 @@ describe('messages screen', () => {
     expect(html).toContain('animate-pulse')
   })
 })
+
+describe('the arithmetic behind a finding', () => {
+  it('shows tokens x turns = wasted, as the design spec writes it', () => {
+    const html = renderToString(
+      <Finding
+        finding={{
+          rule: 'stuck-oversized-result',
+          severity: 'critical',
+          title: 'A result has been re-sent 6 times',
+          detail: '',
+          fix: 'Start a fresh session.',
+          wastedTokens: 528_580,
+          wastedCostUsd: 2.67,
+          evidence: { tokens: 105_716, turns: 6 },
+        }}
+      />,
+    )
+    expect(html).toContain('105,716')
+    expect(html).toContain('×')
+    expect(html).toContain('6')
+    expect(html).toContain('528,580')
+  })
+
+  it('says how many times for a repeat, where there is no per-turn size', () => {
+    const html = renderToString(
+      <Finding
+        finding={{
+          rule: 'redundant-read',
+          severity: 'warning',
+          title: 'auth.js was read 15 times',
+          detail: '',
+          fix: 'Work from what is already read.',
+          wastedTokens: 6200,
+          wastedCostUsd: 0.03,
+          evidence: { file: '/repo/auth.js', reads: 15 },
+        }}
+      />,
+    )
+    expect(html).toContain('15 times')
+    expect(html).toContain('6,200')
+  })
+
+  it('shows no working out when the evidence does not support one', () => {
+    const html = renderToString(
+      <Finding
+        finding={{
+          rule: 'approaching-context-limit',
+          severity: 'warning',
+          title: 'Context is 88% full',
+          detail: '',
+          fix: 'Clear large results.',
+          wastedTokens: 0,
+          wastedCostUsd: 0,
+          evidence: { used: 175_000, limit: 200_000, share: 0.88 },
+        }}
+      />,
+    )
+    // Inventing a multiplication where none exists would be worse than none.
+    expect(html).not.toContain('×')
+  })
+})

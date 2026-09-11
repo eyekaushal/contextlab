@@ -39,6 +39,8 @@ export function Finding({ finding, className }) {
         </div>
       </div>
 
+      <Arithmetic finding={finding} />
+
       {finding.detail ? (
         <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[var(--color-text-secondary)]">
           {finding.detail}
@@ -98,4 +100,73 @@ function Fix({ text }) {
       </pre>
     </div>
   )
+}
+
+/**
+ * The sum, shown rather than asserted.
+ *
+ * docs/DESIGN.md writes this line out explicitly:
+ *
+ *   12,400 tokens x 84 turns = 1,041,600 wasted  ·  $3.12
+ *
+ * It is the difference between a claim and a calculation. A reader who does not
+ * believe the headline can check it against the two numbers that produced it,
+ * and a reader who does believe it now understands *why* the number is that big
+ * — it is the multiplication, not the size of any single thing.
+ *
+ * @param {{ finding: any }} props
+ */
+function Arithmetic({ finding }) {
+  const parts = workingOut(finding)
+  if (!parts) return null
+
+  return (
+    <p className="tnum mt-2 font-mono text-xs text-[var(--color-text-secondary)]">
+      {parts.map((part) => (
+        <span
+          key={part.key}
+          className={part.emphasis ? 'text-[var(--color-text-primary)]' : undefined}
+        >
+          {part.text}
+        </span>
+      ))}
+    </p>
+  )
+}
+
+/**
+ * @param {any} finding
+ * @returns {{ key: string, text: string, emphasis?: boolean }[] | null}
+ */
+function workingOut(finding) {
+  const evidence = finding.evidence
+  if (!evidence || typeof evidence !== 'object') return null
+
+  const perTurn = Number(evidence.perTurn ?? evidence.tokens)
+  const turns = Number(evidence.turns)
+
+  if (Number.isFinite(perTurn) && Number.isFinite(turns) && turns > 1 && perTurn > 0) {
+    return [
+      { key: 'per', text: `${exact(perTurn)} tokens` },
+      { key: 'x', text: ' \u00d7 ' },
+      { key: 'turns', text: `${exact(turns)} turns` },
+      { key: 'eq', text: ' = ' },
+      { key: 'total', text: `${exact(finding.wastedTokens)} wasted`, emphasis: true },
+      { key: 'sep', text: '  \u00b7  ' },
+      { key: 'cost', text: usd(finding.wastedCostUsd), emphasis: true },
+    ]
+  }
+
+  const reads = Number(evidence.reads ?? evidence.count)
+  if (Number.isFinite(reads) && reads > 1) {
+    return [
+      { key: 'times', text: `${exact(reads)} times` },
+      { key: 'eq', text: ' = ' },
+      { key: 'total', text: `${exact(finding.wastedTokens)} wasted`, emphasis: true },
+      { key: 'sep', text: '  \u00b7  ' },
+      { key: 'cost', text: usd(finding.wastedCostUsd), emphasis: true },
+    ]
+  }
+
+  return null
 }

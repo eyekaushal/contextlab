@@ -273,9 +273,55 @@ export function createApp({ db, hub = createEventHub() }) {
             limit: clamp(Number(c.req.query('limit') ?? 50), 1, 200),
           })
         ),
-      ),
+      ).map(reviveEvidence),
     }),
   )
+
+  /**
+   * Waste across recent sessions, ranked by money.
+   *
+   * Rules are deterministic, so running them here rather than reading cached
+   * findings means the screen is never stale — and it caches as it goes, so the
+   * per-session view is free afterwards.
+   */
+  app.get('/api/optimize', (c) => {
+    const limit = clamp(Number(c.req.query('limit') ?? 10), 1, 50)
+    const sessions = /** @type {any[]} */ (listSessions(db, { limit }))
+
+    /** @type {any[]} */
+    const reports = []
+    for (const row of sessions) {
+      const id = String(row.id)
+      const summary = buildSessionSummary(db, id)
+      if (!summary) continue
+
+      const findings = runRules(summary)
+      replaceFindings(db, id, findings)
+      if (findings.length === 0) continue
+
+      reports.push({
+        session: toCamel(row),
+        total: totalWaste(findings),
+        findings,
+      })
+    }
+
+    reports.sort((a, b) => b.total.wastedCostUsd - a.total.wastedCostUsd)
+
+    return c.json({
+      scanned: sessions.length,
+      total: {
+        count: reports.reduce((sum, report) => sum + report.total.count, 0),
+        critical: reports.reduce((sum, report) => sum + report.total.critical, 0),
+        wastedTokens: reports.reduce((sum, report) => sum + report.total.wastedTokens, 0),
+        wastedCostUsd: reports.reduce(
+          (sum, report) => sum + report.total.wastedCostUsd,
+          0,
+        ),
+      },
+      reports,
+    })
+  })
 
   // -------------------------------------------------------------------------
   // Cost
@@ -374,6 +420,23 @@ export function createApp({ db, hub = createEventHub() }) {
   )
 
   return { app, hub }
+}
+
+/**
+ * Findings read back from the database carry `evidence` as a JSON string, while
+ * freshly computed ones carry an object. The client should not have to know
+ * which path a finding came down.
+ *
+ * @param {Record<string, unknown>} finding
+ * @returns {Record<string, unknown>}
+ */
+function reviveEvidence(finding) {
+  if (typeof finding.evidence !== 'string') return finding
+  try {
+    return { ...finding, evidence: JSON.parse(finding.evidence) }
+  } catch {
+    return { ...finding, evidence: null }
+  }
 }
 
 /**

@@ -707,3 +707,50 @@ tokens in total, for 105,716 tokens of content.*
 The findings screen ranks waste for someone who came looking for it. The badge
 puts the same fact in front of someone who was reading a conversation for another
 reason entirely, which is how most people will meet it.
+
+---
+
+## Every finding shows its working out
+
+`docs/DESIGN.md` writes the line explicitly:
+
+```
+12,400 tokens × 84 turns = 1,041,600 wasted  ·  $3.12
+```
+
+So the screen prints it, built from the `evidence` each rule already emits. It is
+the difference between a claim and a calculation: a reader who doubts the
+headline can check it against the two numbers that produced it, and a reader who
+believes it now understands *why* it is so large — the multiplication, not the
+size of any single thing.
+
+Rules whose evidence does not contain a multiplication print no line at all.
+Inventing one would be worse than omitting it.
+
+---
+
+## Optimize recomputes rather than reading cached findings
+
+`/api/optimize` runs the rules over recent sessions on every request, and caches
+what it finds as a side effect.
+
+The rules are deterministic and pure, so recomputing is cheap and cannot
+disagree with itself. Reading a cache instead would mean a screen that shows
+findings from before the last three turns landed — and the one thing an optimize
+screen cannot afford is to be quietly out of date about what is currently
+expensive.
+
+The cache still earns its place: the per-session view and the sessions list read
+it, so nothing else pays for the computation.
+
+---
+
+## Empty states state a result, not an absence
+
+"Nothing to fix. None of the ten rules matched. That is a real result, not an
+empty state."
+
+A tool that prints "no data" when it has checked and found nothing is throwing
+away the most reassuring thing it can say. The distinction matters here because
+the rules are exhaustive and deterministic — a clean session genuinely is clean,
+not merely unexamined.

@@ -90,7 +90,7 @@ contextlab doctor     preflight checks
 - [x] GitHub repo created, git identity configured, push verified
 - [x] Day 1 — foundation (proxy, capture, store, parsers)
 - [x] Day 2 — analysis (compose, attribute, rules, CLI)
-- [ ] Day 3 — dashboard (4 screens)
+- [x] Day 3 — dashboard (4 screens)
 - [ ] Day 4 — format spec, tests, docs, publish
 
 ---
