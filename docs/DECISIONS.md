@@ -3,6 +3,101 @@
 Why we chose what we chose. One entry per real decision. Add to this as the project
 grows — a decision that isn't written down will have to be re-argued.
 
+Entries are in the order they were made — that record is worth keeping — so this
+index groups them by area instead.
+
+**Settled at the start**
+
+- [SQLite instead of flat files](#sqlite-instead-of-flat-files)
+- [No LLM calls anywhere in the product](#no-llm-calls-anywhere-in-the-product)
+- [Plain JavaScript with JSDoc types, not TypeScript](#plain-javascript-with-jsdoc-types-not-typescript)
+- [The proxy package has zero external dependencies](#the-proxy-package-has-zero-external-dependencies)
+- [A format that is a profile of OpenTelemetry GenAI, not a new format](#a-format-that-is-a-profile-of-opentelemetry-genai-not-a-new-format)
+- [All coding tools supported from day one](#all-coding-tools-supported-from-day-one)
+- [npm as the distribution, no Docker](#npm-as-the-distribution-no-docker)
+- [`engines` floor is Node 20.9, not Node 22](#engines-floor-is-node-209-not-node-22)
+
+**Capture and the proxy**
+
+- [The capture is a copy, never the thing being forwarded](#the-capture-is-a-copy-never-the-thing-being-forwarded)
+- [Utility endpoints are forwarded but not captured](#utility-endpoints-are-forwarded-but-not-captured)
+- [Billing mode is read from header names, which survive redaction](#billing-mode-is-read-from-header-names-which-survive-redaction)
+
+**Storage**
+
+- [Content is stored once per session, not once per turn](#content-is-stored-once-per-session-not-once-per-turn)
+- [Session totals are derived, never incremented](#session-totals-are-derived-never-incremented)
+- [Prices live in SQLite, not a second JSON file](#prices-live-in-sqlite-not-a-second-json-file)
+
+**Counting and composition**
+
+- [Parsers measure characters, not tokens](#parsers-measure-characters-not-tokens)
+- [Images get a flat 1,600-token estimate and are never measured](#images-get-a-flat-1600-token-estimate-and-are-never-measured)
+- [Estimate first, then correct against the provider's count](#estimate-first-then-correct-against-the-providers-count)
+- [Categories are computed from the final numbers, never tracked alongside them](#categories-are-computed-from-the-final-numbers-never-tracked-alongside-them)
+- [Token abbreviation starts at a thousand](#token-abbreviation-starts-at-a-thousand)
+- [Exact count_tokens exists but is not on the ingest path](#exact-count_tokens-exists-but-is-not-on-the-ingest-path)
+
+**Cost and pricing**
+
+- [Three layers of price, so a cost figure is never blocked](#three-layers-of-price-so-a-cost-figure-is-never-blocked)
+- [Both cost figures are always computed; the caller picks](#both-cost-figures-are-always-computed-the-caller-picks)
+- [Budgets are stated in equivalent cost, not actual spend](#budgets-are-stated-in-equivalent-cost-not-actual-spend)
+- [config.toml is parsed by a small parser that refuses what it cannot read](#configtoml-is-parsed-by-a-small-parser-that-refuses-what-it-cannot-read)
+
+**Attribution and the rules**
+
+- [Attribution joins tool results back to their calls](#attribution-joins-tool-results-back-to-their-calls)
+- [Entities deliberately overlap, so the shares do not add to 100%](#entities-deliberately-overlap-so-the-shares-do-not-add-to-100)
+- [Definition tokens are tracked separately from result tokens](#definition-tokens-are-tracked-separately-from-result-tokens)
+- [A finding must name the change, not the problem](#a-finding-must-name-the-change-not-the-problem)
+- [Waste is what the user could have avoided, never the total](#waste-is-what-the-user-could-have-avoided-never-the-total)
+- [Rules are ranked by money, and are total functions](#rules-are-ranked-by-money-and-are-total-functions)
+- [Every finding shows its working out](#every-finding-shows-its-working-out)
+- [Optimize recomputes rather than reading cached findings](#optimize-recomputes-rather-than-reading-cached-findings)
+
+**CLI**
+
+- [The CLI ingests on every command, with no background service](#the-cli-ingests-on-every-command-with-no-background-service)
+- [The watch TUI degrades to a snapshot outside a terminal](#the-watch-tui-degrades-to-a-snapshot-outside-a-terminal)
+- [Ink without JSX](#ink-without-jsx)
+
+**Server**
+
+- [The API speaks camelCase, the database speaks snake_case](#the-api-speaks-camelcase-the-database-speaks-snake_case)
+- [The server polls for captures instead of watching the filesystem](#the-server-polls-for-captures-instead-of-watching-the-filesystem)
+- [SSE is a hint to refetch, not a data channel](#sse-is-a-hint-to-refetch-not-a-data-channel)
+- [The turn endpoint returns only what changed](#the-turn-endpoint-returns-only-what-changed)
+- [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
+- [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
+
+**Dashboard**
+
+- [Vite is pinned to 6 because of the Node version, not by preference](#vite-is-pinned-to-6-because-of-the-node-version-not-by-preference)
+- [The palette lives in CSS, and the code looks it up by name](#the-palette-lives-in-css-and-the-code-looks-it-up-by-name)
+- [The dashboard is tested by rendering it to a string](#the-dashboard-is-tested-by-rendering-it-to-a-string)
+- [Search returns evidence, not just a shorter list](#search-returns-evidence-not-just-a-shorter-list)
+- [The sparkline is hand-written SVG, not a chart library](#the-sparkline-is-hand-written-svg-not-a-chart-library)
+- [Filter options come from the data, not a hardcoded list](#filter-options-come-from-the-data-not-a-hardcoded-list)
+- [The overview shows one turn, not the session total](#the-overview-shows-one-turn-not-the-session-total)
+- [The system prompt panel folds tool definitions in](#the-system-prompt-panel-folds-tool-definitions-in)
+- [Deltas use centre-anchored bars and a real minus sign](#deltas-use-centre-anchored-bars-and-a-real-minus-sign)
+- [The system prompt is pinned as Turn 0, not hidden behind a tab](#the-system-prompt-is-pinned-as-turn-0-not-hidden-behind-a-tab)
+- [Repetition is stated in the message list, not only in findings](#repetition-is-stated-in-the-message-list-not-only-in-findings)
+- [Empty states state a result, not an absence](#empty-states-state-a-result-not-an-absence)
+
+**The format**
+
+- [The format package ships its own validator rather than taking a dependency](#the-format-package-ships-its-own-validator-rather-than-taking-a-dependency)
+- [Exports default to previews, not full text](#exports-default-to-previews-not-full-text)
+- [Trace ids are derived from session ids, not generated](#trace-ids-are-derived-from-session-ids-not-generated)
+- [An export computes findings if none are cached](#an-export-computes-findings-if-none-are-cached)
+
+**Testing**
+
+- [Coverage is measured and enforced on `core`, and nowhere else](#coverage-is-measured-and-enforced-on-core-and-nowhere-else)
+- [The gaps coverage found were the parsers, and that was the point](#the-gaps-coverage-found-were-the-parsers-and-that-was-the-point)
+
 ---
 
 ## SQLite instead of flat files
