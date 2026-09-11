@@ -515,3 +515,49 @@ export function getBlock(db, blockId) {
     ).get(blockId)
   )
 }
+
+/**
+ * Spend against the periods a budget can cover.
+ *
+ * Equivalent cost, not actual: a budget should mean the same thing on a
+ * subscription as on a metered key, or a subscription user's answer is zero
+ * forever and the feature is useless to them.
+ *
+ * @param {Db} db
+ * @param {{ day?: string, month?: string, sessionId?: string }} [scope]
+ * @returns {{ daily: number, monthly: number, session: number }}
+ */
+export function spendTotals(db, scope = {}) {
+  const day = scope.day ?? localDayString()
+  const month = scope.month ?? day.slice(0, 7)
+
+  const row = /** @type {any} */ (
+    prepare(
+      db,
+      `SELECT
+         COALESCE(SUM(CASE WHEN captured_day = @day THEN equivalent_cost_usd END), 0)
+           AS daily,
+         COALESCE(SUM(CASE WHEN captured_day LIKE @monthPrefix THEN equivalent_cost_usd END), 0)
+           AS monthly,
+         COALESCE(SUM(CASE WHEN session_id = @sessionId THEN equivalent_cost_usd END), 0)
+           AS session
+       FROM turns`,
+    ).get({ day, monthPrefix: `${month}%`, sessionId: scope.sessionId ?? null })
+  )
+
+  return {
+    daily: Number(row?.daily) || 0,
+    monthly: Number(row?.monthly) || 0,
+    session: Number(row?.session) || 0,
+  }
+}
+
+/**
+ * @returns {string} today, as the local calendar reckons it
+ */
+function localDayString() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}

@@ -10,6 +10,7 @@
 
 import { execFile } from 'node:child_process'
 import { startServer, webRoot } from '@contextlab/server'
+import { readConfig } from '../config.js'
 import { contextlabHome } from '../context.js'
 import { color } from '../format.js'
 
@@ -22,7 +23,13 @@ export async function dashboard(options = {}) {
   const home = contextlabHome()
   const built = webRoot()
 
-  const handle = await startServer({ port, home })
+  const config = readConfig(home)
+  if (config.error) {
+    console.error(color.yellow(`\n  config.toml: ${config.error}`))
+    console.error(color.gray('  Using defaults for now.'))
+  }
+
+  const handle = await startServer({ port, home, config })
   const address = `http://localhost:${port}`
 
   console.log(`\n  ${color.bold('contextlab')}  ${address}`)

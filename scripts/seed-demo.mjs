@@ -84,6 +84,7 @@ function write({
   usage,
   systemLines = 40,
   transport = 'reverse-proxy',
+  billing = 'api',
 }) {
   for (let turn = 0; turn < turns; turn += 1) {
     clock += MINUTE
@@ -101,11 +102,21 @@ function write({
       request: {
         method: 'POST',
         path: '/v1/messages',
-        headers: {
-          'user-agent': `${tool}-cli/1.2.3`,
-          'x-api-key': '[redacted]',
-          'anthropic-version': '2023-06-01',
-        },
+        // Exactly what the proxy writes: names kept, values destroyed. Billing
+        // mode is read back out of these, which is why both kinds appear here.
+        headers:
+          billing === 'subscription'
+            ? {
+                'user-agent': `${tool}-cli/1.2.3`,
+                authorization: '[redacted]',
+                'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20',
+                'anthropic-version': '2023-06-01',
+              }
+            : {
+                'user-agent': `${tool}-cli/1.2.3`,
+                'x-api-key': '[redacted]',
+                'anthropic-version': '2023-06-01',
+              },
         body: {
           model,
           system:
@@ -218,6 +229,8 @@ write({
 write({
   tool: 'claude',
   tag: 'bbbb0002',
+  // On a plan rather than a metered key, so the UI has both to show.
+  billing: 'subscription',
   model: 'claude-haiku-4-5',
   cwd: '/repo/website',
   turns: 3,

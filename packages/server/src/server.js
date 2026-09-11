@@ -60,14 +60,15 @@ export function webRoot(override) {
 
 /**
  * @param {{ port?: number, host?: string, home?: string, db?: any,
- *           watch?: boolean, refreshPricing?: boolean, web?: string }} [options]
+ *           watch?: boolean, refreshPricing?: boolean, web?: string,
+ *           config?: { budget?: any, billing?: any } }} [options]
  * @returns {Promise<ServerHandle>}
  */
 export async function startServer(options = {}) {
   const home = options.home ?? contextlabHome()
   const db = options.db ?? openDatabase(join(home, 'data.db'))
   const hub = createEventHub()
-  const { app } = createApp({ db, hub })
+  const { app } = createApp({ db, hub, config: options.config ?? {} })
 
   const capturesDir = join(home, 'captures')
   const tracker = createSessionTracker()

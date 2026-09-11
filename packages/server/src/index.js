@@ -9,6 +9,7 @@
  */
 
 export { createApp } from './app.js'
+export { COUNT_TOKENS_URL, countTokensExact, estimateError } from './count-tokens.js'
 export { createEventHub } from './events.js'
 export { buildExport } from './export.js'
 export { ingestCapture, ingestDirectory } from './ingest.js'

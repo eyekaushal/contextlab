@@ -19,12 +19,14 @@ import {
   composeRequest,
   computeCost,
   createSessionTracker,
+  detectBillingMode,
   filePathFrom,
   findPrice,
   identifyTool,
   mergeSegments,
   parseCapture,
   rescaleToActual,
+  resolveBillingMode,
   segmentSystemPrompt,
 } from '@contextlab/core'
 import { hashText, stableStringify } from '@contextlab/core/prescribe'
@@ -87,8 +89,18 @@ export function ingestCapture(db, capture, options = {}) {
     ? rescaleToActual(estimated, parsed.usage.totalInputTokens)
     : estimated
 
+  // Header names survive redaction, so a capture still says how the caller
+  // authenticated without ever having stored the credential itself.
+  const billingMode = resolveBillingMode(
+    detectBillingMode(request.headers ?? {}, {
+      provider: parsed.provider,
+      path: request.path,
+    }),
+    { mode: options.billingMode },
+  )
+
   const cost = computeCost(parsed.usage, match, {
-    billingMode: /** @type {any} */ (options.billingMode ?? 'unknown'),
+    billingMode: /** @type {any} */ (billingMode),
   })
 
   const attribution = attributeComposition(composition, {
@@ -111,7 +123,7 @@ export function ingestCapture(db, capture, options = {}) {
       ...(workingDirectory ? { projectName: basename(workingDirectory) } : {}),
       ...(match?.price.context ? { contextLimit: match.price.context } : {}),
       ...(identity.fingerprint ? { fingerprint: identity.fingerprint } : {}),
-      billingMode: options.billingMode ?? 'unknown',
+      billingMode,
     },
     turn: {
       id: String(capture.id ?? hashText(JSON.stringify(capture).slice(0, 4096))),

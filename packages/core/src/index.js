@@ -9,7 +9,10 @@
  */
 
 export * from './attribute/index.js'
+export * from './billing.js'
+export * from './budget.js'
 export * from './compose/index.js'
+export * from './config.js'
 export * from './parse/index.js'
 export * from './prescribe/index.js'
 export * from './pricing/index.js'

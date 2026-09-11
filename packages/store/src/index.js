@@ -27,6 +27,7 @@ export {
   listSessions,
   listTurns,
   searchBlocks,
+  spendTotals,
   systemSegments,
 } from './read.js'
 export { localDay, recordTurn, refreshSessionTotals, replaceFindings } from './write.js'

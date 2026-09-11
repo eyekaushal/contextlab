@@ -813,3 +813,66 @@ has none on disk.
 An export that silently omitted them would be quietly incomplete in a way the
 reader could not detect — the document would look fine. Since the rules are pure
 and deterministic, `buildExport` simply runs them when the cache is empty.
+
+---
+
+## Billing mode is read from header names, which survive redaction
+
+The proxy destroys header *values* and keeps the names. That turns out to carry
+real information: a request with `x-api-key` is a metered key, and one with
+`anthropic-beta: …oauth-2025-04-20…` is an account subscription. Neither is a
+credential, so a capture says how the caller authenticated without ever having
+stored how they authenticated.
+
+This is why a Claude Max user now sees `actual = $0.00` beside
+`equivalent = $0.01` rather than being told they spent money they did not spend.
+Getting that wrong is the kind of wrong that makes someone distrust every other
+number on the screen.
+
+`billing.mode` in config.toml overrides the heuristic, because detection reads
+headers we do not control and a user who knows should be able to say so once.
+
+---
+
+## Budgets are stated in equivalent cost, not actual spend
+
+A budget in actual spend reads zero forever on a subscription, which makes the
+feature useless to exactly the people most likely to be burning tokens without
+noticing.
+
+Equivalent API cost means the same thing on both, so "am I spending more than
+usual today" has an answer either way. The panel says so explicitly when the
+session is on a plan, rather than letting someone think they are being billed.
+
+---
+
+## config.toml is parsed by a small parser that refuses what it cannot read
+
+`ARCHITECTURE.md` specifies TOML. The config is sections, numbers, strings,
+booleans and flat arrays — so `core` parses that subset directly rather than
+taking a dependency into the pure test surface.
+
+It errors with a line number on anything outside the subset. A config parser
+that silently misreads `daily = five dollars` as nothing at all is worse than
+one that refuses the file, because the budget then quietly never fires.
+
+If the config ever needs inline tables or multi-line strings, take the
+dependency rather than extending this.
+
+---
+
+## Exact count_tokens exists but is not on the ingest path
+
+Anthropic's `count_tokens` endpoint is free and exact, and `countTokensExact`
+calls it.
+
+It is deliberately not wired into ingest. Every capture is written after the
+response completes, so the provider's real usage is already there and our
+estimate is already corrected against it — calling a second endpoint would add a
+network round trip to improve a number we are about to overwrite anyway.
+
+Where it earns its place is the turns that carry *no* usage: a 429, a dropped
+stream, a request that failed. Those are stuck with the cl100k approximation,
+and they are disproportionately the ones someone is staring at when something
+has gone wrong. It needs a key, which contextlab does not hold, so the caller
+supplies one.

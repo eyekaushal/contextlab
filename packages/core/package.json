@@ -13,7 +13,9 @@
     "./pricing": "./src/pricing/index.js",
     "./attribute": "./src/attribute/index.js",
     "./prescribe": "./src/prescribe/index.js",
-    "./session": "./src/session.js"
+    "./session": "./src/session.js",
+    "./config": "./src/config.js",
+    "./budget": "./src/budget.js"
   },
   "files": [
     "src"

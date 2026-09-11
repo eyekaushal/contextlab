@@ -12,6 +12,7 @@
  * @module
  */
 
+import { budgetProgress, evaluateBudget, hasBudget } from '@contextlab/core/budget'
 import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import { toOtlp } from '@contextlab/format'
 import {
@@ -31,6 +32,7 @@ import {
   listTurns,
   replaceFindings,
   searchBlocks,
+  spendTotals,
   systemSegments,
 } from '@contextlab/store'
 import { Hono } from 'hono'
@@ -50,10 +52,11 @@ import { buildSessionSummary } from './summary.js'
 const SSE_PING_MS = 25_000
 
 /**
- * @param {{ db: Db, hub?: EventHub }} options
+ * @param {{ db: Db, hub?: EventHub,
+ *           config?: { budget?: any, billing?: any } }} options
  * @returns {{ app: Hono, hub: EventHub }}
  */
-export function createApp({ db, hub = createEventHub() }) {
+export function createApp({ db, hub = createEventHub(), config = {} }) {
   const app = new Hono()
 
   // The dashboard is served from the same origin in production, but runs on
@@ -339,6 +342,26 @@ export function createApp({ db, hub = createEventHub() }) {
       ...(c.req.query('project') ? { project: c.req.query('project') } : {}),
     })
     return c.json({ by: 'day', rows: toCamelAll(/** @type {any[]} */ (rows)) })
+  })
+
+  /**
+   * Everything the cost screen needs: spend by day, by project, and how it
+   * stands against whatever budgets the user configured.
+   */
+  app.get('/api/budget', (c) => {
+    const budget = config.budget ?? {}
+    const spend = spendTotals(db, {
+      ...(c.req.query('session') ? { sessionId: c.req.query('session') } : {}),
+    })
+
+    return c.json({
+      configured: hasBudget(budget),
+      budget,
+      spend,
+      progress: budgetProgress(spend, budget),
+      alerts: evaluateBudget(spend, budget),
+      billing: config.billing ?? { mode: 'auto' },
+    })
   })
 
   app.get('/api/pricing', (c) => {

@@ -4,7 +4,9 @@
  * @module
  */
 
-import { costByDay, costByProject } from '@contextlab/store'
+import { budgetProgress, evaluateBudget, hasBudget } from '@contextlab/core/budget'
+import { costByDay, costByProject, spendTotals } from '@contextlab/store'
+import { readConfig } from '../config.js'
 import { open } from '../context.js'
 import { color, heading, pad, tokens, truncate, usd } from '../format.js'
 
@@ -15,6 +17,7 @@ import { color, heading, pad, tokens, truncate, usd } from '../format.js'
 export function cost(options = {}) {
   const { db } = open()
   const by = options.by ?? 'day'
+  const config = readConfig()
 
   if (by === 'project') {
     const rows = /** @type {any[]} */ (costByProject(db))
@@ -29,6 +32,7 @@ export function cost(options = {}) {
   )
   if (options.json) return void console.log(JSON.stringify(rows, null, 2))
   printDays(rows, days)
+  printBudget(db, config)
 }
 
 /**
@@ -69,6 +73,43 @@ function printDays(rows, days) {
 
   console.log(color.gray('─'.repeat(62)))
   console.log(`${pad(color.bold('TOTAL'), 47)}${color.bold(usd(total))}\n`)
+}
+
+/**
+ * Budgets, and anything that has tripped one.
+ *
+ * @param {any} db
+ * @param {any} config
+ * @returns {void}
+ */
+function printBudget(db, config) {
+  const budget = config.budget ?? {}
+  if (!hasBudget(budget)) return
+
+  const spend = spendTotals(db)
+  const progress = budgetProgress(spend, budget)
+  const alerts = evaluateBudget(spend, budget)
+
+  console.log(heading('Budget'))
+  for (const row of progress) {
+    const paint =
+      row.level === 'exceeded'
+        ? color.red
+        : row.level === 'warning'
+          ? color.yellow
+          : color.green
+    const filled = Math.max(0, Math.min(24, Math.round(row.share * 24)))
+    console.log(
+      `  ${pad(row.scope, 10)}${paint('█'.repeat(filled))}${color.gray('░'.repeat(24 - filled))}  ` +
+        `${usd(row.spent)} / ${usd(row.limit)}`,
+    )
+  }
+
+  for (const alert of alerts) {
+    const paint = alert.level === 'exceeded' ? color.red : color.yellow
+    console.log(`\n  ${paint(alert.title)} — ${alert.detail}`)
+  }
+  console.log()
 }
 
 /**

@@ -8,6 +8,7 @@ import { Activity, Coins, ListTree, Wrench } from 'lucide-react'
 import { useServerEvents } from './lib/api.js'
 import { match, navigate, useRoute } from './lib/router.js'
 import { cn } from './lib/utils.js'
+import { Cost } from './screens/cost.jsx'
 import { Messages } from './screens/messages.jsx'
 import { Optimize } from './screens/optimize.jsx'
 import { SessionOverview } from './screens/session-overview.jsx'
@@ -47,23 +48,8 @@ function Route({ path, version }) {
   if (optimize) return <Optimize sessionId={optimize.id} version={version} />
 
   if (path === '/optimize') return <Optimize version={version} />
-  if (path === '/cost') return <CostScreen version={version} />
+  if (path === '/cost') return <Cost version={version} />
   return <Sessions version={version} />
-}
-
-/**
- * Built in a later block; the route exists so the nav is honest.
- *
- * @param {{ version?: number }} props
- */
-function CostScreen(props) {
-  void props
-  return (
-    <div className="p-6 text-sm text-[var(--color-text-muted)]">
-      Cost by day and project — <code className="font-mono">contextlab cost</code> has
-      this today.
-    </div>
-  )
 }
 
 /**
