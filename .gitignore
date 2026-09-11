@@ -28,3 +28,4 @@ data/
 
 # Test output
 coverage/
+*.lcov

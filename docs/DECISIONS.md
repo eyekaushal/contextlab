@@ -876,3 +876,48 @@ stream, a request that failed. Those are stuck with the cl100k approximation,
 and they are disproportionately the ones someone is staring at when something
 has gone wrong. It needs a key, which contextlab does not hold, so the caller
 supplies one.
+
+---
+
+## Coverage is measured and enforced on `core`, and nowhere else
+
+`vitest.config.js` sets thresholds — 98% statements, lines and functions, 80%
+branches — scoped to `packages/core/src` alone.
+
+`core` is where a wrong number originates: parsing six unstable wire formats,
+counting tokens, rescaling, attributing cost, deciding what is wasted. It is
+pure, so every branch is reachable from a plain function call with no fixtures,
+no server and no database.
+
+A threshold over the proxy, the store or the dashboard would push us toward
+testing wiring — that a route returns 200, that a component renders — which
+raises a number without raising confidence. Those packages are tested by
+behaviour instead: a real proxy against a real upstream, a real database, a real
+export validated against the schema.
+
+The generated price snapshot is excluded. It is data.
+
+---
+
+## The gaps coverage found were the parsers, and that was the point
+
+Before this block the suite was 363 tests and looked thorough. Coverage said
+otherwise:
+
+```
+openai-responses.js   54.6%
+openai-chat.js        63.9%
+gemini.js             80.7%
+```
+
+Day 1 had tested the seven traps from WIRE-FORMATS §3 — the cases that produce a
+silently wrong number — and stopped there. The rest of each format, the item
+types and role shapes a real session actually contains, was untested.
+
+That is exactly the code least able to afford it: three undocumented formats that
+change without notice. Fifty-two tests later they sit at 98-99%, and a field
+renamed upstream now surfaces as a failing assertion rather than a dashboard
+that is confidently wrong.
+
+Writing tests to raise a number is waste. Measuring to find out *where* the
+tests should have been is not the same activity.
