@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": [],
+    /*
+     * Components take props objects that are destructured with defaults. Typing
+     * every one of them in JSDoc would be noise for a four-screen dashboard;
+     * the value here is catching bad imports, bad DOM usage and real logic
+     * errors, which the rest of the strict flags still do.
+     */
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["apps/web/src/**/*.js", "apps/web/src/**/*.jsx", "apps/web/test/**/*.jsx"],
+  "exclude": ["**/node_modules", "**/dist"]
+}

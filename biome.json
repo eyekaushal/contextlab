@@ -47,5 +47,10 @@
         "noUnusedImports": "error"
       }
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

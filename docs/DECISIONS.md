@@ -509,3 +509,63 @@ reader to spot the difference — which, at a glance, is impossible when both ba
 are 140,000 tokens and one category moved by 1,400. Computing the delta in SQL
 means the screen cannot get it wrong, and the first turn honestly returns an
 empty array rather than a diff against nothing.
+
+---
+
+## Vite is pinned to 6 because of the Node version, not by preference
+
+Vite 8 is current. It imports `styleText` from `node:util`, which arrives in
+Node 20.12, and the development machine runs Node 20.9 — so `vite build` fails
+at module load before it does anything.
+
+Vite 6 supports `^20.0.0` and everything else in the stack (Tailwind 4,
+`@vitejs/plugin-react` 5) supports Vite 6, so the pin costs nothing today.
+
+**This is debt with a one-line payoff.** After `nvm install 22`, moving to Vite 8
+is a version bump in `apps/web/package.json`. The engines floor of the published
+packages stays at 20.9 — it is only the dashboard's build tooling that wants a
+newer Node, and that is a developer concern rather than a user one.
+
+---
+
+## The palette lives in CSS, and the code looks it up by name
+
+`styles.css` holds every validated colour once. `categoryColor('tool_results')`
+returns `var(--cat-tool_results)` rather than a hex value, so no component ever
+holds a colour and the validated set cannot drift by someone picking a shade
+that looked close enough.
+
+A check confirms all twenty colours in `docs/DESIGN.md` are present, unchanged,
+and survive into the built CSS.
+
+Tailwind 4 configures its theme in CSS with `@theme`, which is also why Biome
+needed `css.parser.tailwindDirectives` — without it every stylesheet is a parse
+error.
+
+---
+
+## The dashboard is tested by rendering it to a string
+
+`apps/web/test/render.test.jsx` renders components with `renderToString`.
+
+Effects do not run, so there is no browser, no DOM, no network and no test
+harness to maintain — but it still catches the failures that actually happen
+while building screens: a bad import path, invalid JSX, a hook used wrongly, or
+a component that throws on its first paint with no data. A build alone catches
+none of those, because a module that compiles can still explode on render.
+
+It also caught a real one immediately: `currentPath()` read `window` during
+render, which made the whole app unrenderable outside a browser.
+
+---
+
+## One process serves the API and the dashboard
+
+The built files are mounted on the same Hono server as the API, after the
+routes, so `/api` can never resolve to a file and a missing build just leaves
+the API working alone.
+
+One origin means no CORS in production, one port to explain, and one thing to
+start. In development the dashboard runs on Vite's port and proxies `/api`
+across, so the app's fetch calls stay origin-relative and the same code works in
+both places.

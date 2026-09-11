@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/*
+ * The palette is from docs/DESIGN.md and was validated for contrast and
+ * colourblind separation against the dark surface below. Every check passed:
+ * lightness band, chroma floor, CVD separation, normal-vision floor, 3:1
+ * contrast.
+ *
+ * Do not substitute a colour by eye. If you change one, re-validate the set.
+ */
+
+@theme {
+  /* Surfaces and ink */
+  --color-page: #0d0e12;
+  --color-surface: #12141a;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #c3c2b7;
+  --color-text-muted: #898781;
+  --color-gridline: #2c2c2a;
+  --color-baseline: #383835;
+  --color-border-subtle: rgb(255 255 255 / 0.1);
+
+  /*
+   * Composition categories, assigned in this fixed order. Never cycle the
+   * palette: a category keeps its colour across every screen and session, so a
+   * reader learns "orange is tool definitions" once.
+   */
+  --color-cat-system-prompt: #3987e5;
+  --color-cat-tool-definitions: #d95926;
+  --color-cat-tool-results: #199e70;
+  --color-cat-tool-calls: #c98500;
+  --color-cat-user-text: #d55181;
+  --color-cat-assistant-text: #008300;
+  --color-cat-thinking: #9085e9;
+  --color-cat-images: #e66767;
+  --color-cat-other: #6e7681;
+
+  /*
+   * Status is reserved for health, findings and alerts, and is never used for
+   * a category. A status colour always ships with an icon and a label —
+   * never colour alone.
+   */
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-serious: #ec835a;
+  --color-status-critical: #d03b3b;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --radius-card: 0.5rem;
+}
+
+/*
+ * Category colours are looked up by name at runtime — the API returns
+ * `tool_results`, not a hex value — so they also live as plain custom
+ * properties that `categoryColor()` can read.
+ */
+:root {
+  --cat-system_prompt: var(--color-cat-system-prompt);
+  --cat-tool_definitions: var(--color-cat-tool-definitions);
+  --cat-tool_results: var(--color-cat-tool-results);
+  --cat-tool_calls: var(--color-cat-tool-calls);
+  --cat-user_text: var(--color-cat-user-text);
+  --cat-assistant_text: var(--color-cat-assistant-text);
+  --cat-thinking: var(--color-cat-thinking);
+  --cat-system_injections: var(--color-cat-other);
+  --cat-images: var(--color-cat-images);
+  --cat-cache_markers: var(--color-cat-other);
+  --cat-other: var(--color-cat-other);
+
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Numbers are the content here. Chrome recedes. */
+  ::selection {
+    background: color-mix(in oklab, var(--color-cat-system-prompt) 35%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-cat-system-prompt);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-gridline);
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-baseline);
+  }
+}
+
+@layer utilities {
+  /*
+   * Only in columns that must align. Proportional figures read better
+   * everywhere else, so this is opt-in rather than global.
+   */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}

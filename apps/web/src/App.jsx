@@ -1,0 +1,120 @@
+/**
+ * The shell: a sidebar, a route, and a live-connection indicator.
+ *
+ * @module
+ */
+
+import { Activity, Coins, ListTree, Wrench } from 'lucide-react'
+import { useServerEvents } from './lib/api.js'
+import { match, navigate, useRoute } from './lib/router.js'
+import { cn } from './lib/utils.js'
+import { Messages } from './screens/messages.jsx'
+import { Optimize } from './screens/optimize.jsx'
+import { SessionOverview } from './screens/session-overview.jsx'
+import { Sessions } from './screens/sessions.jsx'
+
+const NAV = [
+  { path: '/', label: 'Sessions', Icon: ListTree },
+  { path: '/optimize', label: 'Optimize', Icon: Wrench },
+  { path: '/cost', label: 'Cost', Icon: Coins },
+]
+
+export function App() {
+  const path = useRoute()
+  const { version, connected } = useServerEvents()
+
+  return (
+    <div className="flex h-full">
+      <Sidebar path={path} connected={connected} />
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <Route path={path} version={version} />
+      </main>
+    </div>
+  )
+}
+
+/**
+ * @param {{ path: string, version: number }} props
+ */
+function Route({ path, version }) {
+  const overview = match('/s/:id', path)
+  if (overview) return <SessionOverview sessionId={overview.id} version={version} />
+
+  const messages = match('/s/:id/messages', path)
+  if (messages) return <Messages sessionId={messages.id} version={version} />
+
+  const optimize = match('/s/:id/optimize', path)
+  if (optimize) return <Optimize sessionId={optimize.id} version={version} />
+
+  if (path === '/optimize') return <Optimize version={version} />
+  if (path === '/cost') return <CostScreen version={version} />
+  return <Sessions version={version} />
+}
+
+/**
+ * Built in a later block; the route exists so the nav is honest.
+ *
+ * @param {{ version?: number }} props
+ */
+function CostScreen(props) {
+  void props
+  return (
+    <div className="p-6 text-sm text-[var(--color-text-muted)]">
+      Cost by day and project — <code className="font-mono">contextlab cost</code> has
+      this today.
+    </div>
+  )
+}
+
+/**
+ * @param {{ path: string, connected: boolean }} props
+ */
+function Sidebar({ path, connected }) {
+  return (
+    <aside className="flex w-52 shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface)]">
+      <div className="px-4 py-4">
+        <div className="text-sm font-semibold tracking-tight">contextlab</div>
+        <div className="text-[11px] text-[var(--color-text-muted)]">
+          what is filling the window
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-0.5 px-2">
+        {NAV.map(({ path: to, label, Icon }) => {
+          const active = to === '/' ? path === '/' || path.startsWith('/s/') : path === to
+          return (
+            <button
+              key={to}
+              type="button"
+              onClick={() => navigate(to)}
+              className={cn(
+                'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors',
+                active
+                  ? 'bg-[var(--color-gridline)] text-[var(--color-text-primary)]'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-gridline)]',
+              )}
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="flex items-center gap-1.5 px-4 py-3 text-[11px] text-[var(--color-text-muted)]">
+        <Activity
+          aria-hidden="true"
+          className={cn(
+            'size-3',
+            connected
+              ? 'text-[var(--color-status-good)]'
+              : 'text-[var(--color-text-muted)]',
+          )}
+        />
+        {/* Says whether the page is live, so a stale number is never mistaken
+            for a current one. */}
+        {connected ? 'live' : 'not connected'}
+      </div>
+    </aside>
+  )
+}

@@ -10,6 +10,7 @@
 import { TOOLS } from '@contextlab/core'
 import { Command } from 'commander'
 import { cost } from './commands/cost.js'
+import { dashboard } from './commands/dashboard.js'
 import { doctor } from './commands/doctor.js'
 import { launch } from './commands/launch.js'
 import { optimize } from './commands/optimize.js'
@@ -71,6 +72,15 @@ export function run(argv) {
     .option('--all', 'every recent session, not just the latest')
     .option('--json', 'machine-readable output')
     .action((options) => optimize(options))
+
+  program
+    .command('dashboard')
+    .description('serve the dashboard and open it in a browser')
+    .option('--port <n>', 'server port', '4041')
+    .option('--no-open', 'do not open a browser')
+    .action(async (options) => {
+      await dashboard(options)
+    })
 
   program
     .command('doctor')

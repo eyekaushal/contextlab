@@ -9,10 +9,12 @@
 
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createSessionTracker } from '@contextlab/core'
 import { openDatabase } from '@contextlab/store'
 import { serve } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
 import { createApp } from './app.js'
 import { createEventHub } from './events.js'
 import { ingestDirectory } from './ingest.js'
@@ -32,6 +34,23 @@ export function contextlabHome(env = process.env) {
 }
 
 /**
+ * Where the built dashboard lives.
+ *
+ * Serving it from the same process as the API is what makes the whole product
+ * one command and one origin — no CORS in production, no second port to
+ * explain, nothing to deploy.
+ *
+ * @param {string} [override]
+ * @returns {string | null}
+ */
+export function webRoot(override) {
+  if (override) return existsSync(override) ? override : null
+  const here = dirname(fileURLToPath(import.meta.url))
+  const built = join(here, '..', '..', '..', 'apps', 'web', 'dist')
+  return existsSync(join(built, 'index.html')) ? built : null
+}
+
+/**
  * @typedef {Object} ServerHandle
  * @property {import('node:http').Server} server
  * @property {ReturnType<typeof createEventHub>} hub
@@ -41,7 +60,7 @@ export function contextlabHome(env = process.env) {
 
 /**
  * @param {{ port?: number, host?: string, home?: string, db?: any,
- *           watch?: boolean, refreshPricing?: boolean }} [options]
+ *           watch?: boolean, refreshPricing?: boolean, web?: string }} [options]
  * @returns {Promise<ServerHandle>}
  */
 export async function startServer(options = {}) {
@@ -84,6 +103,14 @@ export async function startServer(options = {}) {
     refreshPricingInBackground(db)
   }
 
+  // Static assets are mounted after the API routes, so /api never resolves to
+  // a file and a missing build simply leaves the API working on its own.
+  const root = webRoot(options.web)
+  if (root) {
+    app.use('/assets/*', serveStatic({ root: relativeTo(root) }))
+    app.get('*', serveStatic({ root: relativeTo(root), path: 'index.html' }))
+  }
+
   const port = options.port ?? DEFAULT_PORT
   const server = await new Promise((resolve) => {
     const handle = serve(
@@ -102,4 +129,18 @@ export async function startServer(options = {}) {
       if (!options.db) db.close()
     },
   }
+}
+
+/**
+ * serveStatic resolves its root against the process working directory, which
+ * is wherever the user happened to run the command from.
+ *
+ * @param {string} absolute
+ * @returns {string}
+ */
+function relativeTo(absolute) {
+  const relative = absolute.startsWith(process.cwd())
+    ? absolute.slice(process.cwd().length).replace(/^\//, '')
+    : absolute
+  return `./${relative}`
 }

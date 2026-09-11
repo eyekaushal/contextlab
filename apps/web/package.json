@@ -2,7 +2,30 @@
   "name": "@contextlab/web",
   "version": "0.1.0",
   "private": true,
-  "description": "React dashboard. Talks to the server over HTTP + SSE. Built on day 3.",
+  "description": "React dashboard. Talks to the server over HTTP + SSE.",
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "d3-hierarchy": "^3.1.2",
+    "lucide-react": "^1.44.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.3.6"
+  }
 }
