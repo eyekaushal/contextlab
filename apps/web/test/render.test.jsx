@@ -11,10 +11,13 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { App } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
+import { ContextDiff } from '../src/components/context-diff.jsx'
+import { Finding } from '../src/components/finding.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
 import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
+import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
 import { href, match } from '../src/lib/router.js'
 
@@ -136,11 +139,113 @@ describe('sparkline', () => {
 
   it('says in words what the line shows', () => {
     const html = renderToString(<Sparkline values={[1000, 50_000]} />)
-    expect(html).toContain('grew from 1,000 to 50.0K')
+    expect(html).toContain('grew from 1.0K to 50.0K')
   })
 
   it('shows a dash rather than a misleading flat line for one point', () => {
     expect(renderToString(<Sparkline values={[42]} />)).toContain('—')
     expect(renderToString(<Sparkline values={[]} />)).toContain('—')
+  })
+})
+
+describe('system prompt panel', () => {
+  const segments = [
+    { kind: 'base', label: 'base prompt', tokens: 6100 },
+    { kind: 'memory_file', label: 'CLAUDE.md', tokens: 1840 },
+  ]
+  const mcpServers = [
+    { entityName: 'playwright', definitionTokens: 2300, calls: 0 },
+    { entityName: 'postgres', definitionTokens: 740, calls: 4 },
+  ]
+
+  it('breaks the prompt into the pieces from the design spec', () => {
+    const html = renderToString(
+      <SystemPromptPanel
+        segments={segments}
+        mcpServers={mcpServers}
+        contextTokens={24_000}
+      />,
+    )
+    expect(html).toContain('Base tool prompt')
+    expect(html).toContain('CLAUDE.md')
+    expect(html).toContain('MCP: playwright')
+    expect(html).toContain('MCP: postgres')
+  })
+
+  it('calls out a server that was never used', () => {
+    const html = renderToString(
+      <SystemPromptPanel segments={segments} mcpServers={mcpServers} />,
+    )
+    // The single most actionable line the panel can print.
+    expect(html).toContain('never called this session')
+  })
+
+  it('says how much of the preamble the reader actually controls', () => {
+    const html = renderToString(
+      <SystemPromptPanel segments={segments} mcpServers={mcpServers} />,
+    )
+    // 1,840 CLAUDE.md + 2,300 playwright + 740 postgres. Not the base prompt.
+    expect(html).toContain('4,880')
+    expect(html).toContain('yours to change')
+  })
+
+  it('orders rows by size, largest first', () => {
+    const html = renderToString(
+      <SystemPromptPanel segments={segments} mcpServers={mcpServers} />,
+    )
+    expect(html.indexOf('Base tool prompt')).toBeLessThan(html.indexOf('MCP: playwright'))
+    expect(html.indexOf('MCP: playwright')).toBeLessThan(html.indexOf('CLAUDE.md'))
+  })
+
+  it('says so plainly when there is nothing recorded', () => {
+    expect(renderToString(<SystemPromptPanel segments={[]} />)).toContain(
+      'Nothing recorded',
+    )
+  })
+})
+
+describe('context diff', () => {
+  it('shows only what moved, signed', () => {
+    const html = renderToString(
+      <ContextDiff
+        rows={[
+          { category: 'tool_results', tokens: 90_000, previous: 88_600, delta: 1400 },
+          { category: 'user_text', tokens: 40, previous: 90, delta: -50 },
+        ]}
+      />,
+    )
+    expect(html).toContain('+1.4K')
+    // A minus sign, not a hyphen.
+    expect(html).toContain('−50')
+    expect(html).toContain('Tool results')
+  })
+
+  it('does not invent a diff for the first turn', () => {
+    const html = renderToString(<ContextDiff rows={[]} />)
+    expect(html).toContain('Nothing changed, or this is the first turn')
+  })
+})
+
+describe('finding', () => {
+  const finding = {
+    rule: 'unused-mcp-server',
+    severity: 'critical',
+    title: 'MCP server "playwright" was never used',
+    detail: 'Its tool definitions add 10,876 tokens to every turn.',
+    fix: 'Remove "playwright" from .mcp.json:\n\n  "playwright": { ... }',
+    wastedTokens: 87_008,
+    wastedCostUsd: 0.44,
+  }
+
+  it('leads with the cost and carries the exact change', () => {
+    const html = renderToString(<Finding finding={finding} />)
+    expect(html).toContain('$0.44')
+    expect(html).toContain('87,008')
+    expect(html).toContain('.mcp.json')
+    expect(html).toContain('Copy')
+  })
+
+  it('labels severity with a word, not just a colour', () => {
+    expect(renderToString(<Finding finding={finding} />)).toContain('Critical')
   })
 })

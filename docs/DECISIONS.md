@@ -612,3 +612,57 @@ A fixed list of the seven supported tools would offer choices that return
 nothing, which reads as a broken filter rather than an empty result. The
 dropdowns are also hidden entirely until there is more than one of something to
 choose between — a filter with one option is furniture.
+
+---
+
+## The overview shows one turn, not the session total
+
+The session total is what you spent. The context window is what you are living
+inside right now, and it is a per-turn thing — so the stat row, the composition
+bar, the system prompt panel and the diff all describe a single turn, with a
+picker to move between them. The latest turn is the default.
+
+A session-summed composition bar is misleading in a specific way: it counts the
+same 105,000-token tool result once per turn it was re-sent, so the chart claims
+a window far larger than any that existed. The session total belongs in the cost
+column, not in a picture of the window.
+
+---
+
+## The system prompt panel folds tool definitions in
+
+Our model counts tool schemas as `tool_definitions`, a category of their own.
+The panel shows them anyway, beside the prompt segments.
+
+From where the reader sits they are the same thing: a fixed preamble re-sent on
+every single turn, part of which they control. Splitting them across two panels
+because of an internal taxonomy would make someone add the numbers up themselves.
+
+Each row is marked **yours** or **fixed**, and the panel ends with the only
+number that leads anywhere: how many tokens of the preamble are in the reader's
+hands. A server that was never called says so on its own row, which is the most
+actionable line the screen prints.
+
+---
+
+## Deltas use centre-anchored bars and a real minus sign
+
+The context diff draws each category's change from a centre line: growth to the
+right, shrinkage to the left. Two bars of equal length pointing opposite ways
+read as opposites; two left-aligned bars of equal length read as the same thing.
+
+Numbers use `−`, the minus sign, rather than a hyphen. At eleven pixels a
+hyphen is easily read as a dash or missed entirely, and a cost figure that might
+be negative is exactly where that matters.
+
+---
+
+## Token abbreviation starts at a thousand
+
+`tokens()` in the dashboard abbreviated only above ten thousand, so a delta of
+1,400 printed as "1,400" where `docs/DESIGN.md` shows "+1.4K" — and the CLI's
+own formatter already abbreviated from a thousand.
+
+Two formatters disagreeing about the same number is how a product starts looking
+untrustworthy. They now agree. Where the digits genuinely matter — a waste
+figure someone might check — the code calls `exact()` instead.

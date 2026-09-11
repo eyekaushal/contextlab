@@ -16,7 +16,9 @@ export function tokens(value) {
   const n = Math.round(Number(value) || 0)
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 100_000) return `${Math.round(n / 1000)}K`
-  if (n >= 10_000) return `${(n / 1000).toFixed(1)}K`
+  // Abbreviated from a thousand up, matching the deltas in docs/DESIGN.md
+  // ("Tool results +1.4K") and the CLI. Use `exact` where the digits matter.
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
   return n.toLocaleString('en-US')
 }
 
