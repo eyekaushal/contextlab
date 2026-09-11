@@ -20,6 +20,7 @@ import {
   costByDay,
   costByProject,
   findRepeatedBlocks,
+  getBlock,
   getComposition,
   getSession,
   listBlocksForTurn,
@@ -209,7 +210,10 @@ export function createApp({ db, hub = createEventHub() }) {
         blocks: [],
       }
       message.tokens += Number(block.tokens) || 0
-      message.blocks.push(toCamel(block))
+      // The full text stays behind /api/blocks/:id. One stuck tool result can
+      // be eighty thousand characters, and the list only draws previews.
+      const { text, ...rest } = block
+      message.blocks.push(toCamel(rest))
       messages.set(index, message)
     }
 
@@ -226,6 +230,12 @@ export function createApp({ db, hub = createEventHub() }) {
       },
       messages: [...messages.values()].sort((a, b) => a.index - b.index),
     })
+  })
+
+  app.get('/api/blocks/:id', (c) => {
+    const block = /** @type {any} */ (getBlock(db, c.req.param('id')))
+    if (!block) return c.json({ error: 'no such block' }, 404)
+    return c.json({ block: toCamel(block) })
   })
 
   // -------------------------------------------------------------------------

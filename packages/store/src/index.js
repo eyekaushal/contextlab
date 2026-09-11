@@ -18,6 +18,7 @@ export {
   escapeFtsQuery,
   findRepeatedBlocks,
   findRepeatedCalls,
+  getBlock,
   getComposition,
   getSession,
   listBlocksForTurn,

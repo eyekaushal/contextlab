@@ -493,3 +493,25 @@ export function contextTrends(db, sessionIds) {
   }
   return trends
 }
+
+/**
+ * One block's full text.
+ *
+ * Kept out of the list endpoint on purpose: a single stuck tool result can be
+ * eighty thousand characters, and shipping every block's text to draw a list of
+ * previews is how a local dashboard starts feeling slow.
+ *
+ * @param {Db} db
+ * @param {number | string} blockId
+ * @returns {Record<string, unknown> | undefined}
+ */
+export function getBlock(db, blockId) {
+  return /** @type {Record<string, unknown> | undefined} */ (
+    prepare(
+      db,
+      `SELECT b.*, (SELECT COUNT(*) FROM turn_blocks tb WHERE tb.block_id = b.id)
+              AS turns_present
+       FROM blocks b WHERE b.id = ?`,
+    ).get(blockId)
+  )
+}

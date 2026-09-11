@@ -666,3 +666,44 @@ own formatter already abbreviated from a thousand.
 Two formatters disagreeing about the same number is how a product starts looking
 untrustworthy. They now agree. Where the digits genuinely matter — a waste
 figure someone might check — the code calls `exact()` instead.
+
+---
+
+## Block text is fetched one at a time, never in the list
+
+`/api/sessions/:id/messages` returns previews; `/api/blocks/:id` returns one
+block's full text when a reader selects it.
+
+The list was shipping every block's content, and the thing this product exists
+to find is precisely a block that is enormous — so the payload for a single turn
+of a real session was **136KB, of which 84,600 characters were one stuck npm
+log**. Splitting it took the list to **7KB**, a 95% cut, and the full text still
+arrives instantly when asked for, because the server is on localhost.
+
+Measuring a tool for wasting tokens while wasting bandwidth to draw the chart
+would be a poor joke.
+
+---
+
+## The system prompt is pinned as Turn 0, not hidden behind a tab
+
+`docs/DESIGN.md` lists "system prompt never rendered anywhere" as the prior
+tool's defining flaw: it is often the largest single thing in the window, and it
+is the part a reader can actually change.
+
+Putting it behind a tab would repeat the mistake in a politer form. It sits above
+the conversation as Turn 0, collapsed by default with its token count always
+visible, and expands into its segments. A reader who never clicks it still sees
+what it costs.
+
+---
+
+## Repetition is stated in the message list, not only in findings
+
+Every block row shows a `4×` badge when its content appears in more than one
+turn, and the detail pane spells out the arithmetic: *sent 4 times — 422,864
+tokens in total, for 105,716 tokens of content.*
+
+The findings screen ranks waste for someone who came looking for it. The badge
+puts the same fact in front of someone who was reading a conversation for another
+reason entirely, which is how most people will meet it.

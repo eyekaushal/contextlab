@@ -20,6 +20,7 @@ import { Empty } from '../src/components/states.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
 import { href, match } from '../src/lib/router.js'
+import { Messages } from '../src/screens/messages.jsx'
 
 describe('the shell', () => {
   it('renders without throwing', () => {
@@ -247,5 +248,15 @@ describe('finding', () => {
 
   it('labels severity with a word, not just a colour', () => {
     expect(renderToString(<Finding finding={finding} />)).toContain('Critical')
+  })
+})
+
+describe('messages screen', () => {
+  it('renders its loading state rather than throwing before data arrives', () => {
+    // Effects do not run server-side, so this is genuinely the pre-fetch path —
+    // the one a real browser paints first, and the one most likely to crash on
+    // a field that is not there yet.
+    const html = renderToString(<Messages sessionId="tag:abc" />)
+    expect(html).toContain('animate-pulse')
   })
 })

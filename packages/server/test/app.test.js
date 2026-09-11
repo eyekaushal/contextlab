@@ -275,6 +275,32 @@ describe('the API', () => {
       expect(log.turnsPresent).toBe(4)
     })
 
+    it('does not ship full block text in the list', async () => {
+      const { body } = await get(`/api/sessions/${sessionId}/messages`)
+      const blocks = body.messages.flatMap((/** @type {any} */ m) => m.blocks)
+      const log = blocks.find((/** @type {any} */ b) => b.blockType === 'tool_result')
+
+      // One stuck tool result can be eighty thousand characters. Drawing a list
+      // of previews must not cost that on every load.
+      expect(log.text).toBeUndefined()
+      expect(log.preview.length).toBeLessThanOrEqual(200)
+      expect(log.chars).toBeGreaterThan(1000)
+    })
+
+    it('serves one block in full, on demand', async () => {
+      const list = await get(`/api/sessions/${sessionId}/messages`)
+      const blocks = list.body.messages.flatMap((/** @type {any} */ m) => m.blocks)
+      const log = blocks.find((/** @type {any} */ b) => b.blockType === 'tool_result')
+
+      const { body } = await get(`/api/blocks/${log.id}`)
+      expect(body.block.text.length).toBe(log.chars)
+      expect(body.block.turnsPresent).toBe(4)
+    })
+
+    it('404s a block that does not exist', async () => {
+      expect((await get('/api/blocks/999999')).status).toBe(404)
+    })
+
     it('can be asked for a specific turn', async () => {
       const session = await get(`/api/sessions/${sessionId}`)
       const first = session.body.turns[0]
