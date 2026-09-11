@@ -1,13 +1,16 @@
-export { ingestCapture, ingestDirectory } from './ingest.js'
 /**
  * @contextlab/server — the brain, on :4041.
  *
- * Reads capture files, runs them through core, writes to store, pushes SSE to
- * the dashboard. Holds no analysis logic of its own and never handles a
- * credential.
+ * Reads capture files, runs them through core, writes to store, and serves the
+ * dashboard over HTTP and SSE. Holds no analysis of its own and never handles
+ * a credential.
  *
- * Populated on day 3.
+ * @module
  */
+
+export { createApp } from './app.js'
+export { createEventHub } from './events.js'
+export { ingestCapture, ingestDirectory } from './ingest.js'
 export {
   currentPriceTable,
   fetchPriceTable,
@@ -17,4 +20,6 @@ export {
   refreshPricing,
   refreshPricingInBackground,
 } from './pricing.js'
+export { toCamel, toCamelAll } from './serialize.js'
+export { contextlabHome, DEFAULT_PORT, startServer } from './server.js'
 export { buildSessionSummary } from './summary.js'

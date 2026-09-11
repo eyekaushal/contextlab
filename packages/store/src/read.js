@@ -356,3 +356,67 @@ export function findRepeatedCalls(db, sessionId, options = {}) {
     limit: options.limit ?? 20,
   })
 }
+
+/**
+ * Every content block in one turn, in the order it appeared.
+ *
+ * The Messages screen renders this. `turns_present` rides along because a block
+ * that has been re-sent many times is the thing a reader most wants flagged.
+ *
+ * @param {Db} db
+ * @param {string} turnId
+ * @returns {Record<string, unknown>[]}
+ */
+export function listBlocksForTurn(db, turnId) {
+  return prepare(
+    db,
+    `
+      SELECT
+        b.id, b.role, b.block_type, b.category, b.tool_name, b.tool_use_id,
+        b.file_path, b.mcp_server, b.tokens, b.chars, b.is_image, b.preview,
+        b.text, b.hash,
+        tb.position, tb.message_index,
+        (SELECT COUNT(*) FROM turn_blocks x WHERE x.block_id = b.id) AS turns_present
+      FROM turn_blocks tb
+      JOIN blocks b ON b.id = tb.block_id
+      WHERE tb.turn_id = ?
+      ORDER BY tb.position
+    `,
+  ).all(turnId)
+}
+
+/**
+ * What changed between two turns, by category.
+ *
+ * The prior tool drew two near-identical full bars and left the reader to spot
+ * the difference. Returning only the delta is the fix — see docs/DESIGN.md.
+ *
+ * @param {Db} db
+ * @param {string} turnId
+ * @param {string} previousTurnId
+ * @returns {{ category: string, tokens: number, previous: number, delta: number }[]}
+ */
+export function compositionDelta(db, turnId, previousTurnId) {
+  const rows = prepare(
+    db,
+    `
+      SELECT
+        category,
+        SUM(CASE WHEN turn_id = @turnId THEN tokens ELSE 0 END)     AS tokens,
+        SUM(CASE WHEN turn_id = @previousId THEN tokens ELSE 0 END) AS previous
+      FROM composition
+      WHERE turn_id IN (@turnId, @previousId)
+      GROUP BY category
+    `,
+  ).all({ turnId, previousId: previousTurnId })
+
+  return rows
+    .map((row) => ({
+      category: String(row.category),
+      tokens: Number(row.tokens) || 0,
+      previous: Number(row.previous) || 0,
+      delta: (Number(row.tokens) || 0) - (Number(row.previous) || 0),
+    }))
+    .filter((row) => row.delta !== 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+}

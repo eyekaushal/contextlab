@@ -453,3 +453,59 @@ Adding a bundler for one terminal screen would trade that away for syntax sugar.
 
 **Cost:** the render tree is more verbose. **Accepted**, because it is one shallow
 screen and the alternative changes how the whole project is built.
+
+---
+
+## The API speaks camelCase, the database speaks snake_case
+
+Every route serialises rows through `toCamel` before returning them, so the
+dashboard never sees a column name.
+
+It is one small function, and it buys a real boundary: renaming `turn_count`
+becomes a change in the store and the serializer rather than in every component
+that happened to read it. A test asserts the leak does not happen —
+`expect(session).not.toHaveProperty('turn_count')`.
+
+---
+
+## The server polls for captures instead of watching the filesystem
+
+`startServer` runs `ingestDirectory` on a one-second interval rather than using
+`fs.watch`.
+
+Filesystem events are inconsistent across platforms, miss files written by
+another process in some configurations, and fire before a write completes — for
+a directory that one process writes and another reads, that is a race we would
+have to defend against anyway. A directory listing of a handful of small files
+costs well under a millisecond, so polling is both simpler and more reliable.
+
+The proxy writes each capture to a temporary name and renames it into place, so
+a poll can never read a half-written file.
+
+---
+
+## SSE is a hint to refetch, not a data channel
+
+The event hub keeps no history, guarantees no delivery, and sends only the
+session id that changed.
+
+The dashboard can always re-fetch the truth from the API, so a dropped event
+costs a stale second rather than a wrong number. Streaming the actual data would
+mean two paths that can disagree — one over HTTP, one over SSE — and the bug
+that follows is a screen showing something the API would not return.
+
+A subscriber that throws (a browser tab closed mid-write) is caught and ignored
+so it cannot take down the ingest loop or the other listeners.
+
+---
+
+## The turn endpoint returns only what changed
+
+`/api/sessions/:id/turns/:turnId` includes a `delta` array of categories whose
+token count moved, and nothing else.
+
+The prior tool drew two near-identical full bars side by side and left the
+reader to spot the difference — which, at a glance, is impossible when both bars
+are 140,000 tokens and one category moved by 1,400. Computing the delta in SQL
+means the screen cannot get it wrong, and the first turn honestly returns an
+empty array rather than a diff against nothing.

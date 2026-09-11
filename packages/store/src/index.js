@@ -11,6 +11,7 @@ export { MIGRATIONS, runMigrations, schemaVersion } from './migrations.js'
 export { loadPriceTable, pricingFetchedAt, savePriceTable } from './pricing.js'
 export {
   attributionFor,
+  compositionDelta,
   costByDay,
   costByProject,
   escapeFtsQuery,
@@ -18,6 +19,7 @@ export {
   findRepeatedCalls,
   getComposition,
   getSession,
+  listBlocksForTurn,
   listFindings,
   listSessions,
   listTurns,
