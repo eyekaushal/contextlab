@@ -80,8 +80,8 @@ export function searchBlocks(db, query, options = {}) {
  * Sessions, newest first, for the sessions screen.
  *
  * @param {Db} db
- * @param {{ limit?: number, offset?: number, tool?: string, project?: string,
- *           since?: number }} [options]
+ * @param {{ limit?: number, offset?: number, tool?: string, model?: string,
+ *           project?: string, since?: number, until?: number }} [options]
  * @returns {Record<string, unknown>[]}
  */
 export function listSessions(db, options = {}) {
@@ -94,15 +94,19 @@ export function listSessions(db, options = {}) {
           WHERE f.session_id = s.id) AS wasted_cost_usd
       FROM sessions s
       WHERE (@tool    IS NULL OR s.tool = @tool)
+        AND (@model   IS NULL OR s.model = @model)
         AND (@project IS NULL OR s.project_path = @project)
         AND (@since   IS NULL OR s.last_seen_at >= @since)
+        AND (@until   IS NULL OR s.last_seen_at <= @until)
       ORDER BY s.last_seen_at DESC
       LIMIT @limit OFFSET @offset
     `,
   ).all({
     tool: options.tool ?? null,
+    model: options.model ?? null,
     project: options.project ?? null,
     since: options.since ?? null,
+    until: options.until ?? null,
     limit: options.limit ?? 50,
     offset: options.offset ?? 0,
   })
@@ -419,4 +423,73 @@ export function compositionDelta(db, turnId, previousTurnId) {
     }))
     .filter((row) => row.delta !== 0)
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+}
+
+/**
+ * The distinct values worth offering as a filter.
+ *
+ * Read from what has actually been captured rather than from a hardcoded list,
+ * so the dropdowns only ever offer choices that will return something.
+ *
+ * @param {Db} db
+ * @returns {{ tools: string[], models: string[],
+ *             projects: { path: string, name: string }[] }}
+ */
+export function listFilterOptions(db) {
+  const tools = prepare(
+    db,
+    "SELECT DISTINCT tool FROM sessions WHERE tool IS NOT NULL AND tool != '' ORDER BY tool",
+  ).all()
+
+  const models = prepare(
+    db,
+    "SELECT DISTINCT model FROM sessions WHERE model IS NOT NULL AND model != '' ORDER BY model",
+  ).all()
+
+  const projects = prepare(
+    db,
+    `SELECT DISTINCT project_path AS path,
+            COALESCE(project_name, project_path) AS name
+     FROM sessions
+     WHERE project_path IS NOT NULL AND project_path != ''
+     ORDER BY name`,
+  ).all()
+
+  return {
+    tools: tools.map((row) => String(row.tool)),
+    models: models.map((row) => String(row.model)),
+    projects: projects.map((row) => ({ path: String(row.path), name: String(row.name) })),
+  }
+}
+
+/**
+ * Context size per turn, for the trend sparkline on the sessions list.
+ *
+ * One query for every session on screen rather than one per row: fifty rows
+ * would otherwise be fifty round trips for a chart that is sixty pixels wide.
+ *
+ * @param {Db} db
+ * @param {string[]} sessionIds
+ * @returns {Record<string, number[]>}
+ */
+export function contextTrends(db, sessionIds) {
+  if (sessionIds.length === 0) return {}
+
+  const placeholders = sessionIds.map(() => '?').join(',')
+  const rows = prepare(
+    db,
+    `SELECT session_id, seq, context_tokens
+     FROM turns
+     WHERE session_id IN (${placeholders})
+     ORDER BY session_id, seq`,
+  ).all(...sessionIds)
+
+  /** @type {Record<string, number[]>} */
+  const trends = {}
+  for (const row of rows) {
+    const id = String(row.session_id)
+    if (!trends[id]) trends[id] = []
+    trends[id].push(Number(row.context_tokens) || 0)
+  }
+  return trends
 }

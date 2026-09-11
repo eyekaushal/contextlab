@@ -569,3 +569,46 @@ One origin means no CORS in production, one port to explain, and one thing to
 start. In development the dashboard runs on Vite's port and proxies `/api`
 across, so the app's fetch calls stay origin-relative and the same code works in
 both places.
+
+---
+
+## Search returns evidence, not just a shorter list
+
+A query filters the session list and each surviving row carries `matches` and a
+highlighted `snippet` of what was found.
+
+A filtered list on its own is a claim the reader has to take on trust — five
+sessions became two, and you cannot see why. Showing the matched text with the
+term marked turns the result into something checkable, and it is what makes
+searching message content better than searching session ids rather than merely
+different.
+
+FTS5 returns its snippets with matches wrapped in brackets; the screen renders
+those as `<mark>` elements rather than printing literal square brackets.
+
+---
+
+## The sparkline is hand-written SVG, not a chart library
+
+Recharts is in the stack and will draw the composition and cost charts. The
+trend column is 64 pixels wide and appears once per row, fifty times.
+
+A charting library there would bring a responsive container, an axis system and
+a tooltip layer to render eight line segments — per row. The hand-written
+version is forty lines, has no per-row runtime cost, and carries an `aria-label`
+saying in words what the line shows, which a canvas-based chart would not.
+
+It turns red once the window is above 90% full, because at that point the trend
+has stopped being a curiosity and is the thing about to interrupt the session.
+
+---
+
+## Filter options come from the data, not a hardcoded list
+
+`/api/filters` returns the distinct tools, models and projects that have
+actually been captured.
+
+A fixed list of the seven supported tools would offer choices that return
+nothing, which reads as a broken filter rather than an empty result. The
+dropdowns are also hidden entirely until there is more than one of something to
+choose between — a filter with one option is furniture.

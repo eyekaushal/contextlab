@@ -16,12 +16,14 @@ import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import {
   attributionFor,
   compositionDelta,
+  contextTrends,
   costByDay,
   costByProject,
   findRepeatedBlocks,
   getComposition,
   getSession,
   listBlocksForTurn,
+  listFilterOptions,
   listFindings,
   listSessions,
   listTurns,
@@ -67,29 +69,55 @@ export function createApp({ db, hub = createEventHub() }) {
     const query = c.req.query()
     const limit = clamp(Number(query.limit ?? 50), 1, 500)
 
-    // A text query filters the session list by what was said inside it, which
-    // is the search the prior tool could not do.
-    if (query.q) {
-      const hits = /** @type {any[]} */ (searchBlocks(db, query.q, { limit: 500 }))
-      const ids = [...new Set(hits.map((hit) => String(hit.session_id)))]
-      const sessions = /** @type {any[]} */ (listSessions(db, { limit: 500 }))
-      const matched = sessions.filter((session) => ids.includes(String(session.id)))
-      return c.json({
-        sessions: toCamelAll(matched.slice(0, limit)),
-        query: query.q,
-        matches: hits.length,
-      })
-    }
-
-    const sessions = listSessions(db, {
-      limit,
-      offset: Number(query.offset ?? 0),
+    const filters = {
       ...(query.tool ? { tool: query.tool } : {}),
+      ...(query.model ? { model: query.model } : {}),
       ...(query.project ? { project: query.project } : {}),
       ...(query.since ? { since: Number(query.since) } : {}),
+      ...(query.until ? { until: Number(query.until) } : {}),
+    }
+
+    let sessions = /** @type {any[]} */ (
+      listSessions(db, {
+        ...filters,
+        limit: query.q ? 500 : limit,
+        offset: Number(query.offset ?? 0),
+      })
+    )
+
+    /** @type {Record<string, { matches: number, snippet: string }>} */
+    const matched = {}
+
+    if (query.q) {
+      // Search runs over message content, not session ids. Filters still apply,
+      // so "authentication" inside one project stays inside that project.
+      const hits = /** @type {any[]} */ (searchBlocks(db, query.q, { limit: 500 }))
+      for (const hit of hits) {
+        const id = String(hit.session_id)
+        const existing = matched[id]
+        if (existing) existing.matches += 1
+        else matched[id] = { matches: 1, snippet: String(hit.snippet ?? '') }
+      }
+      sessions = sessions.filter((session) => matched[String(session.id)]).slice(0, limit)
+    }
+
+    // One query for every row on screen, not one per row.
+    const trends = contextTrends(
+      db,
+      sessions.map((session) => String(session.id)),
+    )
+
+    return c.json({
+      sessions: toCamelAll(sessions).map((session) => ({
+        ...session,
+        trend: trends[String(session.id)] ?? [],
+        ...(query.q ? (matched[String(session.id)] ?? { matches: 0, snippet: '' }) : {}),
+      })),
+      ...(query.q ? { query: query.q } : {}),
     })
-    return c.json({ sessions: toCamelAll(/** @type {any[]} */ (sessions)) })
   })
+
+  app.get('/api/filters', (c) => c.json(listFilterOptions(db)))
 
   app.get('/api/search', (c) => {
     const query = c.req.query('q') ?? ''

@@ -12,6 +12,7 @@ export { loadPriceTable, pricingFetchedAt, savePriceTable } from './pricing.js'
 export {
   attributionFor,
   compositionDelta,
+  contextTrends,
   costByDay,
   costByProject,
   escapeFtsQuery,
@@ -20,6 +21,7 @@ export {
   getComposition,
   getSession,
   listBlocksForTurn,
+  listFilterOptions,
   listFindings,
   listSessions,
   listTurns,

@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { App } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
+import { Sparkline } from '../src/components/sparkline.jsx'
 import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
@@ -115,5 +116,31 @@ describe('routing', () => {
 
   it('encodes ids when building a link', () => {
     expect(href('s', 'tag:a1b2c3d4')).toBe('#/s/tag%3Aa1b2c3d4')
+  })
+})
+
+describe('sparkline', () => {
+  it('draws a line through every point', () => {
+    const html = renderToString(<Sparkline values={[10, 20, 15, 40]} />)
+    expect(html).toContain('<path')
+    expect(html.match(/L/g)?.length).toBe(3)
+  })
+
+  it('turns red once the window is nearly full', () => {
+    const full = renderToString(<Sparkline values={[10, 190]} limit={200} />)
+    expect(full).toContain('var(--color-status-critical)')
+
+    const roomy = renderToString(<Sparkline values={[10, 20]} limit={200_000} />)
+    expect(roomy).not.toContain('var(--color-status-critical)')
+  })
+
+  it('says in words what the line shows', () => {
+    const html = renderToString(<Sparkline values={[1000, 50_000]} />)
+    expect(html).toContain('grew from 1,000 to 50.0K')
+  })
+
+  it('shows a dash rather than a misleading flat line for one point', () => {
+    expect(renderToString(<Sparkline values={[42]} />)).toContain('—')
+    expect(renderToString(<Sparkline values={[]} />)).toContain('—')
   })
 })

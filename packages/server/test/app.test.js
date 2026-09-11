@@ -152,6 +152,52 @@ describe('the API', () => {
       expect(found.body.results[0].sessionId).toBe(sessionId)
     })
 
+    it('reports how many times a query matched, and with what text', async () => {
+      const { body } = await get('/api/sessions?q=authentication')
+      const [session] = body.sessions
+      // A filtered list without evidence is a claim the reader must trust.
+      expect(session.matches).toBeGreaterThan(0)
+      expect(session.snippet).toContain('[authentication]')
+    })
+
+    it('carries a context trend for the sparkline, one query for all rows', async () => {
+      const { body } = await get('/api/sessions')
+      const [session] = body.sessions
+      expect(session.trend).toHaveLength(4)
+      expect(session.trend.every((/** @type {any} */ n) => typeof n === 'number')).toBe(
+        true,
+      )
+    })
+
+    it('filters by source, model and project', async () => {
+      expect((await get('/api/sessions?tool=claude')).body.sessions).toHaveLength(1)
+      expect((await get('/api/sessions?tool=codex')).body.sessions).toHaveLength(0)
+      expect(
+        (await get('/api/sessions?model=claude-opus-4-5-20260101')).body.sessions,
+      ).toHaveLength(1)
+      expect((await get('/api/sessions?model=gpt-5')).body.sessions).toHaveLength(0)
+      expect(
+        (await get('/api/sessions?project=/repo/contextlab')).body.sessions,
+      ).toHaveLength(1)
+    })
+
+    it('applies filters and search together', async () => {
+      // Searching inside a filter must stay inside it.
+      expect(
+        (await get('/api/sessions?q=authentication&tool=codex')).body.sessions,
+      ).toHaveLength(0)
+      expect(
+        (await get('/api/sessions?q=authentication&tool=claude')).body.sessions,
+      ).toHaveLength(1)
+    })
+
+    it('offers only filter values that will actually return something', async () => {
+      const { body } = await get('/api/filters')
+      expect(body.tools).toEqual(['claude'])
+      expect(body.models).toEqual(['claude-opus-4-5-20260101'])
+      expect(body.projects[0].name).toBe('contextlab')
+    })
+
     it('does not blow up on punctuation a user would type', async () => {
       const { status } = await get(`/api/search?q=${encodeURIComponent('npm ERR!')}`)
       expect(status).toBe(200)
