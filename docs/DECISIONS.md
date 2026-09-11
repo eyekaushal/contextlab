@@ -754,3 +754,62 @@ A tool that prints "no data" when it has checked and found nothing is throwing
 away the most reassuring thing it can say. The distinction matters here because
 the rules are exhaustive and deterministic — a clean session genuinely is clean,
 not merely unexamined.
+
+---
+
+## The format package ships its own validator rather than taking a dependency
+
+`@contextlab/format` is meant to be published on its own, so that someone
+writing a different tool can produce or read the format without installing
+contextlab.
+
+A format package that drags in ajv makes a validation-library decision on its
+consumer's behalf — in a package whose entire purpose is to be easy to adopt.
+So the schema is ordinary JSON Schema, shipped at `@contextlab/format/schema`
+for anyone who already has a validator, and the built-in one is roughly 150
+lines covering the subset our schema actually uses.
+
+Errors carry a JSON Pointer, because "expected integer" with no location is not
+a diagnostic.
+
+---
+
+## Exports default to previews, not full text
+
+`content` is one of `none`, `preview` or `full`, and **preview** is the default.
+
+A session's message content is somebody's source code, their prompts, and
+whatever their agent read off disk. The moment a format becomes shareable, the
+default has to be the safe one — and every number in the document survives
+without the text, because composition, attribution, cost and findings are all
+derived figures rather than quotations.
+
+`full` remains available for an archive of your own sessions. The export menu
+labels it "includes your prompts and code" rather than leaving someone to work
+that out.
+
+---
+
+## Trace ids are derived from session ids, not generated
+
+`toOtlp` hashes our session and turn ids into the fixed-width hex OTLP requires,
+rather than minting random ones.
+
+Exporting the same session twice therefore lands on the same trace, so a
+re-export updates a backend rather than creating a duplicate conversation beside
+the original. Idempotency is worth more here than uniqueness.
+
+Composition is flattened to one attribute per category rather than embedded as
+JSON, because a trace backend can group and chart
+`contextlab.composition.tool_results` and can do nothing at all with a blob.
+
+---
+
+## An export computes findings if none are cached
+
+Findings are stored when a screen asks for them, so a session nobody has opened
+has none on disk.
+
+An export that silently omitted them would be quietly incomplete in a way the
+reader could not detect — the document would look fine. Since the rules are pure
+and deterministic, `buildExport` simply runs them when the cache is empty.

@@ -12,6 +12,7 @@ import { ArrowLeft, MessagesSquare, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { CompositionBar, CompositionLegend } from '../components/composition-bar.jsx'
 import { ContextDiff } from '../components/context-diff.jsx'
+import { ExportMenu } from '../components/export-menu.jsx'
 import { Finding } from '../components/finding.jsx'
 import { Health, healthOf } from '../components/health.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
@@ -228,14 +229,17 @@ function Header({ meta, sessionId }) {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/s/${encodeURIComponent(sessionId)}/messages`)}
-        >
-          <MessagesSquare className="size-3" />
-          Messages
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/s/${encodeURIComponent(sessionId)}/messages`)}
+          >
+            <MessagesSquare className="size-3" />
+            Messages
+          </Button>
+          <ExportMenu sessionId={sessionId} />
+        </div>
       </div>
     </header>
   )

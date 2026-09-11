@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { App } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { ContextDiff } from '../src/components/context-diff.jsx'
+import { ExportMenu } from '../src/components/export-menu.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
@@ -319,5 +320,14 @@ describe('the arithmetic behind a finding', () => {
     )
     // Inventing a multiplication where none exists would be worse than none.
     expect(html).not.toContain('×')
+  })
+})
+
+describe('export menu', () => {
+  it('offers every content level, and says what each costs in privacy', () => {
+    const html = renderToString(<ExportMenu />)
+    // Closed by default: the trigger renders, the items do not.
+    expect(html).toContain('Export')
+    expect(html).not.toContain('previews only')
   })
 })

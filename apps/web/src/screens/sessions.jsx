@@ -9,6 +9,7 @@
 
 import { Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ExportMenu } from '../components/export-menu.jsx'
 import { Health, healthOf } from '../components/health.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
 import { Empty, Failed, Loading } from '../components/states.jsx'
@@ -48,7 +49,10 @@ export function Sessions({ version }) {
     <div className="space-y-4 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold tracking-tight">Sessions</h1>
-        <SearchBox value={query} onChange={setQuery} />
+        <div className="flex items-center gap-2">
+          <SearchBox value={query} onChange={setQuery} />
+          <ExportMenu />
+        </div>
       </header>
 
       <Filters

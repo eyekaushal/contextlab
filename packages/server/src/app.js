@@ -13,6 +13,7 @@
  */
 
 import { runRules, totalWaste } from '@contextlab/core/prescribe'
+import { toOtlp } from '@contextlab/format'
 import {
   attributionFor,
   compositionDelta,
@@ -36,6 +37,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { createEventHub } from './events.js'
+import { buildExport } from './export.js'
 import { ingestCapture } from './ingest.js'
 import { currentPriceTable } from './pricing.js'
 import { toCamel, toCamelAll } from './serialize.js'
@@ -349,6 +351,29 @@ export function createApp({ db, hub = createEventHub() }) {
       unit: table.unit,
       providers: Object.keys(table.providers),
     })
+  })
+
+  /**
+   * Export, as our format or as OTLP traces.
+   *
+   * Content defaults to previews: a shared session is somebody's source code
+   * and prompts, and every number survives without the text.
+   */
+  app.get('/api/export', (c) => {
+    const content = c.req.query('content') ?? 'preview'
+    const document = buildExport(db, {
+      ...(c.req.query('session') ? { sessionId: c.req.query('session') } : {}),
+      content,
+      limit: clamp(Number(c.req.query('limit') ?? 50), 1, 200),
+    })
+
+    const otlp = c.req.query('format') === 'otlp'
+    const body = otlp ? toOtlp(document) : document
+    const stem = c.req.query('session') ? 'session' : 'contextlab'
+    const name = otlp ? `${stem}.otlp.json` : `${stem}.ctxlab.json`
+
+    c.header('content-disposition', `attachment; filename="${name}"`)
+    return c.json(body)
   })
 
   // -------------------------------------------------------------------------

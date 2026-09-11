@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/eyekaushal/contextlab/schema/contextlab-1.0.0.schema.json",
+  "title": "contextlab capture document",
+  "description": "A portable record of one or more agent sessions: what filled the context window, what it cost, and what was wasted. A conformant profile of the OpenTelemetry GenAI semantic conventions.",
+  "type": "object",
+  "required": ["format", "version", "exportedAt", "sessions"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "contextlab"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Version of this format, not of the tool that wrote it."
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "semconv": {
+      "type": "string",
+      "description": "OpenTelemetry semantic conventions version the gen_ai.* keys follow."
+    },
+    "content": {
+      "enum": ["none", "preview", "full"],
+      "description": "How much message content is included. Defaults to preview, because a shared session is somebody's source code and prompts."
+    },
+    "producer": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "description": "Which price table the cost figures were computed against.",
+      "additionalProperties": true,
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/session"
+      }
+    }
+  },
+  "$defs": {
+    "session": {
+      "type": "object",
+      "required": ["id", "attributes", "turns"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attributes": {
+          "type": "object",
+          "description": "OTel GenAI attributes describing the session as a whole. Keys are spelled exactly as the semantic conventions spell them.",
+          "additionalProperties": true,
+          "properties": {
+            "gen_ai.system": {
+              "type": "string",
+              "description": "The provider: anthropic, openai, gcp.gemini."
+            },
+            "gen_ai.request.model": {
+              "type": "string"
+            },
+            "gen_ai.response.model": {
+              "type": "string"
+            }
+          }
+        },
+        "contextlab.tool": {
+          "type": "string",
+          "description": "The coding agent: claude, codex, aider, gemini, cline."
+        },
+        "contextlab.api_format": {
+          "type": "string"
+        },
+        "contextlab.transport": {
+          "enum": ["reverse-proxy", "mitmproxy", "import"]
+        },
+        "contextlab.project": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contextlab.totals": {
+          "$ref": "#/$defs/totals"
+        },
+        "contextlab.findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/turn"
+          }
+        }
+      }
+    },
+    "turn": {
+      "type": "object",
+      "required": ["id", "sequence", "startTime", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attributes": {
+          "type": "object",
+          "description": "OTel GenAI attributes for one inference call.",
+          "additionalProperties": true,
+          "properties": {
+            "gen_ai.operation.name": {
+              "type": "string"
+            },
+            "gen_ai.system": {
+              "type": "string"
+            },
+            "gen_ai.request.model": {
+              "type": "string"
+            },
+            "gen_ai.response.model": {
+              "type": "string"
+            },
+            "gen_ai.response.finish_reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "gen_ai.usage.input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "gen_ai.usage.output_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "contextlab.context": {
+          "$ref": "#/$defs/context"
+        },
+        "contextlab.cache": {
+          "type": "object",
+          "description": "Cache accounting, which OTel does not model and which changes the bill by an order of magnitude.",
+          "additionalProperties": false,
+          "properties": {
+            "read_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "write_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "contextlab.cost": {
+          "$ref": "#/$defs/cost"
+        },
+        "contextlab.composition": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/compositionEntry"
+          }
+        },
+        "contextlab.system_segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemSegment"
+          }
+        },
+        "contextlab.attribution": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attributionEntry"
+          }
+        },
+        "contextlab.messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/message"
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "The window itself. These three parts sum to `tokens` exactly.",
+      "additionalProperties": false,
+      "properties": {
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "system_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tools_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "messages_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "description": "Both figures, always. A subscription user pays nothing marginal for a turn, but still needs the equivalent to compare sessions.",
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "actual": {
+          "type": "number",
+          "minimum": 0
+        },
+        "equivalent": {
+          "type": "number",
+          "minimum": 0
+        },
+        "billing_mode": {
+          "enum": ["api", "subscription", "unknown"]
+        }
+      }
+    },
+    "compositionEntry": {
+      "type": "object",
+      "required": ["category", "tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "system_prompt",
+            "tool_definitions",
+            "tool_calls",
+            "tool_results",
+            "user_text",
+            "assistant_text",
+            "thinking",
+            "system_injections",
+            "images",
+            "cache_markers",
+            "other"
+          ]
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "systemSegment": {
+      "type": "object",
+      "required": ["kind", "label", "tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "attributionEntry": {
+      "type": "object",
+      "required": ["entity_type", "entity_name", "tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "enum": ["mcp_server", "tool", "file", "prompt_segment"]
+        },
+        "entity_name": {
+          "type": "string"
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "definition_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "call_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "result_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "required": ["index", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string"
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["type", "category", "tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "system_prompt",
+            "tool_definitions",
+            "tool_calls",
+            "tool_results",
+            "user_text",
+            "assistant_text",
+            "thinking",
+            "system_injections",
+            "images",
+            "cache_markers",
+            "other"
+          ]
+        },
+        "role": {
+          "type": "string"
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chars": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "tool_use_id": {
+          "type": "string"
+        },
+        "file_path": {
+          "type": "string"
+        },
+        "mcp_server": {
+          "type": "string"
+        },
+        "turns_present": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many turns carried this exact content. Anything above one was paid for more than once."
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost": {
+          "$ref": "#/$defs/cost"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["rule", "severity", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": ["critical", "warning", "info"]
+        },
+        "title": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fix": {
+          "type": "string"
+        },
+        "wasted_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wasted_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

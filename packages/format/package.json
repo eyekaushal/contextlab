@@ -1,19 +1,31 @@
 {
   "name": "@contextlab/format",
   "version": "0.1.0",
-  "description": "The contextlab capture format: JSON Schema, validator, OTLP converters.",
+  "description": "The contextlab capture format: a profile of OpenTelemetry GenAI, with JSON Schema, a validator and OTLP converters.",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./schema": "./schema/contextlab-1.0.0.schema.json"
   },
   "files": [
     "src",
     "schema",
-    "SPEC.md"
+    "SPEC.md",
+    "README.md"
   ],
   "engines": {
     "node": ">=20.9.0"
-  }
+  },
+  "keywords": [
+    "opentelemetry",
+    "otel",
+    "gen-ai",
+    "llm",
+    "observability",
+    "context-window",
+    "format",
+    "json-schema"
+  ]
 }
