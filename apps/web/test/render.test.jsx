@@ -7,6 +7,8 @@
  * are involved — which is exactly why it is cheap enough to run on every commit.
  */
 
+import { readdirSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { App, Route } from '../src/App.jsx'
@@ -27,6 +29,7 @@ import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
 import { SummaryStrip } from '../src/components/summary-strip.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
+import { Wordmark } from '../src/components/wordmark.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
 import { href, match, pathOf, queryOf } from '../src/lib/router.js'
 import { Compare, CompareTable, compareHref } from '../src/screens/compare.jsx'
@@ -104,6 +107,22 @@ describe('status is never colour alone', () => {
   })
 })
 
+describe('a status chip carries its number', () => {
+  it('keeps the figure inside the chip rather than beside it', () => {
+    const html = renderToString(<Health level="critical" note="9 findings" />)
+    expect(html).toContain('Critical')
+    expect(html).toContain('9 findings')
+    // One object, not a chip and a stray number the reader has to associate.
+    expect(html.indexOf('9 findings')).toBeGreaterThan(html.indexOf('Critical'))
+  })
+
+  it('adds nothing when there is no number to add', () => {
+    const plain = renderToString(<Health level="good" />)
+    expect(plain).toContain('Healthy')
+    expect(plain).not.toContain('opacity-40')
+  })
+})
+
 describe('empty and stat', () => {
   it('tells a new user what to type rather than saying "no data"', () => {
     const html = renderToString(
@@ -114,6 +133,64 @@ describe('empty and stat', () => {
 
   it('renders a stat', () => {
     expect(renderToString(<Stat label="Cost" value="$4.23" />)).toContain('$4.23')
+  })
+})
+
+describe('density', () => {
+  const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
+
+  /** @param {string} name */
+  const step = (name) => {
+    const found = new RegExp(`--text-${name}:\\s*([0-9.]+)rem`).exec(css)
+    return found ? Number(found[1]) * 16 : null
+  }
+
+  it('sets the base to 13px, and a ramp around it', () => {
+    // notes/UI-REVISION decision 4. The default 14px with airy cards fit about
+    // a third of what a screen this size should hold.
+    expect(step('xs')).toBe(11)
+    expect(step('sm')).toBe(13)
+    expect(step('lg')).toBe(16)
+  })
+
+  it('tightens leading with the size', () => {
+    // A smaller size on the same line height is not denser, only smaller.
+    expect(css).toContain('--text-sm--line-height: 1.45')
+  })
+
+  it('routes every size through the scale', () => {
+    // A hardcoded pixel size bypasses the one place that is supposed to
+    // control this, and the next person to change the base misses it.
+    const root = new URL('../src/', import.meta.url)
+    /** @param {URL} dir @returns {string[]} */
+    const walk = (dir) =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(new URL(`${entry.name}/`, dir))
+          : entry.name.endsWith('.jsx') || entry.name.endsWith('.js')
+            ? [fileURLToPath(new URL(entry.name, dir))]
+            : [],
+      )
+
+    const offenders = walk(root).filter((file) =>
+      /text-\[\d+px\]/.test(readFileSync(file, 'utf8')),
+    )
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('the wordmark', () => {
+  it('draws the thing the product measures', () => {
+    const html = renderToString(<Wordmark />)
+    expect(html).toContain('contextlab')
+    // The mark is a context window: a fixed bar, partly filled, in the live
+    // category palette rather than a frozen copy of it.
+    expect(html).toContain('var(--color-cat-tool-results)')
+    expect(html).toContain('var(--color-baseline)')
+  })
+
+  it('is decorative, so it is hidden from a screen reader', () => {
+    expect(renderToString(<Wordmark />)).toContain('aria-hidden="true"')
   })
 })
 

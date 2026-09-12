@@ -16,11 +16,11 @@ import { cn } from '../lib/utils.js'
 export function Stat({ label, value, hint, tone, className }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+      <div className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
         {label}
       </div>
       <div
-        className="tnum truncate text-xl font-semibold"
+        className="tnum truncate text-lg font-semibold"
         style={tone ? { color: tone } : undefined}
       >
         {value}
@@ -35,6 +35,9 @@ export function Stat({ label, value, hint, tone, className }) {
 /** @param {any} props */
 export function StatRow({ className, ...props }) {
   return (
-    <div className={cn('grid grid-cols-2 gap-6 sm:grid-cols-4', className)} {...props} />
+    <div
+      className={cn('grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4', className)}
+      {...props}
+    />
   )
 }

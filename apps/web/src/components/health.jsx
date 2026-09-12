@@ -35,22 +35,23 @@ export function healthOf({ contextShare = 0, criticalFindings = 0, findings = 0 
 }
 
 /**
- * @param {{ level: string, label?: string, className?: string }} props
+ * @param {{ level: string, label?: string, note?: any, className?: string }} props
  */
-export function Health({ level, label, className }) {
+export function Health({ level, label, note, className }) {
   const { tone, Icon, label: fallback } = LEVELS[level] ?? LEVELS.good
   return (
     <Badge tone={tone} className={className}>
       <Icon aria-hidden="true" className="size-3" />
       {label ?? fallback}
+      <Note note={note} />
     </Badge>
   )
 }
 
 /**
- * @param {{ severity: string, className?: string }} props
+ * @param {{ severity: string, note?: any, className?: string }} props
  */
-export function Severity({ severity, className }) {
+export function Severity({ severity, note, className }) {
   const level =
     severity === 'critical' ? 'critical' : severity === 'warning' ? 'warning' : 'good'
   const label =
@@ -60,6 +61,29 @@ export function Severity({ severity, className }) {
     <Badge tone={severity === 'info' ? 'neutral' : tone} className={className}>
       <Icon aria-hidden="true" className="size-3" />
       {label}
+      <Note note={note} />
     </Badge>
+  )
+}
+
+/**
+ * The number that belongs to the status.
+ *
+ * docs/DESIGN.md and our own principle 8: status is a chip with a number, not a
+ * chip followed by loose text a reader has to associate with it. Separated by a
+ * hairline rather than a bullet, so the figure reads as part of the same object
+ * while staying visibly a second field.
+ *
+ * @param {{ note?: any }} props
+ */
+function Note({ note }) {
+  if (note === undefined || note === null || note === '') return null
+  return (
+    <>
+      <span aria-hidden="true" className="opacity-40">
+        |
+      </span>
+      <span className="tnum">{note}</span>
+    </>
   )
 }

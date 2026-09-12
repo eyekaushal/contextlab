@@ -37,7 +37,7 @@ export function Cost({ version }) {
   if (daily.error) return <Failed message={daily.error} />
   if (!daily.data)
     return (
-      <div className="p-6">
+      <div className="px-5 py-4">
         <Loading />
       </div>
     )
@@ -64,7 +64,7 @@ export function Cost({ version }) {
   )
 
   return (
-    <div className="space-y-5 p-6">
+    <div className="space-y-3 px-5 py-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Cost</h1>
@@ -179,7 +179,7 @@ function BudgetPanel({ data }) {
         No budget set. Add one to{' '}
         <code className="font-mono">~/.contextlab/config.toml</code> and this panel tracks
         it:
-        <pre className="mt-2 font-mono text-[11px] text-[var(--color-text-secondary)]">
+        <pre className="mt-2 font-mono text-xs text-[var(--color-text-secondary)]">
           {'[budget]\ndaily = 5.00\nmonthly = 100.00'}
         </pre>
       </Card>

@@ -28,7 +28,7 @@ export function Card({ className, ...props }) {
 export function CardHeader({ className, ...props }) {
   return (
     <div
-      className={cn('flex items-baseline justify-between gap-3 px-4 pt-4', className)}
+      className={cn('flex items-baseline justify-between gap-3 px-3 pt-3', className)}
       {...props}
     />
   )
@@ -49,5 +49,5 @@ export function CardTitle({ className, ...props }) {
 
 /** @param {any} props */
 export function CardContent({ className, ...props }) {
-  return <div className={cn('p-4', className)} {...props} />
+  return <div className={cn('p-3', className)} {...props} />
 }

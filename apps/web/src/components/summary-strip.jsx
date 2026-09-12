@@ -27,7 +27,7 @@ export function SummaryStrip({ data, onOpenOptimize }) {
   const critical = Number(data.critical) || 0
 
   return (
-    <Card className="space-y-3 p-4">
+    <Card className="space-y-2.5 p-3">
       <StatRow className="sm:grid-cols-5">
         <Stat label="Today" value={usd(data.today)} hint="equivalent API cost" />
         <Stat label="7 days" value={usd(data.week)} hint={`${data.turns ?? 0} turns`} />

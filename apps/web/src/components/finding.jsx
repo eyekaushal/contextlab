@@ -47,7 +47,7 @@ export function Finding({ finding, className }) {
             {usd(finding.wastedCostUsd)}
           </div>
           {finding.wastedTokens > 0 ? (
-            <div className="text-[11px] text-[var(--color-text-muted)]">
+            <div className="text-xs text-[var(--color-text-muted)]">
               {exact(finding.wastedTokens)} tokens
             </div>
           ) : null}
@@ -91,14 +91,14 @@ export function Fix({ text }) {
   return (
     <div className="mt-3 rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)]">
       <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-2.5 py-1">
-        <span className="text-[11px] uppercase tracking-wide text-[var(--color-cat-system-prompt)]">
+        <span className="text-xs uppercase tracking-wide text-[var(--color-cat-system-prompt)]">
           Fix
         </span>
         <button
           type="button"
           onClick={copy}
           aria-label="Copy the fix"
-          className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+          className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
         >
           {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
           {copied ? 'Copied' : 'Copy'}

@@ -63,6 +63,8 @@ index groups them by area instead.
 - [The hash router carries a query string](#the-hash-router-carries-a-query-string)
 - [Search covers what a session is made of, not only what was said in it](#search-covers-what-a-session-is-made-of-not-only-what-was-said-in-it)
 - [Rendered is the default, and raw never goes away](#rendered-is-the-default-and-raw-never-goes-away)
+- [The type scale is redefined in one place, not rewritten in three hundred](#the-type-scale-is-redefined-in-one-place-not-rewritten-in-three-hundred)
+- [The mark is a context window](#the-mark-is-a-context-window)
 
 **CLI**
 
@@ -1004,6 +1006,47 @@ value with an unbalanced brace, and a wrong table is worse than no table.
 
 Raw stays one click away. It is the view that can be checked against the wire,
 and a rendered view nobody can verify is a second thing to distrust.
+
+---
+
+## The type scale is redefined in one place, not rewritten in three hundred
+
+Density is respect: this is a tool for reading tables of numbers, and the
+default 14px ramp with airy cards fit roughly a third of what a screen this size
+should hold.
+
+The obvious way to fix that is to change `text-sm` to `text-[13px]` at every
+site. There are several hundred, the change is unreviewable, and the next person
+who wants 12px has to do it all again. So the named steps are redefined once, in
+`@theme` — `--text-xs: 11px`, `--text-sm: 13px`, `--text-lg: 16px` — and every
+existing class moves with them. It moves back the same way if 13px turns out to
+be wrong.
+
+Leading is redefined with the size. Tailwind's stock ramp pairs `text-sm` with a
+fixed 20px line height; at 13px that is airier than 14px was. A smaller size on
+the same leading is not denser, only smaller.
+
+The scale is only authoritative if nothing bypasses it, so a test walks the
+source and fails on any `text-[Npx]`. That is what the forty-three hardcoded
+11px sites were, and they now go through `text-xs`.
+
+Measured against the emitted CSS: a sessions row goes 36px → 31px, a card's
+padding 16 → 12, the gap between sections 20 → 12, the sidebar 208 → 192. About
+seventeen percent more rows on the same screen, and sixteen more pixels of width
+for the table.
+
+---
+
+## The mark is a context window
+
+Inline SVG, three filled slices and one empty one inside a rounded bar — the
+same shape as the composition bar on every screen below it, in the same live
+palette rather than a frozen copy of it. The mark is a small drawing of the
+thing the product shows you, and it cannot drift from the charts because it
+reads the same custom properties they do.
+
+Four rectangles do not deserve a network request, and an image file would be a
+fourth place the palette is written down.
 
 ---
 

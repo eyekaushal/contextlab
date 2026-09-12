@@ -133,7 +133,7 @@ export function FindingsTable({ rows, showSession = false, onChanged }) {
       <div className="overflow-x-auto rounded border border-[var(--color-border-subtle)]">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-page)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+            <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-page)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
               <th className="w-6" />
               <th className="px-2 py-1.5 font-medium">Severity</th>
               <th className="px-2 py-1.5 font-medium">Finding</th>
@@ -210,6 +210,8 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
         </td>
 
         <td className="px-2 py-1.5">
+          {/* No number on this chip: the row already has a tokens column, and
+              the same figure twice is the bug this revision exists to kill. */}
           <Severity severity={finding.severity} />
         </td>
 
@@ -225,7 +227,7 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
           >
             {finding.title}
           </button>
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
             <span className="font-mono">{finding.rule}</span>
             {showSession && row.sessionLabel ? (
               <span>· {truncate(row.sessionLabel, 28)}</span>
@@ -241,15 +243,13 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
         <td className="px-2 py-1.5 text-[var(--color-text-secondary)]">
           {scope.label ? (
             <>
-              <span className="text-[11px] text-[var(--color-text-muted)]">
+              <span className="text-xs text-[var(--color-text-muted)]">
                 {scope.label}
               </span>
               <div className="font-mono">{truncate(scope.name, 30)}</div>
             </>
           ) : (
-            <span className="text-[11px] text-[var(--color-text-muted)]">
-              whole session
-            </span>
+            <span className="text-xs text-[var(--color-text-muted)]">whole session</span>
           )}
         </td>
 
@@ -305,7 +305,7 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
             {finding.fix ? <Fix text={finding.fix} /> : null}
 
             {dismissed ? (
-              <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+              <p className="mt-2 text-xs text-[var(--color-text-muted)]">
                 Set aside {new Date(finding.dismissedAt).toLocaleString()}. It stays out
                 of the totals until you restore it.
               </p>

@@ -104,13 +104,11 @@ export function ExportMenu({ sessionId, className }) {
               className="block px-3 py-2 hover:bg-[var(--color-gridline)]"
             >
               <div className="text-sm text-[var(--color-text-primary)]">{item.label}</div>
-              <div className="text-[11px] text-[var(--color-text-muted)]">
-                {item.hint}
-              </div>
+              <div className="text-xs text-[var(--color-text-muted)]">{item.hint}</div>
             </a>
           ))}
 
-          <p className="border-t border-[var(--color-border-subtle)] px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
+          <p className="border-t border-[var(--color-border-subtle)] px-3 py-2 text-xs text-[var(--color-text-muted)]">
             {/* Nothing is uploaded anywhere. Saying so where someone is about to
                 share a file is worth three lines. */}
             Saved to your machine. contextlab has no server to send it to.

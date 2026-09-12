@@ -45,7 +45,7 @@ export function SessionOverview({ sessionId, version }) {
   if (session.error) return <Failed message={session.error} />
   if (!session.data)
     return (
-      <div className="p-6">
+      <div className="px-5 py-4">
         <Loading />
       </div>
     )
@@ -91,7 +91,7 @@ export function SessionOverview({ sessionId, version }) {
   const SHOWN = 3
 
   return (
-    <div className="space-y-5 p-6">
+    <div className="space-y-3 px-5 py-4">
       <Header meta={meta} sessionId={sessionId} />
 
       <StatRow>
@@ -127,24 +127,26 @@ export function SessionOverview({ sessionId, version }) {
           hint={`${exact(meta.outputTokens ?? 0)} total`}
         />
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+          <div className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
             Health
           </div>
           <div className="mt-1.5">
+            {/* The status and its number are one object. A chip with the count
+                floating underneath made the reader do the joining. */}
             <Health
               level={healthOf({
                 contextShare: share,
                 criticalFindings,
                 findings: findings.length,
               })}
+              note={`${totals.count} finding${totals.count === 1 ? '' : 's'}`}
             />
           </div>
-          <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {totals.count} finding{totals.count === 1 ? '' : 's'}
-            {totals.recoverableUsd > 0
-              ? ` · ${usd(totals.recoverableUsd)} recoverable`
-              : ''}
-          </div>
+          {totals.recoverableUsd > 0 ? (
+            <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
+              {usd(totals.recoverableUsd)} recoverable
+            </div>
+          ) : null}
         </div>
       </StatRow>
 
@@ -271,7 +273,7 @@ function TurnPicker({ turns, current, onSelect }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <span className="mr-1 text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+      <span className="mr-1 text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
         Turn
       </span>
       {turns.map((/** @type {any} */ turn) => {

@@ -42,7 +42,7 @@ export function Messages({ sessionId, version }) {
   if (error) return <Failed message={error} />
   if (!data)
     return (
-      <div className="p-6">
+      <div className="px-5 py-4">
         <Loading />
       </div>
     )
@@ -245,7 +245,7 @@ function BlockRow({ block, active, onSelect }) {
             </Badge>
           ) : null}
         </span>
-        <span className="mt-0.5 line-clamp-2 block font-mono text-[11px] leading-snug text-[var(--color-text-muted)]">
+        <span className="mt-0.5 line-clamp-2 block font-mono text-xs leading-snug text-[var(--color-text-muted)]">
           {block.isImage ? '[image]' : block.preview || '—'}
         </span>
       </span>
@@ -333,13 +333,13 @@ function Detail({ block }) {
 
       <div className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)]">
         <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] px-2.5 py-1">
-          <span className="text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+          <span className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
             {loading ? 'Loading…' : 'Content'}
           </span>
           {/* Raw is never taken away — it is the thing that can be checked
               against the wire, and a rendered view that cannot be verified is
               a second thing to distrust. */}
-          <div className="ml-auto flex items-center gap-0.5 text-[11px]">
+          <div className="ml-auto flex items-center gap-0.5 text-xs">
             <Toggle active={!raw} onClick={() => setRaw(false)}>
               Rendered
             </Toggle>
@@ -351,7 +351,7 @@ function Detail({ block }) {
 
         <div className="max-h-[60vh] overflow-auto px-2.5 py-2">
           {raw ? (
-            <pre className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
+            <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
               {block.isImage ? '[image data is never stored]' : text || block.preview}
             </pre>
           ) : (

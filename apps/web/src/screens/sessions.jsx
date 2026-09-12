@@ -97,7 +97,7 @@ export function Sessions({ version }) {
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-3 px-5 py-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="text-lg font-semibold tracking-tight">Sessions</h1>
@@ -160,8 +160,8 @@ export function Sessions({ version }) {
           <Card className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b border-[var(--color-border-subtle)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="w-8 px-3 py-2">
+                <tr className="border-b border-[var(--color-border-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <th className="w-8 px-3 py-1.5">
                     <span className="sr-only">Select for comparison</span>
                   </th>
                   {COLUMNS.map((column) => (
@@ -227,7 +227,7 @@ function SessionRow({ session, query, selected, atLimit, onToggle }) {
           selected && 'bg-[var(--color-gridline)]',
         )}
       >
-        <td className="px-3 py-2">
+        <td className="px-3 py-1.5">
           {/* The click stops here: ticking a box and being navigated away from
               the list you are ticking is the worst answer to either gesture. */}
           <input
@@ -239,17 +239,17 @@ function SessionRow({ session, query, selected, atLimit, onToggle }) {
             aria-label={`Select ${session.projectName || session.tool || session.id} for comparison`}
           />
         </td>
-        <td className="px-3 py-2">{session.tool || '—'}</td>
-        <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+        <td className="px-3 py-1.5">{session.tool || '—'}</td>
+        <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
           {truncate(session.model || '—', 26)}
         </td>
-        <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+        <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
           {session.projectName || (
             <span className="text-[var(--color-text-muted)]">unknown</span>
           )}
         </td>
-        <td className="tnum px-3 py-2 text-right">{session.turnCount}</td>
-        <td className="tnum px-3 py-2 text-right">
+        <td className="tnum px-3 py-1.5 text-right">{session.turnCount}</td>
+        <td className="tnum px-3 py-1.5 text-right">
           {tokens(peak)}
           {limit > 0 ? (
             <span
@@ -266,26 +266,24 @@ function SessionRow({ session, query, selected, atLimit, onToggle }) {
             </span>
           ) : null}
         </td>
-        <td className="tnum px-3 py-2 text-right">{usd(session.equivalentCostUsd)}</td>
+        <td className="tnum px-3 py-1.5 text-right">{usd(session.equivalentCostUsd)}</td>
         {/* The worst finding still standing, not a score derived from a count.
             A score hid which of two "warning" sessions had a critical in it. */}
-        <td className="px-3 py-2">
+        <td className="px-3 py-1.5">
           {findings === 0 ? (
             <span className="text-xs text-[var(--color-text-muted)]">clean</span>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <Severity severity={session.worstSeverity ?? 'info'} />
-              <span className="tnum text-xs text-[var(--color-text-secondary)]">
-                {findings}
-                {recoverable > 0 ? ` · ${usd(recoverable)}` : ''}
-              </span>
-            </div>
+            // One chip, not a chip and a stray number beside it.
+            <Severity
+              severity={session.worstSeverity ?? 'info'}
+              note={recoverable > 0 ? `${findings} · ${usd(recoverable)}` : findings}
+            />
           )}
         </td>
-        <td className="px-3 py-2">
+        <td className="px-3 py-1.5">
           <Sparkline values={session.trend} limit={limit} />
         </td>
-        <td className="px-3 py-2 text-right text-[var(--color-text-muted)]">
+        <td className="px-3 py-1.5 text-right text-[var(--color-text-muted)]">
           {when(session.lastSeenAt)}
         </td>
       </tr>
@@ -320,7 +318,7 @@ function CompareBar({ selected, onClear, onCompare }) {
   const ready = selected.length >= 2
 
   return (
-    <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 shadow-lg">
+    <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-1.5 shadow-lg">
       <span className="text-xs text-[var(--color-text-secondary)]">
         {selected.length} selected
         {ready ? '' : ' · pick one more to compare'}
@@ -366,12 +364,12 @@ const SORT_LABEL = {
 export function Column({ column, sort, onSort }) {
   const align = column.align === 'right' ? 'text-right' : 'text-left'
   if (!column.sort) {
-    return <th className={cn('px-3 py-2 font-medium', align)}>{column.label}</th>
+    return <th className={cn('px-3 py-1.5 font-medium', align)}>{column.label}</th>
   }
 
   const active = sort === column.sort
   return (
-    <th className={cn('px-3 py-2 font-medium', align)}>
+    <th className={cn('px-3 py-1.5 font-medium', align)}>
       <button
         type="button"
         aria-label={`Sort by ${column.label}`}

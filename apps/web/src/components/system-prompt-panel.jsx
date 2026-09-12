@@ -127,11 +127,11 @@ function Row({ row, total }) {
       </span>
 
       {row.warning ? (
-        <span className="shrink-0 text-[11px] text-[var(--color-status-warning)]">
+        <span className="shrink-0 text-xs text-[var(--color-status-warning)]">
           {row.warning}
         </span>
       ) : (
-        <span className="shrink-0 text-[11px] text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="shrink-0 text-xs text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100">
           {row.note}
         </span>
       )}

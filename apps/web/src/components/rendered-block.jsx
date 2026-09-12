@@ -60,7 +60,7 @@ function ToolCall({ block, text }) {
       {args === null ? (
         // The serialisation did not have the shape we write, so no table is
         // invented for it. A wrong table is worse than none.
-        <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-[var(--color-text-secondary)]">
+        <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-[var(--color-text-secondary)]">
           {text}
         </pre>
       ) : args.length === 0 ? (
@@ -78,7 +78,7 @@ function ToolCall({ block, text }) {
                 <td className="w-32 py-1 pr-3 font-mono text-[var(--color-text-muted)]">
                   {argument.name}
                 </td>
-                <td className="py-1 font-mono text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+                <td className="py-1 font-mono text-xs leading-relaxed text-[var(--color-text-secondary)]">
                   <span className="whitespace-pre-wrap break-words">
                     {argument.value || <em className="not-italic opacity-60">empty</em>}
                   </span>
@@ -113,7 +113,7 @@ function Folded({ text }) {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="mt-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            className="mt-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           >
             Collapse the middle again
           </button>
@@ -131,7 +131,7 @@ function Folded({ text }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="my-1 flex w-full items-center gap-1.5 rounded border border-dashed border-[var(--color-border-subtle)] px-2 py-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+        className="my-1 flex w-full items-center gap-1.5 rounded border border-dashed border-[var(--color-border-subtle)] px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
       >
         <ChevronDown className="size-3" />
         {exact(hidden)} lines hidden — show all {exact(lines.length)}
@@ -147,7 +147,7 @@ function Folded({ text }) {
  */
 function Lines({ lines }) {
   return (
-    <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+    <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--color-text-secondary)]">
       {lines.join('\n')}
     </pre>
   )
@@ -160,7 +160,7 @@ function ImageBlock({ block }) {
   return (
     <div className="space-y-1.5 rounded border border-dashed border-[var(--color-border-subtle)] px-3 py-6 text-center">
       <p className="text-xs text-[var(--color-text-secondary)]">Image</p>
-      <p className="text-[11px] text-[var(--color-text-muted)]">
+      <p className="text-xs text-[var(--color-text-muted)]">
         {/* The honest statement: we never kept the bytes, and we never counted
             them either — an encoder over base64 is the trap WIRE-FORMATS §3
             warns about. */}
@@ -195,7 +195,7 @@ export function Markdown({ text }) {
           return (
             <pre
               key={node.key}
-              className="overflow-x-auto rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] px-2.5 py-2 font-mono text-[11px] leading-relaxed"
+              className="overflow-x-auto rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] px-2.5 py-2 font-mono text-xs leading-relaxed"
             >
               {node.lines.join('\n')}
             </pre>
@@ -290,7 +290,7 @@ function Inline({ text }) {
         part.kind === 'code' ? (
           <code
             key={part.key}
-            className="rounded bg-[var(--color-gridline)] px-1 font-mono text-[11px]"
+            className="rounded bg-[var(--color-gridline)] px-1 font-mono text-xs"
           >
             {part.text}
           </code>

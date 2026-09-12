@@ -44,7 +44,7 @@ function EverySession({ version }) {
   if (error) return <Failed message={error} />
   if (!data)
     return (
-      <div className="p-6">
+      <div className="px-5 py-4">
         <Loading />
       </div>
     )
@@ -63,7 +63,7 @@ function EverySession({ version }) {
   )
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-3 px-5 py-4">
       <Header
         title="Optimize"
         question="What do I change first?"
@@ -94,7 +94,7 @@ function OneSession({ sessionId, version }) {
   if (error) return <Failed message={error} />
   if (!data)
     return (
-      <div className="p-6">
+      <div className="px-5 py-4">
         <Loading />
       </div>
     )
@@ -104,7 +104,7 @@ function OneSession({ sessionId, version }) {
   const rows = findings.map((finding) => ({ finding, sessionId }))
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-3 px-5 py-4">
       <button
         type="button"
         onClick={() => navigate(`/s/${encoded}`)}
@@ -153,7 +153,7 @@ function Header({ title, question, note }) {
  */
 function Totals({ total, spentUsd }) {
   return (
-    <Card className="p-4">
+    <Card className="p-3">
       {/* Three numbers that do not pretend to add up to one. Recoverable is
           money already spent that a change gives back; potential is a saving
           from a change not yet made. Summing them is what produced "$10.31

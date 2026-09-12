@@ -49,14 +49,14 @@ export function EntityMatches({ entities, query }) {
 
   return (
     <Card className="space-y-2 p-3">
-      <div className="text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+      <div className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
         “{truncate(query, 40)}” also matches
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {groups.map((group) => (
           <div key={group.kind} className="min-w-0 space-y-1">
-            <div className="text-[11px] text-[var(--color-text-muted)]">
+            <div className="text-xs text-[var(--color-text-muted)]">
               {group.label}
               {group.rows.length > PER_KIND ? (
                 // Never a silent truncation.
