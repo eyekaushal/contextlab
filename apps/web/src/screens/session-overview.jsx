@@ -51,7 +51,11 @@ export function SessionOverview({ sessionId, version }) {
     )
 
   const meta = session.data.session ?? {}
-  const findings = session.data.findings ?? []
+  // A finding set aside on Optimize must not occupy one of the three slots
+  // here, or the "Showing 3 of 9" line disagrees with the count beside it.
+  const findings = /** @type {any[]} */ (session.data.findings ?? []).filter(
+    (/** @type {any} */ finding) => !finding.dismissedAt,
+  )
   const current = turn.data?.turn ?? turns[turns.length - 1] ?? {}
 
   const contextTokens = Number(current.contextTokens) || 0

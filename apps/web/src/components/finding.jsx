@@ -70,7 +70,7 @@ export function Finding({ finding, className }) {
 /**
  * @param {{ text: string }} props
  */
-function Fix({ text }) {
+export function Fix({ text }) {
   const [copied, setCopied] = useState(false)
 
   // A fix that spans lines is usually a config block worth pasting whole; a
@@ -131,7 +131,7 @@ function Fix({ text }) {
  *
  * @param {{ finding: any }} props
  */
-function Arithmetic({ finding }) {
+export function Arithmetic({ finding }) {
   const parts = workingOut(finding)
   if (!parts) return null
 
@@ -192,6 +192,6 @@ function workingOut(finding) {
  * @param {any} finding
  * @returns {boolean}
  */
-function counted(finding) {
+export function counted(finding) {
   return finding.claim !== 'potential' && finding.countsTowardTotal !== false
 }

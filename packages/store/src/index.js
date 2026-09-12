@@ -7,6 +7,13 @@
  */
 
 export { closeDatabase, defaultDbPath, openDatabase } from './db.js'
+export {
+  dismissalKey,
+  dismissFinding,
+  listDismissals,
+  markDismissed,
+  restoreFinding,
+} from './dismissals.js'
 export { MIGRATIONS, runMigrations, schemaVersion } from './migrations.js'
 export { loadPriceTable, pricingFetchedAt, savePriceTable } from './pricing.js'
 export {

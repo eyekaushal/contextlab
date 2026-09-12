@@ -9,7 +9,12 @@
 
 import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import { buildSessionSummary } from '@contextlab/server'
-import { listSessions, replaceFindings } from '@contextlab/store'
+import {
+  listDismissals,
+  listSessions,
+  markDismissed,
+  replaceFindings,
+} from '@contextlab/store'
 import { open } from '../context.js'
 import { color, heading, tokens, usd, when } from '../format.js'
 
@@ -46,11 +51,19 @@ export function optimize(options = {}) {
     const summary = buildSessionSummary(db, String(row.id))
     if (!summary) continue
 
-    const findings = runRules(summary)
+    const id = String(row.id)
+    // A finding dismissed in the dashboard stays dismissed here. One decision,
+    // one place — the terminal and the browser read the same store.
+    const findings = markDismissed(runRules(summary), id, listDismissals(db, id))
     // Findings are deterministic, so caching them is safe and makes the
     // dashboard's optimize screen free.
-    replaceFindings(db, String(row.id), findings)
-    reports.push({ session: row, summary, findings })
+    replaceFindings(db, id, findings)
+    reports.push({
+      session: row,
+      summary,
+      findings: findings.filter((/** @type {any} */ f) => !f.dismissedAt),
+      dismissed: findings.filter((/** @type {any} */ f) => f.dismissedAt).length,
+    })
   }
 
   if (options.json) {
@@ -69,7 +82,7 @@ export function optimize(options = {}) {
  * @returns {void}
  */
 function printReport(report, many) {
-  const { session, summary, findings } = report
+  const { session, summary, findings, dismissed } = report
   const total = totalWaste(findings, { spendUsd: summary.totalCostUsd })
 
   const label =
@@ -80,7 +93,8 @@ function printReport(report, many) {
   console.log(heading(label))
   console.log(
     color.gray(
-      `  ${summary.turnCount} turns · ${tokens(summary.peakContextTokens)} peak context · ${usd(summary.totalCostUsd)} spent`,
+      `  ${summary.turnCount} turns · ${tokens(summary.peakContextTokens)} peak context · ${usd(summary.totalCostUsd)} spent` +
+        (dismissed ? ` · ${dismissed} dismissed, not shown` : ''),
     ),
   )
 

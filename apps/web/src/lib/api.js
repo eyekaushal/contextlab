@@ -39,6 +39,26 @@ export async function get(path, init) {
 }
 
 /**
+ * A write. Same shape as `get`, and just as small.
+ *
+ * @param {string} path
+ * @param {any} body
+ * @returns {Promise<any>}
+ */
+export async function post(path, body) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    const failure = await response.json().catch(() => ({}))
+    throw new Error(failure.error ?? `${response.status} ${response.statusText}`)
+  }
+  return response.json()
+}
+
+/**
  * Fetch on mount and whenever the path changes.
  *
  * Deliberately small: no cache, no deduplication, no library. The server is on

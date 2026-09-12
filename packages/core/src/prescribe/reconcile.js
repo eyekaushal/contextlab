@@ -33,6 +33,7 @@ import { CLAIM_POTENTIAL, CLAIM_RECOVERABLE } from './rules.js'
  * @property {number} potentialUsd     saving available from a different choice
  * @property {number} potentialTokens
  * @property {number} suppressed       claims dropped as duplicates
+ * @property {number} dismissed        findings set aside by the reader
  * @property {boolean} capped          true if the total had to be clamped
  */
 
@@ -96,8 +97,15 @@ export function totalWaste(findings, options = {}) {
   let potentialUsd = 0
   let potentialTokens = 0
   let suppressed = 0
+  let dismissed = 0
 
   for (const finding of reconciled) {
+    // A finding you have judged and set aside stops counting. It is still in
+    // the list, behind a filter, so the decision stays visible and reversible.
+    if (/** @type {any} */ (finding).dismissedAt) {
+      dismissed += 1
+      continue
+    }
     if (finding.claim === CLAIM_POTENTIAL) {
       potentialUsd += finding.wastedCostUsd
       potentialTokens += finding.wastedTokens
@@ -115,13 +123,18 @@ export function totalWaste(findings, options = {}) {
   const capped = Number.isFinite(spend) && spend > 0 && recoverableUsd > spend
 
   return {
-    count: reconciled.length,
-    critical: reconciled.filter((finding) => finding.severity === 'critical').length,
+    count: reconciled.filter((finding) => !(/** @type {any} */ (finding).dismissedAt))
+      .length,
+    critical: reconciled.filter(
+      (finding) =>
+        finding.severity === 'critical' && !(/** @type {any} */ (finding).dismissedAt),
+    ).length,
     recoverableUsd: capped ? spend : recoverableUsd,
     recoverableTokens,
     potentialUsd,
     potentialTokens,
     suppressed,
+    dismissed,
     capped,
   }
 }

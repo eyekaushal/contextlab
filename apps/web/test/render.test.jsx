@@ -14,6 +14,7 @@ import { CompositionBar, CompositionLegend } from '../src/components/composition
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { ExportMenu } from '../src/components/export-menu.jsx'
 import { Finding } from '../src/components/finding.jsx'
+import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
 import { Stat } from '../src/components/stat.jsx'
@@ -249,6 +250,109 @@ describe('finding', () => {
 
   it('labels severity with a word, not just a colour', () => {
     expect(renderToString(<Finding finding={finding} />)).toContain('Critical')
+  })
+})
+
+describe('findings as a ranked table', () => {
+  /** @type {any[]} */
+  const rows = [
+    {
+      sessionId: 's1',
+      sessionLabel: 'contextlab',
+      finding: {
+        rule: 'unused-mcp-server',
+        claim: 'recoverable',
+        claimKey: 'mcp:playwright',
+        severity: 'critical',
+        title: 'MCP server "playwright" was never used',
+        detail: 'Its tool definitions add 10,876 tokens to every turn.',
+        fix: 'Remove "playwright" from .mcp.json',
+        wastedTokens: 87_008,
+        wastedCostUsd: 0.44,
+      },
+    },
+    {
+      sessionId: 's1',
+      sessionLabel: 'contextlab',
+      finding: {
+        rule: 'cache-not-working',
+        claim: 'potential',
+        claimKey: 'cache',
+        severity: 'warning',
+        title: 'The prompt cache is not being hit',
+        detail: '',
+        fix: 'Enable caching',
+        wastedTokens: 962_640,
+        wastedCostUsd: 4.87,
+      },
+    },
+    {
+      sessionId: 's1',
+      sessionLabel: 'contextlab',
+      finding: {
+        rule: 'redundant-read',
+        claim: 'recoverable',
+        claimKey: 'file:/repo/contextlab/src/app.js',
+        severity: 'warning',
+        title: 'src/app.js was read 15 times',
+        detail: '',
+        fix: 'Read it once',
+        wastedTokens: 4_000,
+        wastedCostUsd: 0.02,
+        dismissedAt: 1_700_000_000_000,
+      },
+    },
+  ]
+
+  it('ranks by money and names the columns', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    expect(html).toContain('Recoverable')
+    expect(html).toContain('Tokens')
+    expect(html).toContain('Scope')
+    // Money already lost ranks above a saving from a change not yet made,
+    // however much larger the second figure is.
+    expect(html.indexOf('$4.87')).toBeGreaterThan(html.indexOf('$0.44'))
+  })
+
+  it('keeps recoverable and potential in separate columns', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    expect(html).toContain('Recoverable')
+    expect(html).toContain('Potential')
+  })
+
+  it('says which figures are a potential saving rather than a loss', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    expect(html).toContain('potential saving')
+  })
+
+  it('hides dismissed rows but says how many it is hiding', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    // Never a silent truncation.
+    // React inserts comment separators between text nodes, so assert on the
+    // numbers rather than on the assembled sentence.
+    expect(html).toContain('Showing <!-- -->2<!-- --> of <!-- -->3')
+    expect(html).toContain('Show <!-- -->1<!-- --> dismissed')
+    expect(html).not.toContain('read 15 times')
+  })
+
+  it('collapses detail until a row is opened', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    expect(html).not.toContain('10,876 tokens to every turn')
+    expect(html).toContain('unused-mcp-server')
+  })
+
+  it('reads the scope off the claim key', () => {
+    expect(scopeOf({ claimKey: 'mcp:playwright' })).toEqual({
+      label: 'MCP server',
+      name: 'playwright',
+    })
+    expect(scopeOf({ claimKey: 'file:/repo/src/app.js' })).toEqual({
+      label: 'File',
+      name: 'app.js',
+    })
+    // Session-wide claims have no scope to name, and must not invent one.
+    expect(scopeOf({ claimKey: 'cache' }).label).toBe('')
+    expect(scopeOf({}).label).toBe('')
   })
 })
 

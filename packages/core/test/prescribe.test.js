@@ -744,6 +744,58 @@ describe('reconciling what a finding claims', () => {
     expect(totalWaste(overClaiming, { spendUsd: 200 }).capped).toBe(false)
   })
 
+  it('leaves a dismissed finding out of every total but still in the list', () => {
+    // Setting a finding aside is a judgement, not a deletion. It stops counting
+    // and stays visible behind a filter, so the decision can be reversed.
+    const findings = /** @type {any[]} */ ([
+      {
+        rule: 'a',
+        severity: 'critical',
+        title: 'A',
+        detail: '',
+        fix: '',
+        wastedTokens: 100,
+        wastedCostUsd: 3,
+        claim: 'recoverable',
+        claimKey: 'a',
+      },
+      {
+        rule: 'b',
+        severity: 'critical',
+        title: 'B',
+        detail: '',
+        fix: '',
+        wastedTokens: 50,
+        wastedCostUsd: 1,
+        claim: 'recoverable',
+        claimKey: 'b',
+        dismissedAt: 1_700_000_000_000,
+      },
+      {
+        rule: 'cache-not-working',
+        severity: 'warning',
+        title: 'C',
+        detail: '',
+        fix: '',
+        wastedTokens: 900,
+        wastedCostUsd: 9,
+        claim: 'potential',
+        claimKey: 'cache',
+        dismissedAt: 1_700_000_000_000,
+      },
+    ])
+
+    const total = totalWaste(findings)
+    expect(total.recoverableUsd).toBe(3)
+    expect(total.potentialUsd).toBe(0)
+    expect(total.count).toBe(1)
+    expect(total.critical).toBe(1)
+    expect(total.dismissed).toBe(2)
+
+    // Reconciliation still ran over all three — nothing was dropped.
+    expect(reconcileFindings(findings)).toHaveLength(3)
+  })
+
   it('gives every rule a claim type and a key', () => {
     for (const finding of runRules(overlapping)) {
       expect(['recoverable', 'potential']).toContain(finding.claim)

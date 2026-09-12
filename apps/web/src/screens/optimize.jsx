@@ -1,23 +1,25 @@
 /**
- * Screen 4 — Optimize.
+ * Screen 4 — Optimize. *What do I change first?*
  *
  * The differentiator. Every other screen measures; this one says what to change.
  *
- * Ranked by money, because "what should I fix first" is a question about cost.
- * Every row carries the arithmetic behind its number and the exact config change
- * that removes it — a finding a reader cannot act on is a chart with extra steps.
+ * A ranked table rather than a stack of cards: the rows are sortable and
+ * filterable, the whole set fits on one screen collapsed, and every row carries
+ * its own arithmetic, its own fix and its own dismiss control. The header
+ * states the reconciliation plainly — spent, recoverable, potential — three
+ * numbers that do not pretend to add up to one.
  *
  * @module
  */
 
 import { ArrowLeft, CircleCheck } from 'lucide-react'
-import { Finding } from '../components/finding.jsx'
+import { FindingsTable } from '../components/findings-table.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
 import { Card } from '../components/ui/card.jsx'
 import { useApi } from '../lib/api.js'
-import { exact, truncate, usd, when } from '../lib/format.js'
+import { exact, truncate, usd } from '../lib/format.js'
 import { navigate } from '../lib/router.js'
 
 /**
@@ -35,7 +37,7 @@ export function Optimize({ sessionId, version }) {
  * @param {{ version?: number }} props
  */
 function EverySession({ version }) {
-  const { data, error } = useApi('/api/optimize?limit=15', {
+  const { data, error, reload } = useApi('/api/optimize?limit=15', {
     refreshKey: version,
   })
 
@@ -47,48 +49,33 @@ function EverySession({ version }) {
       </div>
     )
 
-  const reports = data.reports ?? []
+  const reports = /** @type {any[]} */ (data.reports ?? [])
+
+  // Flattened into one ranked list. Grouping by session buried the single most
+  // expensive finding under whichever session happened to sort first.
+  const rows = reports.flatMap((report) =>
+    report.findings.map((/** @type {any} */ finding) => ({
+      finding,
+      sessionId: String(report.session.id),
+      sessionLabel:
+        report.session.projectName || report.session.tool || report.session.id,
+    })),
+  )
 
   return (
-    <div className="space-y-5 p-6">
-      <header>
-        <h1 className="text-lg font-semibold tracking-tight">Optimize</h1>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {data.scanned} recent session{data.scanned === 1 ? '' : 's'} checked against ten
-          rules. No model was called — every number here is arithmetic.
-        </p>
-      </header>
+    <div className="space-y-4 p-6">
+      <Header
+        title="Optimize"
+        question="What do I change first?"
+        note={`${data.scanned} recent session${data.scanned === 1 ? '' : 's'} checked against ten rules. No model was called — every number here is arithmetic.`}
+      />
 
-      {reports.length === 0 ? (
+      {rows.length === 0 ? (
         <Clean />
       ) : (
         <>
-          <Totals total={data.total} />
-
-          {reports.map((/** @type {any} */ report) => (
-            <section key={report.session.id} className="space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--color-border-subtle)] pb-1.5">
-                <button
-                  type="button"
-                  onClick={() => navigate(`/s/${encodeURIComponent(report.session.id)}`)}
-                  className="text-sm font-medium hover:text-[var(--color-cat-system-prompt)]"
-                >
-                  {report.session.projectName || report.session.tool || 'Session'}
-                  <span className="ml-2 font-normal text-[var(--color-text-muted)]">
-                    {truncate(report.session.model ?? '', 28)} ·{' '}
-                    {report.session.turnCount} turns · {when(report.session.lastSeenAt)}
-                  </span>
-                </button>
-                <span className="tnum text-sm font-semibold">
-                  {usd(report.total.recoverableUsd)}
-                </span>
-              </div>
-
-              {report.findings.map((/** @type {any} */ finding) => (
-                <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
-              ))}
-            </section>
-          ))}
+          <Totals total={data.total} spentUsd={data.total.spentUsd} />
+          <FindingsTable rows={rows} showSession onChanged={reload} />
         </>
       )}
     </div>
@@ -100,7 +87,7 @@ function EverySession({ version }) {
  */
 function OneSession({ sessionId, version }) {
   const encoded = encodeURIComponent(sessionId)
-  const { data, error } = useApi(`/api/sessions/${encoded}/optimize`, {
+  const { data, error, reload } = useApi(`/api/sessions/${encoded}/optimize`, {
     refreshKey: version,
   })
 
@@ -112,38 +99,52 @@ function OneSession({ sessionId, version }) {
       </div>
     )
 
-  const findings = data.findings ?? []
+  const findings = /** @type {any[]} */ (data.findings ?? [])
   const summary = data.summary ?? {}
+  const rows = findings.map((finding) => ({ finding, sessionId }))
 
   return (
-    <div className="space-y-5 p-6">
-      <header className="space-y-2">
-        <button
-          type="button"
-          onClick={() => navigate(`/s/${encoded}`)}
-          className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-        >
-          <ArrowLeft className="size-3" />
-          Session overview
-        </button>
-        <h1 className="text-lg font-semibold tracking-tight">Optimize</h1>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {summary.turnCount} turns · {truncate(summary.model ?? '', 30)} ·{' '}
-          {usd(summary.totalCostUsd)} spent
-        </p>
-      </header>
+    <div className="space-y-4 p-6">
+      <button
+        type="button"
+        onClick={() => navigate(`/s/${encoded}`)}
+        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+      >
+        <ArrowLeft className="size-3" />
+        Session overview
+      </button>
+
+      <Header
+        title="Optimize"
+        question="What do I change first?"
+        note={`${summary.turnCount} turns · ${truncate(summary.model ?? '', 30)}`}
+      />
 
       {findings.length === 0 ? (
         <Clean />
       ) : (
         <>
           <Totals total={data.total} spentUsd={summary.totalCostUsd} />
-          {findings.map((/** @type {any} */ finding) => (
-            <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
-          ))}
+          <FindingsTable rows={rows} onChanged={reload} />
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * @param {{ title: string, question: string, note: string }} props
+ */
+function Header({ title, question, note }) {
+  return (
+    <header>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+        {/* Every screen answers one question, and says which one. */}
+        <span className="text-xs text-[var(--color-text-muted)]">{question}</span>
+      </div>
+      <p className="text-xs text-[var(--color-text-muted)]">{note}</p>
+    </header>
   )
 }
 
@@ -162,7 +163,7 @@ function Totals({ total, spentUsd }) {
         <Stat
           label="Recoverable"
           value={usd(total.recoverableUsd)}
-          hint={`${exact(total.recoverableTokens)} tokens`}
+          hint={`${exact(total.recoverableTokens)} tokens already paid for`}
           tone={total.recoverableUsd > 0 ? 'var(--color-status-warning)' : undefined}
         />
         <Stat
@@ -173,7 +174,11 @@ function Totals({ total, spentUsd }) {
         <Stat
           label="Findings"
           value={total.count}
-          hint={`${total.critical} critical`}
+          hint={
+            total.dismissed > 0
+              ? `${total.critical} critical · ${total.dismissed} dismissed`
+              : `${total.critical} critical`
+          }
           tone={total.critical > 0 ? 'var(--color-status-critical)' : undefined}
         />
       </StatRow>

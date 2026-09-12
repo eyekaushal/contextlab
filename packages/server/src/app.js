@@ -21,16 +21,20 @@ import {
   contextTrends,
   costByDay,
   costByProject,
+  dismissFinding,
   findRepeatedBlocks,
   getBlock,
   getComposition,
   getSession,
   listBlocksForTurn,
+  listDismissals,
   listFilterOptions,
   listFindings,
   listSessions,
   listTurns,
+  markDismissed,
   replaceFindings,
+  restoreFinding,
   searchBlocks,
   spendTotals,
   systemSegments,
@@ -151,7 +155,11 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
     // overview showing a different count from optimize for the same session is
     // exactly the bug this route is fixing.
     const summary = buildSessionSummary(db, id)
-    const findings = summary ? runRules(summary) : []
+    const findings = markDismissed(
+      summary ? runRules(summary) : [],
+      id,
+      listDismissals(db, id),
+    )
 
     return c.json({
       session: toCamel(session),
@@ -263,7 +271,7 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
     const summary = buildSessionSummary(db, id)
     if (!summary) return c.json({ error: 'no such session' }, 404)
 
-    const findings = runRules(summary)
+    const findings = markDismissed(runRules(summary), id, listDismissals(db, id))
     // Deterministic, so caching them costs nothing and makes a reload instant.
     replaceFindings(db, id, findings)
 
@@ -311,7 +319,7 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
       const summary = buildSessionSummary(db, id)
       if (!summary) continue
 
-      const findings = runRules(summary)
+      const findings = markDismissed(runRules(summary), id, listDismissals(db, id))
       replaceFindings(db, id, findings)
       if (findings.length === 0) continue
 
@@ -334,13 +342,52 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
       total: {
         count: sum((t) => t.count),
         critical: sum((t) => t.critical),
+        dismissed: sum((t) => t.dismissed),
         recoverableUsd: sum((t) => t.recoverableUsd),
         recoverableTokens: sum((t) => t.recoverableTokens),
         potentialUsd: sum((t) => t.potentialUsd),
         potentialTokens: sum((t) => t.potentialTokens),
+        // Summed here rather than in the dashboard, so the figure the header
+        // compares against comes from the same place as the ones it compares.
+        spentUsd: reports.reduce(
+          (total, report) => total + Number(report.session.equivalentCostUsd ?? 0),
+          0,
+        ),
       },
       reports,
     })
+  })
+
+  /**
+   * Set a finding aside, or bring it back.
+   *
+   * Keyed on the rule and the title rather than a row id, because findings are
+   * recomputed on every request and their ids do not survive.
+   */
+  app.post('/api/findings/:action', async (c) => {
+    const action = c.req.param('action')
+    if (action !== 'dismiss' && action !== 'restore') {
+      return c.json({ error: 'expected dismiss or restore' }, 404)
+    }
+
+    /** @type {any} */
+    let body
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'body must be json' }, 400)
+    }
+
+    const { sessionId, rule, title } = body ?? {}
+    if (!sessionId || !rule || !title) {
+      return c.json({ error: 'sessionId, rule and title are required' }, 400)
+    }
+
+    if (action === 'dismiss') dismissFinding(db, sessionId, rule, title)
+    else restoreFinding(db, sessionId, rule, title)
+
+    hub.publish({ type: 'session', data: { sessionId } })
+    return c.json({ ok: true, action })
   })
 
   // -------------------------------------------------------------------------

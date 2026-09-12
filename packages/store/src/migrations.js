@@ -310,12 +310,29 @@ const BLOCK_ESTIMATE = `
 ALTER TABLE blocks ADD COLUMN tokens_estimated INTEGER NOT NULL DEFAULT 0;
 `
 
+const DISMISSALS = `
+-- Dismissals live in their own table rather than as a column on findings.
+-- Findings are recomputed and replaced wholesale on every run, so a column
+-- there would be deleted the next time the rules ran, and a judgement made
+-- once would quietly come back.
+CREATE TABLE dismissals (
+  session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  rule         TEXT NOT NULL,
+  title        TEXT NOT NULL,
+  dismissed_at INTEGER NOT NULL,
+  PRIMARY KEY (session_id, rule, title)
+);
+
+CREATE INDEX dismissals_session ON dismissals(session_id);
+`
+
 /** @type {Migration[]} */
 export const MIGRATIONS = [
   { version: 1, name: 'initial schema', sql: INITIAL },
   { version: 2, name: 'model prices', sql: PRICING },
   { version: 3, name: 'attribution breakdown', sql: ATTRIBUTION_BREAKDOWN },
   { version: 4, name: 'estimated block tokens', sql: BLOCK_ESTIMATE },
+  { version: 5, name: 'dismissals', sql: DISMISSALS },
 ]
 
 /**

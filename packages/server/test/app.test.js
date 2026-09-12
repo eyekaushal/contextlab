@@ -364,6 +364,80 @@ describe('the API', () => {
         expect(String(finding.fix).length).toBeGreaterThan(20)
       }
     })
+
+    /**
+     * @param {'dismiss' | 'restore'} action
+     * @param {any} payload
+     */
+    const act = (action, payload) =>
+      get(`/api/findings/${action}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+    it('dismisses a finding, and keeps it dismissed across a recompute', async () => {
+      const before = await get(`/api/sessions/${sessionId}/optimize`)
+      const target = before.body.findings.find(
+        (/** @type {any} */ f) => f.claim === 'recoverable',
+      )
+      expect(target).toBeTruthy()
+
+      const posted = await act('dismiss', {
+        sessionId,
+        rule: target.rule,
+        title: target.title,
+      })
+      expect(posted.status).toBe(200)
+
+      // A second GET re-runs the rules and replaces the findings table. The
+      // dismissal has to outlive that, which is why it lives in its own table.
+      const after = await get(`/api/sessions/${sessionId}/optimize`)
+      const again = after.body.findings.find(
+        (/** @type {any} */ f) => f.rule === target.rule && f.title === target.title,
+      )
+
+      // Still listed — set aside is not deleted.
+      expect(again.dismissedAt).toBeGreaterThan(0)
+      expect(after.body.total.dismissed).toBe(1)
+      expect(after.body.total.count).toBe(before.body.total.count - 1)
+      expect(after.body.total.recoverableUsd).toBeCloseTo(
+        before.body.total.recoverableUsd - target.wastedCostUsd,
+        10,
+      )
+    })
+
+    it('restores what it dismissed', async () => {
+      const before = await get(`/api/sessions/${sessionId}/optimize`)
+      const target = before.body.findings[0]
+
+      await act('dismiss', { sessionId, rule: target.rule, title: target.title })
+      await act('restore', { sessionId, rule: target.rule, title: target.title })
+
+      const after = await get(`/api/sessions/${sessionId}/optimize`)
+      expect(after.body.total.dismissed).toBe(0)
+      expect(after.body.total.count).toBe(before.body.total.count)
+    })
+
+    it('leaves a dismissal out of the cross-session report too', async () => {
+      const before = await get('/api/optimize?limit=10')
+      const target = before.body.reports[0].findings[0]
+
+      await act('dismiss', {
+        sessionId: before.body.reports[0].session.id,
+        rule: target.rule,
+        title: target.title,
+      })
+
+      const after = await get('/api/optimize?limit=10')
+      expect(after.body.total.count).toBe(before.body.total.count - 1)
+    })
+
+    it('refuses a request that names no finding', async () => {
+      expect((await act('dismiss', { sessionId })).status).toBe(400)
+      expect((await act('dismiss', null)).status).toBe(400)
+      expect((await act(/** @type {any} */ ('shred'), { sessionId })).status).toBe(404)
+    })
   })
 
   describe('cost and pricing', () => {

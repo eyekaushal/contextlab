@@ -55,6 +55,7 @@ index groups them by area instead.
 - [Rules are ranked by money, and are total functions](#rules-are-ranked-by-money-and-are-total-functions)
 - [Every finding shows its working out](#every-finding-shows-its-working-out)
 - [Optimize recomputes rather than reading cached findings](#optimize-recomputes-rather-than-reading-cached-findings)
+- [A dismissal lives in its own table, not on the finding](#a-dismissal-lives-in-its-own-table-not-on-the-finding)
 
 **CLI**
 
@@ -837,6 +838,28 @@ expensive.
 
 The cache still earns its place: the per-session view and the sessions list read
 it, so nothing else pays for the computation.
+
+---
+
+## A dismissal lives in its own table, not on the finding
+
+The obvious design is a `dismissed_at` column on `findings`. It does not work.
+
+Findings are recomputed on every request and written with `replaceFindings`,
+which deletes the session's rows and inserts the fresh set. A column on that
+table is erased by the next thing that runs the rules — which is the next page
+load. A decision the reader made once would come back a second later.
+
+So dismissals are their own table, keyed on `(session_id, rule, title)` rather
+than on a finding's id, because the ids are regenerated too. Rule and title are
+what makes a finding *that* finding; the numbers behind it are expected to move
+as the session grows, and the dismissal should follow them.
+
+Dismissing is not deleting. The finding stays in the list, marked, behind a
+"show dismissed" filter, and stops contributing to every total — the count, the
+critical count, recoverable and potential alike. Both the dashboard and
+`contextlab optimize` read the same table, so a finding set aside in the browser
+is also gone from the terminal.
 
 ---
 
