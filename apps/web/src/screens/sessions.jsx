@@ -11,22 +11,27 @@
  * @module
  */
 
-import { ArrowDown, Search, X } from 'lucide-react'
+import { ArrowDown, GitCompare, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ExportMenu } from '../components/export-menu.jsx'
 import { Severity } from '../components/health.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
 import { Empty, Failed, Loading } from '../components/states.jsx'
 import { SummaryStrip } from '../components/summary-strip.jsx'
+import { Button } from '../components/ui/button.jsx'
 import { Card } from '../components/ui/card.jsx'
 import { Input } from '../components/ui/input.jsx'
 import { url, useApi } from '../lib/api.js'
 import { percent, tokens, truncate, usd, when } from '../lib/format.js'
 import { navigate } from '../lib/router.js'
 import { cn } from '../lib/utils.js'
+import { compareHref } from './compare.jsx'
 
 /** Long enough that typing does not fire a query per keystroke. */
 const DEBOUNCE_MS = 200
+
+/** Matches the server's ceiling. Past six columns a comparison is a spreadsheet. */
+const MAX_COMPARE = 6
 
 /**
  * The table, declared once.
@@ -57,6 +62,7 @@ export function Sessions({ version }) {
   const [debounced, setDebounced] = useState('')
   const [filters, setFilters] = useState({ tool: '', model: '', project: '' })
   const [sort, setSort] = useState('recent')
+  const [selected, setSelected] = useState(/** @type {string[]} */ ([]))
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), DEBOUNCE_MS)
@@ -72,6 +78,17 @@ export function Sessions({ version }) {
 
   const sessions = data?.sessions ?? []
   const filtered = debounced || filters.tool || filters.model || filters.project
+
+  /** @param {string} id */
+  function toggle(id) {
+    setSelected((current) =>
+      current.includes(id)
+        ? current.filter((other) => other !== id)
+        : current.length >= MAX_COMPARE
+          ? current
+          : [...current, id],
+    )
+  }
 
   return (
     <div className="space-y-4 p-6">
@@ -130,6 +147,9 @@ export function Sessions({ version }) {
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border-subtle)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <th className="w-8 px-3 py-2">
+                    <span className="sr-only">Select for comparison</span>
+                  </th>
                   {COLUMNS.map((column) => (
                     <Column
                       key={column.key}
@@ -142,11 +162,24 @@ export function Sessions({ version }) {
               </thead>
               <tbody>
                 {sessions.map((/** @type {any} */ session) => (
-                  <SessionRow key={session.id} session={session} query={debounced} />
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    query={debounced}
+                    selected={selected.includes(String(session.id))}
+                    atLimit={selected.length >= MAX_COMPARE}
+                    onToggle={() => toggle(String(session.id))}
+                  />
                 ))}
               </tbody>
             </table>
           </Card>
+
+          <CompareBar
+            selected={selected}
+            onClear={() => setSelected([])}
+            onCompare={() => navigate(compareHref(selected))}
+          />
 
           <p className="text-xs text-[var(--color-text-muted)]">
             {sessions.length} session{sessions.length === 1 ? '' : 's'}
@@ -160,9 +193,10 @@ export function Sessions({ version }) {
 }
 
 /**
- * @param {{ session: any, query: string }} props
+ * @param {{ session: any, query: string, selected: boolean, atLimit: boolean,
+ *           onToggle: () => void }} props
  */
-function SessionRow({ session, query }) {
+function SessionRow({ session, query, selected, atLimit, onToggle }) {
   const limit = Number(session.contextLimit) || 0
   const peak = Number(session.peakContextTokens) || 0
   const share = limit > 0 ? peak / limit : 0
@@ -174,8 +208,23 @@ function SessionRow({ session, query }) {
     <>
       <tr
         onClick={() => navigate(`/s/${encodeURIComponent(session.id)}`)}
-        className="cursor-pointer border-b border-[var(--color-border-subtle)] last:border-0 hover:bg-[var(--color-gridline)]"
+        className={cn(
+          'cursor-pointer border-b border-[var(--color-border-subtle)] last:border-0 hover:bg-[var(--color-gridline)]',
+          selected && 'bg-[var(--color-gridline)]',
+        )}
       >
+        <td className="px-3 py-2">
+          {/* The click stops here: ticking a box and being navigated away from
+              the list you are ticking is the worst answer to either gesture. */}
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={!selected && atLimit}
+            onClick={(/** @type {any} */ event) => event.stopPropagation()}
+            onChange={onToggle}
+            aria-label={`Select ${session.projectName || session.tool || session.id} for comparison`}
+          />
+        </td>
         <td className="px-3 py-2">{session.tool || '—'}</td>
         <td className="px-3 py-2 text-[var(--color-text-secondary)]">
           {truncate(session.model || '—', 26)}
@@ -229,7 +278,7 @@ function SessionRow({ session, query }) {
 
       {query && session.snippet ? (
         <tr className="border-b border-[var(--color-border-subtle)] last:border-0">
-          <td colSpan={9} className="px-3 pb-2 text-xs">
+          <td colSpan={10} className="px-3 pb-2 text-xs">
             {/* What matched, and how often — otherwise a filtered list is a
                 claim the reader has to take on trust. */}
             <span className="text-[var(--color-text-muted)]">
@@ -240,6 +289,44 @@ function SessionRow({ session, query }) {
         </tr>
       ) : null}
     </>
+  )
+}
+
+/**
+ * The selection, and the one thing you can do with it.
+ *
+ * Sticky rather than at the top of the page, because a selection made at row
+ * forty needs its action within reach of row forty.
+ *
+ * @param {{ selected: string[], onClear: () => void, onCompare: () => void }} props
+ */
+function CompareBar({ selected, onClear, onCompare }) {
+  if (selected.length === 0) return null
+
+  const ready = selected.length >= 2
+
+  return (
+    <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 shadow-lg">
+      <span className="text-xs text-[var(--color-text-secondary)]">
+        {selected.length} selected
+        {ready ? '' : ' · pick one more to compare'}
+        {selected.length >= MAX_COMPARE ? ` · ${MAX_COMPARE} is the most` : ''}
+      </span>
+
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
+        >
+          Clear
+        </button>
+        <Button size="sm" variant="outline" disabled={!ready} onClick={onCompare}>
+          <GitCompare className="size-3" />
+          Compare {selected.length}
+        </Button>
+      </div>
+    </div>
   )
 }
 

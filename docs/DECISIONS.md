@@ -59,6 +59,8 @@ index groups them by area instead.
 - [The findings cache stores what a finding claims, not just what it costs](#the-findings-cache-stores-what-a-finding-claims-not-just-what-it-costs)
 - [A screen that reads the cache refreshes what is stale first](#a-screen-that-reads-the-cache-refreshes-what-is-stale-first)
 - [Sorting is a whitelist in SQL, never a browser-side reorder](#sorting-is-a-whitelist-in-sql-never-a-browser-side-reorder)
+- [Compare computes no deltas on the server](#compare-computes-no-deltas-on-the-server)
+- [The hash router carries a query string](#the-hash-router-carries-a-query-string)
 
 **CLI**
 
@@ -919,6 +921,44 @@ heading rather than a button, and the two that can't — source, model, director
 Each sort is descending only. Every question this screen asks is "which is the
 most", and clicking the active column returns to most recent rather than
 reversing into a question nobody asked.
+
+---
+
+## Compare computes no deltas on the server
+
+`/api/compare` returns one column per session and nothing else — no baseline,
+no differences. Which column everything is measured against is a decision the
+reader makes and changes, often twice in the same minute, and a server that
+picked one would have to be asked again on every change.
+
+The subtraction is six lines in the browser over data already on screen. The
+server's job is making the columns mean the same thing: each one carries the
+same reconciled totals its own optimize screen shows, so a number does not
+change because you put it next to another number.
+
+Two rules the screen keeps. Only categories that appear somewhere get a row — a
+line of zeros across every column is noise in a table whose whole purpose is
+difference. And a direction is coloured only where it means better or worse:
+spending more is worse, taking more turns is not, so the turns delta stays grey.
+Colour is the fastest-read channel on the page and must not state something
+untrue.
+
+Session-level only. `docs/DESIGN.md` also promises a turn-level drill-in; that
+promise moves to a later version rather than being dropped.
+
+---
+
+## The hash router carries a query string
+
+Compare takes a list of sessions. A list does not fit a path segment: it varies
+in length, and session ids contain a colon (`tag:a1b2c3d4`) that a segment has
+to escape and the router then has to unescape at exactly the right moment.
+
+`useRoute` therefore returns the whole route, query included, and `match`
+strips the query before matching a pattern. Returning only the path was the
+first attempt and was silently broken: moving from `?ids=a&ids=b` to
+`?ids=a&ids=b&ids=c` fires `hashchange`, the path is identical, and setting
+state to the same string renders nothing at all.
 
 ---
 

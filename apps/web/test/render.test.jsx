@@ -9,7 +9,7 @@
 
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { App } from '../src/App.jsx'
+import { App, Route } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { ExportMenu } from '../src/components/export-menu.jsx'
@@ -22,7 +22,8 @@ import { Empty } from '../src/components/states.jsx'
 import { SummaryStrip } from '../src/components/summary-strip.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
-import { href, match } from '../src/lib/router.js'
+import { href, match, pathOf, queryOf } from '../src/lib/router.js'
+import { Compare, CompareTable, compareHref } from '../src/screens/compare.jsx'
 import { Messages } from '../src/screens/messages.jsx'
 import { COLUMNS, Column, Sessions } from '../src/screens/sessions.jsx'
 
@@ -32,6 +33,20 @@ describe('the shell', () => {
     expect(html).toContain('contextlab')
     expect(html).toContain('Sessions')
     expect(html).toContain('Optimize')
+  })
+
+  it('routes every path it owns, including one carrying a query', () => {
+    // Rendered rather than asserted against a table, because the failure this
+    // catches is a screen that throws on its first paint with no data.
+    for (const path of [
+      '/',
+      '/optimize',
+      '/cost',
+      '/compare?ids=a&ids=b',
+      '/s/tag%3Aa',
+    ]) {
+      expect(() => renderToString(<Route route={path} version={0} />)).not.toThrow()
+    }
   })
 })
 
@@ -120,6 +135,16 @@ describe('routing', () => {
     expect(match('/s/:id', '/s/tag%3Aa1b2c3d4')).toEqual({ id: 'tag:a1b2c3d4' })
     expect(match('/s/:id', '/s/abc/messages')).toBeNull()
     expect(match('/s/:id/messages', '/s/abc/messages')).toEqual({ id: 'abc' })
+  })
+
+  it('separates a path from its query, and matches on the path alone', () => {
+    // Compare takes a list of sessions, and a list belongs in a query: it
+    // varies in length and the ids inside it contain a colon.
+    expect(pathOf('/compare?ids=a&ids=b')).toBe('/compare')
+    expect(pathOf('/compare')).toBe('/compare')
+    expect(queryOf('/compare?ids=a&ids=tag%3Ab').getAll('ids')).toEqual(['a', 'tag:b'])
+    expect(queryOf('/compare').getAll('ids')).toEqual([])
+    expect(match('/compare', '/compare?ids=a')).toEqual({})
   })
 
   it('encodes ids when building a link', () => {
@@ -460,6 +485,121 @@ describe('sessions screen', () => {
     for (const column of COLUMNS) {
       if (column.sort) expect(known.has(column.sort)).toBe(true)
     }
+  })
+})
+
+describe('compare screen', () => {
+  const columns = [
+    {
+      session: {
+        id: 'tag:a',
+        projectName: 'contextlab',
+        tool: 'claude',
+        model: 'claude-opus-5',
+        turnCount: 8,
+        equivalentCostUsd: 6.08,
+        peakContextTokens: 168_400,
+        lastSeenAt: Date.now(),
+      },
+      categories: { tool_results: 900_000, system_prompt: 30_000 },
+      total: { count: 9, critical: 4, recoverableUsd: 5.44, potentialUsd: 4.87 },
+      topFindings: [
+        {
+          rule: 'stuck-oversized-result',
+          title: 'A 100,729-token result has been re-sent 8 times',
+          severity: 'critical',
+          claim: 'recoverable',
+          wastedCostUsd: 3.57,
+        },
+      ],
+    },
+    {
+      session: {
+        id: 'tag:b',
+        projectName: 'api',
+        tool: 'codex',
+        model: 'claude-sonnet-4-6',
+        turnCount: 5,
+        equivalentCostUsd: 0.71,
+        peakContextTokens: 68_000,
+        lastSeenAt: Date.now(),
+      },
+      categories: { tool_results: 217_059, system_prompt: 30_002 },
+      total: { count: 3, critical: 1, recoverableUsd: 0.32, potentialUsd: 0 },
+      topFindings: [],
+    },
+  ]
+
+  it('builds a query rather than a path segment', () => {
+    expect(compareHref(['tag:a', 'tag:b'])).toBe('/compare?ids=tag%3Aa&ids=tag%3Ab')
+  })
+
+  it('says one session is not a comparison', () => {
+    const html = renderToString(<Compare ids={['tag:a']} />)
+    expect(html).toContain('One session is not a comparison')
+  })
+
+  it('says nothing is selected when nothing is', () => {
+    expect(renderToString(<Compare ids={[]} />)).toContain('Nothing selected')
+  })
+
+  it('renders a loading state rather than throwing before the data arrives', () => {
+    // Effects do not run here, so the fetch never resolves.
+    expect(renderToString(<Compare ids={['tag:a', 'tag:b']} />)).toContain(
+      'animate-pulse',
+    )
+  })
+
+  /** @param {number} baseline */
+  const table = (baseline = 0) =>
+    renderToString(
+      <CompareTable
+        columns={columns}
+        categories={['tool_results', 'system_prompt']}
+        baseline={baseline}
+        onBaseline={() => {}}
+      />,
+    )
+
+  it('draws a column per session and a row per measure', () => {
+    const html = table()
+    expect(html).toContain('contextlab')
+    expect(html).toContain('api')
+    expect(html).toContain('Peak context')
+    expect(html).toContain('Tool results')
+    expect(html).toContain('System prompt')
+  })
+
+  it('measures every other column against the baseline', () => {
+    const html = table()
+    // contextlab is the baseline, so api carries the signed difference:
+    // $0.71 - $6.08 and 68,000 - 168,400.
+    expect(html).toContain('$6.08')
+    expect(html).toContain('$0.71')
+    // React separates adjacent text nodes with a comment, so the sign and the
+    // number are asserted as they are actually emitted.
+    expect(html).toContain('\u2212<!-- -->$5.37')
+    expect(html).toContain('\u2212<!-- -->100,400')
+  })
+
+  it('moves the baseline when the reader picks another column', () => {
+    // With api as the baseline the sign flips: contextlab now costs $5.37 more.
+    expect(table(1)).toContain('+<!-- -->$5.37')
+  })
+
+  it('marks which column is the baseline', () => {
+    expect(table()).toContain('baseline')
+    expect(table()).toContain('set as baseline')
+  })
+
+  it('colours a difference only where a direction means better or worse', () => {
+    const html = table()
+    // Spend is worse when higher, so it is painted. More turns is not a fault,
+    // so that difference stays grey — colour is the fastest-read channel on the
+    // page and must not state something untrue.
+    expect(html).toContain('text-[var(--color-status-good)]">\u2212<!-- -->$5.37')
+    // Fewer turns is not an improvement, so that difference stays grey.
+    expect(html).toContain('text-[var(--color-text-muted)]">\u2212<!-- -->3')
   })
 })
 

@@ -18,37 +18,74 @@ import { useEffect, useState } from 'react'
  * happens outside a browser in tests. Without the guard the whole app is
  * unrenderable anywhere but a tab, which makes it untestable.
  *
- * @returns {string} the current path, always starting with "/"
+ * @returns {string} the whole route — path and query — always starting with "/"
  */
-export function currentPath() {
+export function currentRoute() {
   if (typeof window === 'undefined') return '/'
   const hash = window.location.hash.replace(/^#/, '')
   return hash.startsWith('/') ? hash : '/'
 }
 
 /**
- * @param {string} path
- * @returns {void}
+ * The route without its query string.
+ *
+ * Compare takes a list of sessions, and a list belongs in a query rather than
+ * in a path segment: it varies in length, and the ids inside it contain
+ * characters (a colon, in `tag:a1b2c3d4`) that a path segment has to escape.
+ *
+ * @returns {string}
  */
-export function navigate(path) {
-  if (typeof window === 'undefined' || currentPath() === path) return
-  window.location.hash = path
+export function currentPath() {
+  return pathOf(currentRoute())
 }
 
 /**
+ * @param {string} route
+ * @returns {string}
+ */
+export function pathOf(route) {
+  const cut = route.indexOf('?')
+  return cut < 0 ? route : route.slice(0, cut)
+}
+
+/**
+ * @param {string} route
+ * @returns {URLSearchParams}
+ */
+export function queryOf(route) {
+  const cut = route.indexOf('?')
+  return new URLSearchParams(cut < 0 ? '' : route.slice(cut + 1))
+}
+
+/**
+ * @param {string} route
+ * @returns {void}
+ */
+export function navigate(route) {
+  if (typeof window === 'undefined' || currentRoute() === route) return
+  window.location.hash = route
+}
+
+/**
+ * The whole route, query included.
+ *
+ * Returning only the path would make a move from `/compare?ids=a` to
+ * `?ids=a,b` a no-op: `hashchange` fires, the path is unchanged, and setting
+ * state to the same string renders nothing.
+ *
  * @returns {string}
  */
 export function useRoute() {
-  const [path, setPath] = useState(currentPath)
+  const [route, setRoute] = useState(currentRoute)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const onChange = () => setPath(currentPath())
+    const onChange = () => setRoute(currentRoute())
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
 
-  return path
+  return route
 }
 
 /**
@@ -60,7 +97,7 @@ export function useRoute() {
  */
 export function match(pattern, path) {
   const expected = pattern.split('/').filter(Boolean)
-  const actual = path.split('/').filter(Boolean)
+  const actual = pathOf(path).split('/').filter(Boolean)
   if (expected.length !== actual.length) return null
 
   /** @type {Record<string, string>} */

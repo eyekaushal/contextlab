@@ -13,6 +13,7 @@
  */
 
 import { budgetProgress, evaluateBudget, hasBudget } from '@contextlab/core/budget'
+import { CATEGORIES } from '@contextlab/core/compose'
 import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import { toOtlp } from '@contextlab/format'
 import {
@@ -50,6 +51,15 @@ import { ingestCapture } from './ingest.js'
 import { currentPriceTable } from './pricing.js'
 import { toCamel, toCamelAll } from './serialize.js'
 import { buildSessionSummary } from './summary.js'
+
+/**
+ * How many sessions a comparison may hold.
+ *
+ * Not a technical limit — a readable one. Past half a dozen columns the table
+ * is a spreadsheet, and the question "which of these was worse" stops having an
+ * answer you can see.
+ */
+const MAX_COMPARE = 6
 
 /** @typedef {import('better-sqlite3').Database} Db */
 /** @typedef {ReturnType<typeof createEventHub>} EventHub */
@@ -172,6 +182,92 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
         ? { configured: true, budget, spend, progress: budgetProgress(spend, budget) }
         : { configured: false },
     })
+  })
+
+  /**
+   * Compare sessions side by side.
+   *
+   * Session-level only. `docs/DESIGN.md` also promises a turn-level drill-in;
+   * that promise moves to a later version rather than being dropped, because
+   * the question people actually arrive with is "which of these two was worse,
+   * and where" — and that is answered by categories, not by turns.
+   *
+   * Deltas are not computed here. Which column is the baseline is a decision
+   * the reader makes on the screen, and a server that picked one would have to
+   * be asked again every time they changed their mind.
+   */
+  app.get('/api/compare', (c) => {
+    const ids = [
+      ...new Set(
+        c.req
+          .queries('ids')
+          ?.flatMap((value) => String(value).split(','))
+          .map((value) => value.trim())
+          .filter(Boolean) ?? [],
+      ),
+    ].slice(0, MAX_COMPARE)
+
+    if (ids.length < 2) {
+      return c.json({ error: 'compare needs at least two sessions' }, 400)
+    }
+
+    refreshFindings(ids)
+
+    /** @type {any[]} */
+    const columns = []
+    /** @type {string[]} */
+    const missing = []
+
+    for (const id of ids) {
+      const session = getSession(db, id)
+      if (!session) {
+        missing.push(id)
+        continue
+      }
+
+      const summary = buildSessionSummary(db, id)
+      const findings = markDismissed(
+        summary ? runRules(summary) : [],
+        id,
+        listDismissals(db, id),
+      )
+
+      /** @type {Record<string, number>} */
+      const categories = {}
+      for (const row of /** @type {any[]} */ (getComposition(db, { sessionId: id }))) {
+        categories[String(row.category)] = Number(row.tokens) || 0
+      }
+
+      columns.push({
+        session: toCamel(session),
+        categories,
+        total: totalWaste(findings, { spendUsd: summary?.totalCostUsd }),
+        // The three findings worth naming on a comparison. The full list is one
+        // click away on each session's own optimize screen.
+        topFindings: findings
+          .filter((finding) => !finding.dismissedAt)
+          .slice(0, 3)
+          .map((finding) => ({
+            rule: finding.rule,
+            title: finding.title,
+            severity: finding.severity,
+            claim: finding.claim,
+            wastedCostUsd: finding.wastedCostUsd,
+          })),
+      })
+    }
+
+    if (columns.length < 2) {
+      return c.json({ error: 'at least two of those sessions could not be read' }, 404)
+    }
+
+    // Only the categories that appear somewhere. A row of zeros across every
+    // column is noise in a table whose whole purpose is showing difference.
+    const categories = CATEGORIES.filter((category) =>
+      columns.some((column) => (column.categories[category] ?? 0) > 0),
+    )
+
+    return c.json({ columns, categories, ...(missing.length ? { missing } : {}) })
   })
 
   app.get('/api/filters', (c) => c.json(listFilterOptions(db)))

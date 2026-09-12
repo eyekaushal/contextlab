@@ -6,8 +6,9 @@
 
 import { Activity, Coins, ListTree, Wrench } from 'lucide-react'
 import { useServerEvents } from './lib/api.js'
-import { match, navigate, useRoute } from './lib/router.js'
+import { match, navigate, pathOf, queryOf, useRoute } from './lib/router.js'
 import { cn } from './lib/utils.js'
+import { Compare } from './screens/compare.jsx'
 import { Cost } from './screens/cost.jsx'
 import { Messages } from './screens/messages.jsx'
 import { Optimize } from './screens/optimize.jsx'
@@ -21,23 +22,25 @@ const NAV = [
 ]
 
 export function App() {
-  const path = useRoute()
+  const route = useRoute()
   const { version, connected } = useServerEvents()
 
   return (
     <div className="flex h-full">
-      <Sidebar path={path} connected={connected} />
+      <Sidebar path={pathOf(route)} connected={connected} />
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <Route path={path} version={version} />
+        <Route route={route} version={version} />
       </main>
     </div>
   )
 }
 
 /**
- * @param {{ path: string, version: number }} props
+ * @param {{ route: string, version: number }} props
  */
-function Route({ path, version }) {
+export function Route({ route, version }) {
+  const path = pathOf(route)
+
   const overview = match('/s/:id', path)
   if (overview) return <SessionOverview sessionId={overview.id} version={version} />
 
@@ -47,6 +50,9 @@ function Route({ path, version }) {
   const optimize = match('/s/:id/optimize', path)
   if (optimize) return <Optimize sessionId={optimize.id} version={version} />
 
+  if (path === '/compare') {
+    return <Compare ids={queryOf(route).getAll('ids')} version={version} />
+  }
   if (path === '/optimize') return <Optimize version={version} />
   if (path === '/cost') return <Cost version={version} />
   return <Sessions version={version} />
@@ -67,7 +73,13 @@ function Sidebar({ path, connected }) {
 
       <nav className="flex-1 space-y-0.5 px-2">
         {NAV.map(({ path: to, label, Icon }) => {
-          const active = to === '/' ? path === '/' || path.startsWith('/s/') : path === to
+          // Compare has no nav entry — it needs a selection, so it is reached
+          // from the sessions list. It should still light the item it came
+          // from, or the sidebar says you are nowhere.
+          const active =
+            to === '/'
+              ? path === '/' || path.startsWith('/s/') || path === '/compare'
+              : path === to
           return (
             <button
               key={to}

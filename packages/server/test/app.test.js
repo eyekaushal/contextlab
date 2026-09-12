@@ -1,5 +1,5 @@
 import { createSessionTracker } from '@contextlab/core'
-import { closeDatabase, openDatabase } from '@contextlab/store'
+import { closeDatabase, listSessions, openDatabase } from '@contextlab/store'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { ingestCapture } from '../src/ingest.js'
@@ -408,6 +408,97 @@ describe('the API', () => {
       const hostile = await get('/api/sessions?sort=id%3B%20DROP%20TABLE%20sessions')
       expect(hostile.status).toBe(200)
       expect((await get('/api/sessions')).body.sessions).toHaveLength(1)
+    })
+  })
+
+  describe('compare', () => {
+    /** @param {string[]} ids */
+    const compare = (ids) =>
+      get(`/api/compare?${ids.map((id) => `ids=${encodeURIComponent(id)}`).join('&')}`)
+
+    /**
+     * A second session, so there is something to compare against. Comparing a
+     * session with itself proves nothing.
+     */
+    function second() {
+      const tracker = createSessionTracker()
+      for (let turn = 0; turn < 2; turn += 1) {
+        const capt = capture(turn)
+        capt.id = `other-${turn}`
+        capt.sessionTag = 'ffff9999'
+        capt.request.body.model = 'claude-haiku-4-5-20251001'
+        ingestCapture(db, capt, { tracker })
+      }
+      const rows = /** @type {any[]} */ (listSessions(db, { limit: 10 }))
+      return String(rows.find((row) => String(row.id) !== sessionId)?.id)
+    }
+
+    it('returns one column per session and only categories that appear', async () => {
+      const other = second()
+      const { status, body } = await compare([sessionId, other])
+
+      expect(status).toBe(200)
+      expect(body.columns).toHaveLength(2)
+      expect(body.categories.length).toBeGreaterThan(0)
+      // A row of zeros in every column is noise in a table about difference.
+      for (const category of body.categories) {
+        expect(
+          body.columns.some((/** @type {any} */ c) => (c.categories[category] ?? 0) > 0),
+        ).toBe(true)
+      }
+    })
+
+    it('gives each column the same reconciled totals as its own optimize screen', async () => {
+      const other = second()
+      const { body } = await compare([sessionId, other])
+      const own = await get(`/api/sessions/${sessionId}/optimize`)
+      const column = body.columns.find(
+        (/** @type {any} */ c) => c.session.id === sessionId,
+      )
+
+      expect(column.total.count).toBe(own.body.total.count)
+      expect(column.total.recoverableUsd).toBeCloseTo(own.body.total.recoverableUsd, 10)
+    })
+
+    it("computes no deltas — which column is the baseline is the reader's choice", async () => {
+      const other = second()
+      const { body } = await compare([sessionId, other])
+      for (const column of body.columns) {
+        expect(column).not.toHaveProperty('delta')
+      }
+    })
+
+    it('refuses fewer than two sessions', async () => {
+      expect((await compare([sessionId])).status).toBe(400)
+      expect((await get('/api/compare')).status).toBe(400)
+    })
+
+    it('drops duplicates rather than showing a session against itself', async () => {
+      const other = second()
+      const { body } = await compare([sessionId, sessionId, other])
+      expect(body.columns).toHaveLength(2)
+    })
+
+    it('says which sessions it could not read', async () => {
+      const other = second()
+      const { status, body } = await compare([sessionId, other, 'no-such-session'])
+      expect(status).toBe(200)
+      expect(body.missing).toEqual(['no-such-session'])
+      expect(body.columns).toHaveLength(2)
+    })
+
+    it('fails rather than drawing a one-column comparison', async () => {
+      const { status } = await compare([sessionId, 'no-such-session'])
+      expect(status).toBe(404)
+    })
+
+    it('accepts a comma-separated list as well as repeated parameters', async () => {
+      const other = second()
+      const { status, body } = await get(
+        `/api/compare?ids=${encodeURIComponent(sessionId)},${encodeURIComponent(other)}`,
+      )
+      expect(status).toBe(200)
+      expect(body.columns).toHaveLength(2)
     })
   })
 
