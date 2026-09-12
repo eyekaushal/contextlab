@@ -3,6 +3,8 @@
  *
  * Every message in a turn, in order, with its token cost and category colour.
  * Selecting one opens it on the right: rendered, raw, and what we know about it.
+ * Rendered is the default — a tool call read as `{command:npm install}` is the
+ * form we hash and index, not the call anyone made.
  *
  * **The system prompt is Turn 0.** docs/DESIGN.md is emphatic about this — it is
  * routinely the largest single thing in the window and the prior tool never
@@ -14,6 +16,7 @@
 
 import { ArrowLeft, ChevronDown, ChevronRight, Repeat2 } from 'lucide-react'
 import { useState } from 'react'
+import { Rendered } from '../components/rendered-block.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Badge } from '../components/ui/badge.jsx'
 import { Card } from '../components/ui/card.jsx'
@@ -278,6 +281,7 @@ function measured(block) {
  */
 function Detail({ block }) {
   const { data, loading } = useApi(block ? `/api/blocks/${block.id}` : null)
+  const [raw, setRaw] = useState(false)
 
   if (!block) {
     return (
@@ -328,14 +332,55 @@ function Detail({ block }) {
       ) : null}
 
       <div className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)]">
-        <div className="border-b border-[var(--color-border-subtle)] px-2.5 py-1 text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
-          {loading ? 'Loading…' : 'Raw'}
+        <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] px-2.5 py-1">
+          <span className="text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
+            {loading ? 'Loading…' : 'Content'}
+          </span>
+          {/* Raw is never taken away — it is the thing that can be checked
+              against the wire, and a rendered view that cannot be verified is
+              a second thing to distrust. */}
+          <div className="ml-auto flex items-center gap-0.5 text-[11px]">
+            <Toggle active={!raw} onClick={() => setRaw(false)}>
+              Rendered
+            </Toggle>
+            <Toggle active={raw} onClick={() => setRaw(true)}>
+              Raw
+            </Toggle>
+          </div>
         </div>
-        <pre className="max-h-[60vh] overflow-auto px-2.5 py-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
-          {block.isImage ? '[image data is never stored]' : text || block.preview}
-        </pre>
+
+        <div className="max-h-[60vh] overflow-auto px-2.5 py-2">
+          {raw ? (
+            <pre className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
+              {block.isImage ? '[image data is never stored]' : text || block.preview}
+            </pre>
+          ) : (
+            <Rendered block={block} text={text || block.preview || ''} />
+          )}
+        </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * @param {{ active: boolean, onClick: () => void, children: any }} props
+ */
+function Toggle({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'rounded px-1.5 py-0.5',
+        active
+          ? 'bg-[var(--color-gridline)] text-[var(--color-text-primary)]'
+          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
+      )}
+    >
+      {children}
+    </button>
   )
 }
 

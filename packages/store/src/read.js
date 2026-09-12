@@ -172,6 +172,77 @@ export function listSessions(db, options = {}) {
 }
 
 /**
+ * Search the things a session is *made of*, not the words inside it.
+ *
+ * FTS over message content answers "where was this said". It does not answer
+ * "which session uses playwright", because an MCP server that is never called
+ * appears in no message — its cost is in the tool definitions, and the reader
+ * who types its name gets nothing back. Same for a rule name, a file that was
+ * read fifteen times, or a tool.
+ *
+ * `LIKE` rather than FTS, deliberately: these are short identifiers, not prose,
+ * and a reader typing `playw` expects `playwright`. FTS matches whole tokens
+ * and would not.
+ *
+ * @param {Db} db
+ * @param {string} query
+ * @param {{ limit?: number, sessionId?: string }} [options]
+ * @returns {Record<string, unknown>[]}
+ */
+export function searchEntities(db, query, options = {}) {
+  const term = String(query ?? '').trim()
+  if (term.length < 2) return []
+
+  const like = `%${term.replace(/[\\%_]/g, '\\$&')}%`
+  const limit = options.limit ?? 20
+
+  const entities = /** @type {any[]} */ (
+    prepare(
+      db,
+      `
+        SELECT a.entity_type AS kind, a.entity_name AS name, a.session_id,
+               SUM(a.tokens) AS tokens, SUM(a.cost_usd) AS cost_usd,
+               SUM(a.calls)  AS calls,
+               s.project_name, s.tool
+          FROM attribution a
+          JOIN sessions s ON s.id = a.session_id
+         WHERE a.entity_name LIKE @like ESCAPE '\\'
+           AND (@sessionId IS NULL OR a.session_id = @sessionId)
+         GROUP BY a.entity_type, a.entity_name, a.session_id
+         ORDER BY cost_usd DESC, tokens DESC
+         LIMIT @limit
+      `,
+    ).all({ like, sessionId: options.sessionId ?? null, limit })
+  )
+
+  const findings = /** @type {any[]} */ (
+    prepare(
+      db,
+      `
+        SELECT 'finding' AS kind, f.title AS name, f.session_id,
+               f.rule, f.severity, f.wasted_cost_usd AS cost_usd,
+               f.wasted_tokens AS tokens,
+               s.project_name, s.tool
+          FROM findings f
+          JOIN sessions s ON s.id = f.session_id
+         WHERE (f.title LIKE @like ESCAPE '\\' OR f.rule LIKE @like ESCAPE '\\'
+                OR f.detail LIKE @like ESCAPE '\\')
+           AND (@sessionId IS NULL OR f.session_id = @sessionId)
+           AND NOT EXISTS (
+             SELECT 1 FROM dismissals d
+              WHERE d.session_id = f.session_id AND d.rule = f.rule
+                AND d.title = f.title
+           )
+         ORDER BY f.wasted_cost_usd DESC
+         LIMIT @limit
+      `,
+    ).all({ like, sessionId: options.sessionId ?? null, limit })
+  )
+
+  return [...findings, ...entities]
+}
+
+/**
  * Sessions whose cached findings are older than their newest turn.
  *
  * The cache is written by whatever last ran the rules. A screen that reads it

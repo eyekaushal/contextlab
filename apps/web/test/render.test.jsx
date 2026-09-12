@@ -12,10 +12,16 @@ import { describe, expect, it } from 'vitest'
 import { App, Route } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { ContextDiff } from '../src/components/context-diff.jsx'
+import { EntityMatches } from '../src/components/entity-matches.jsx'
 import { ExportMenu } from '../src/components/export-menu.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
+import {
+  parseArguments,
+  parseMarkdown,
+  Rendered,
+} from '../src/components/rendered-block.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
 import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
@@ -600,6 +606,191 @@ describe('compare screen', () => {
     expect(html).toContain('text-[var(--color-status-good)]">\u2212<!-- -->$5.37')
     // Fewer turns is not an improvement, so that difference stays grey.
     expect(html).toContain('text-[var(--color-text-muted)]">\u2212<!-- -->3')
+  })
+})
+
+describe('a block rendered rather than dumped', () => {
+  it('shows a tool call as a signature and an argument table', () => {
+    const html = renderToString(
+      <Rendered
+        block={{ blockType: 'tool_use', toolName: 'Bash' }}
+        text="{command:npm install,timeout:120}"
+      />,
+    )
+    expect(html).toContain('Bash')
+    expect(html).toContain('command')
+    expect(html).toContain('npm install')
+    expect(html).toContain('timeout')
+    // Not the stored serialisation, which is what the raw view is for.
+    expect(html).not.toContain('{command:npm install,timeout:120}')
+  })
+
+  it('shows the raw string rather than inventing a table it cannot parse', () => {
+    const html = renderToString(
+      <Rendered
+        block={{ blockType: 'tool_use', toolName: 'Bash' }}
+        text="not an object"
+      />,
+    )
+    expect(html).toContain('not an object')
+  })
+
+  it('folds the middle of a long result and says how much is hidden', () => {
+    const log = Array.from({ length: 400 }, (_, i) => `line ${i}`).join('\n')
+    const html = renderToString(
+      <Rendered block={{ blockType: 'tool_result', toolName: 'Bash' }} text={log} />,
+    )
+    expect(html).toContain('line 0')
+    expect(html).toContain('line 399')
+    expect(html).not.toContain('line 200')
+    // Never a silent truncation.
+    expect(html).toContain('364') // 400 - 24 head - 12 tail
+    expect(html).toContain('lines hidden')
+  })
+
+  it('leaves a short result whole', () => {
+    const html = renderToString(
+      <Rendered block={{ blockType: 'tool_result' }} text={'a\nb\nc'} />,
+    )
+    expect(html).not.toContain('lines hidden')
+  })
+
+  it('says an image was never stored rather than drawing a gap', () => {
+    const html = renderToString(
+      <Rendered block={{ isImage: true, tokensEstimated: 1600 }} text="" />,
+    )
+    expect(html).toContain('never stored')
+    expect(html).toContain('1,600')
+  })
+
+  it('renders text as markdown, not as characters', () => {
+    const html = renderToString(
+      <Rendered
+        block={{ blockType: 'text' }}
+        text={'## Heading\n\nSome `code` and **bold**.\n\n- one\n- two'}
+      />,
+    )
+    expect(html).toContain('Heading')
+    expect(html).toContain('<code')
+    expect(html).toContain('<strong')
+    expect(html).toContain('<ul')
+    expect(html).toContain('</li>')
+    expect(html).not.toContain('## Heading')
+  })
+
+  it('never injects html', () => {
+    const html = renderToString(
+      <Rendered block={{ blockType: 'text' }} text={'<script>alert(1)</script>'} />,
+    )
+    // Escaped, because every element is constructed rather than parsed.
+    expect(html).toContain('&lt;script&gt;')
+    expect(html).not.toContain('<script>')
+  })
+})
+
+describe('reading back a tool call', () => {
+  it('splits at the top level only', () => {
+    expect(parseArguments('{a:1,b:2}')).toEqual([
+      { name: 'a', value: '1' },
+      { name: 'b', value: '2' },
+    ])
+    // A nested object contains a comma that is not a separator.
+    expect(parseArguments('{edits:[{old:a,new:b}],path:/x}')).toEqual([
+      { name: 'edits', value: '[{old:a,new:b}]' },
+      { name: 'path', value: '/x' },
+    ])
+  })
+
+  it('keeps a colon inside a value', () => {
+    expect(parseArguments('{url:https://example.com}')).toEqual([
+      { name: 'url', value: 'https://example.com' },
+    ])
+  })
+
+  it('returns null on anything it cannot read cleanly', () => {
+    // A wrong table is worse than none, so the caller falls back to raw.
+    expect(parseArguments('not an object')).toBeNull()
+    expect(parseArguments('{unbalanced')).toBeNull()
+    expect(parseArguments('{novalue}')).toBeNull()
+    expect(parseArguments('{a:1}}')).toBeNull()
+    expect(parseArguments('{}')).toEqual([])
+  })
+})
+
+describe('markdown parsing', () => {
+  it('keeps a fenced block whole, separators and all', () => {
+    const nodes = parseMarkdown('text\n```\n# not a heading\n- not a list\n```')
+    expect(nodes[0].kind).toBe('para')
+    expect(nodes[1]).toMatchObject({
+      kind: 'code',
+      lines: ['# not a heading', '- not a list'],
+    })
+  })
+
+  it('does not merge an ordered list into a bulleted one', () => {
+    const nodes = parseMarkdown('- a\n- b\n1. one\n2. two')
+    expect(nodes).toHaveLength(2)
+    expect(nodes[0]).toMatchObject({ kind: 'list', ordered: false })
+    expect(nodes[1]).toMatchObject({ kind: 'list', ordered: true })
+  })
+
+  it('keys list items by the line they came from', () => {
+    const [list] = parseMarkdown('- a\n- b')
+    expect(list.kind === 'list' && list.items.map((i) => i.key)).toEqual(['i0', 'i1'])
+  })
+
+  it('returns nothing for nothing', () => {
+    expect(parseMarkdown('')).toEqual([])
+    expect(parseMarkdown('\n\n  \n')).toEqual([])
+  })
+})
+
+describe('search over what a session is made of', () => {
+  const entities = [
+    {
+      kind: 'finding',
+      name: 'MCP server "playwright" was never used',
+      sessionId: 'tag:a',
+      severity: 'critical',
+      costUsd: 0.33,
+    },
+    { kind: 'mcp_server', name: 'playwright', sessionId: 'tag:a', costUsd: 0.33 },
+    {
+      kind: 'file',
+      name: '/repo/contextlab/src/auth.js',
+      sessionId: 'tag:a',
+      costUsd: 0.69,
+    },
+    { kind: 'tool', name: 'Bash', sessionId: 'tag:a', costUsd: 0.01 },
+    { kind: 'tool', name: 'Read', sessionId: 'tag:a', costUsd: 0.01 },
+    { kind: 'tool', name: 'Edit', sessionId: 'tag:a', costUsd: 0.01 },
+    { kind: 'tool', name: 'Grep', sessionId: 'tag:a', costUsd: 0.01 },
+    { kind: 'tool', name: 'Glob', sessionId: 'tag:a', costUsd: 0.01 },
+  ]
+
+  it('labels every kind of match', () => {
+    const html = renderToString(<EntityMatches entities={entities} query="playwright" />)
+    expect(html).toContain('Findings')
+    expect(html).toContain('MCP servers')
+    expect(html).toContain('Files')
+    expect(html).toContain('Tools')
+  })
+
+  it('shortens a path to what a reader recognises', () => {
+    const html = renderToString(<EntityMatches entities={entities} query="auth" />)
+    expect(html).toContain('auth.js')
+    // The whole path stays available rather than being lost.
+    expect(html).toContain('/repo/contextlab/src/auth.js')
+  })
+
+  it('says how many it is not showing', () => {
+    const html = renderToString(<EntityMatches entities={entities} query="a" />)
+    expect(html).toContain('showing <!-- -->4<!-- --> of <!-- -->5')
+  })
+
+  it('renders nothing without a query or without matches', () => {
+    expect(renderToString(<EntityMatches entities={entities} query="" />)).toBe('')
+    expect(renderToString(<EntityMatches entities={[]} query="x" />)).toBe('')
   })
 })
 

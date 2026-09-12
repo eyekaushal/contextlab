@@ -61,6 +61,8 @@ index groups them by area instead.
 - [Sorting is a whitelist in SQL, never a browser-side reorder](#sorting-is-a-whitelist-in-sql-never-a-browser-side-reorder)
 - [Compare computes no deltas on the server](#compare-computes-no-deltas-on-the-server)
 - [The hash router carries a query string](#the-hash-router-carries-a-query-string)
+- [Search covers what a session is made of, not only what was said in it](#search-covers-what-a-session-is-made-of-not-only-what-was-said-in-it)
+- [Rendered is the default, and raw never goes away](#rendered-is-the-default-and-raw-never-goes-away)
 
 **CLI**
 
@@ -959,6 +961,49 @@ strips the query before matching a pattern. Returning only the path was the
 first attempt and was silently broken: moving from `?ids=a&ids=b` to
 `?ids=a&ids=b&ids=c` fires `hashchange`, the path is identical, and setting
 state to the same string renders nothing at all.
+
+---
+
+## Search covers what a session is made of, not only what was said in it
+
+Type `playwright` into a search box over message content and you get nothing —
+because an MCP server that is never called appears in no message. Its whole cost
+is in the tool definitions, which is exactly why there is a finding about it.
+The same is true of a rule name, a tool, or a file read fifteen times.
+
+So `/api/search` answers twice: FTS over block text, and `LIKE` over
+attribution entities and finding rules, titles and details. `LIKE` rather than
+FTS for the second, deliberately — these are short identifiers, not prose, and
+someone typing `playw` expects `playwright`, which whole-token matching will
+never give them. `%` and `_` are escaped so a wildcard is a literal.
+
+The two lists are never merged into one ranking. A finding and a line of an npm
+log are different kinds of answer, and interleaving them by score buries
+whichever loses. The screen groups by kind and labels each group, findings
+first, because a finding is the answer and the entities are the material it was
+computed from.
+
+---
+
+## Rendered is the default, and raw never goes away
+
+`docs/DESIGN.md` promised "rendered + raw + metadata" and we shipped raw only,
+so a tool call read as `{command:npm install}` — the serialisation we hash and
+index, not the call anyone made.
+
+Four shapes get four treatments: a call is a signature and an argument table; a
+result keeps its first 24 and last 12 lines with the middle folded and counted;
+text is markdown; an image says the bytes were never stored and the count is a
+flat estimate rather than a measurement.
+
+Two rules hold it honest. **No HTML is ever injected** — every element is
+constructed, so a message containing `<script>` renders as that text. And the
+argument reader returns null on anything it cannot parse cleanly, falling back
+to the raw string; the stored form is our own writer's, but it is lossy for a
+value with an unbalanced brace, and a wrong table is worse than no table.
+
+Raw stays one click away. It is the view that can be checked against the wire,
+and a rendered view nobody can verify is a second thing to distrust.
 
 ---
 

@@ -38,6 +38,7 @@ import {
   replaceFindings,
   restoreFinding,
   searchBlocks,
+  searchEntities,
   spendTotals,
   staleFindingSessions,
   systemSegments,
@@ -272,14 +273,41 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
 
   app.get('/api/filters', (c) => c.json(listFilterOptions(db)))
 
+  /**
+   * Search message content *and* the things a session is made of.
+   *
+   * Two kinds of answer to one question. A reader who types `playwright` means
+   * "where is playwright costing me", and the honest answer is usually the MCP
+   * server finding rather than a message that happens to contain the word — an
+   * MCP server that is never called appears in no message at all.
+   *
+   * Each result carries its kind so the screen can label it. Nothing is merged
+   * into a single ranking: a finding and a line of a log are not comparable,
+   * and pretending they are would bury one under the other.
+   */
   app.get('/api/search', (c) => {
     const query = c.req.query('q') ?? ''
+    const limit = clamp(Number(c.req.query('limit') ?? 50), 1, 200)
+    const sessionId = c.req.query('session')
+
+    refreshFindings(sessionId ? [sessionId] : undefined)
+
     const results = searchBlocks(db, query, {
-      limit: clamp(Number(c.req.query('limit') ?? 50), 1, 200),
-      ...(c.req.query('session') ? { sessionId: c.req.query('session') } : {}),
+      limit,
+      ...(sessionId ? { sessionId } : {}),
       ...(c.req.query('category') ? { category: c.req.query('category') } : {}),
     })
-    return c.json({ query, results: toCamelAll(/** @type {any[]} */ (results)) })
+
+    const entities = searchEntities(db, query, {
+      limit: Math.min(limit, 20),
+      ...(sessionId ? { sessionId } : {}),
+    })
+
+    return c.json({
+      query,
+      results: toCamelAll(/** @type {any[]} */ (results)),
+      entities: toCamelAll(/** @type {any[]} */ (entities)),
+    })
   })
 
   // -------------------------------------------------------------------------

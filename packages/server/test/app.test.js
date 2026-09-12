@@ -411,6 +411,82 @@ describe('the API', () => {
     })
   })
 
+  describe('search', () => {
+    it('answers with message hits and with entities, labelled', async () => {
+      const { body } = await get('/api/search?q=playwright')
+      // The gap this closes: an MCP server that is never called appears in no
+      // message, so content search alone returns nothing for its name.
+      expect(body.entities.length).toBeGreaterThan(0)
+      expect(body.entities.map((/** @type {any} */ e) => e.kind)).toContain('mcp_server')
+      for (const entity of body.entities) {
+        expect(typeof entity.kind).toBe('string')
+        expect(typeof entity.sessionId).toBe('string')
+      }
+    })
+
+    it('surfaces the finding, not just the raw entity', async () => {
+      const optimize = await get(`/api/sessions/${sessionId}/optimize`)
+      const target = optimize.body.findings[0]
+      // Searched by rule name: a reader who knows what went wrong should not
+      // have to remember how the title was worded.
+      const { body } = await get(`/api/search?q=${encodeURIComponent(target.rule)}`)
+      const finding = body.entities.find((/** @type {any} */ e) => e.kind === 'finding')
+      expect(finding.rule).toBe(target.rule)
+      expect(finding.severity).toBeTruthy()
+    })
+
+    it('computes findings before searching them', async () => {
+      // On a database nothing has analysed, the findings cache is empty. A
+      // search that read it without refreshing would answer "no matches" for a
+      // finding that exists.
+      const fresh = openDatabase(':memory:')
+      const tracker = createSessionTracker()
+      for (let turn = 0; turn < 4; turn += 1)
+        ingestCapture(fresh, capture(turn), { tracker })
+
+      const { app: cold } = createApp({ db: fresh })
+      const response = await cold.fetch(
+        new Request('http://localhost/api/search?q=playwright'),
+      )
+      const body = /** @type {any} */ (await response.json())
+      expect(body.entities.some((/** @type {any} */ e) => e.kind === 'mcp_server')).toBe(
+        true,
+      )
+
+      // And a rule name reaches the cache that was empty a moment ago.
+      const ruled = await cold.fetch(
+        new Request('http://localhost/api/search?q=stuck-oversized-result'),
+      )
+      const found = /** @type {any} */ (await ruled.json())
+      expect(found.entities.some((/** @type {any} */ e) => e.kind === 'finding')).toBe(
+        true,
+      )
+      closeDatabase(fresh)
+    })
+
+    it('still searches message content', async () => {
+      const { body } = await get('/api/search?q=authentication')
+      expect(body.results.length).toBeGreaterThan(0)
+    })
+
+    it('returns both lists empty rather than failing on a term that matches nothing', async () => {
+      const { status, body } = await get('/api/search?q=zzzznothing')
+      expect(status).toBe(200)
+      expect(body.results).toEqual([])
+      expect(body.entities).toEqual([])
+    })
+
+    it('scopes to a session when given one', async () => {
+      const scoped = await get(
+        `/api/search?q=playwright&session=${encodeURIComponent(sessionId)}`,
+      )
+      expect(scoped.body.entities.length).toBeGreaterThan(0)
+
+      const elsewhere = await get('/api/search?q=playwright&session=no-such-session')
+      expect(elsewhere.body.entities).toEqual([])
+    })
+  })
+
   describe('compare', () => {
     /** @param {string[]} ids */
     const compare = (ids) =>

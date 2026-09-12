@@ -13,6 +13,7 @@
 
 import { ArrowDown, GitCompare, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { EntityMatches } from '../components/entity-matches.jsx'
 import { ExportMenu } from '../components/export-menu.jsx'
 import { Severity } from '../components/health.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
@@ -71,6 +72,11 @@ export function Sessions({ version }) {
 
   const options = useApi('/api/filters', { refreshKey: version })
   const summary = useApi('/api/summary', { refreshKey: version })
+  // Only asked for when there is a term. Search covers what a session is made
+  // of as well as what was said inside it.
+  const matches = useApi(debounced ? url('/api/search', { q: debounced }) : null, {
+    refreshKey: version,
+  })
   const { data, error, loading } = useApi(
     url('/api/sessions', { limit: 100, q: debounced, sort, ...filters }),
     { refreshKey: version },
@@ -119,6 +125,8 @@ export function Sessions({ version }) {
         active={Boolean(filtered)}
       />
 
+      <EntityMatches entities={matches.data?.entities ?? []} query={debounced} />
+
       {error ? <Failed message={error} /> : null}
       {loading && !data ? <Loading /> : null}
 
@@ -127,10 +135,16 @@ export function Sessions({ version }) {
           <Empty
             title={
               debounced
-                ? `Nothing matches “${debounced}”.`
+                ? (matches.data?.entities ?? []).length > 0
+                  ? `No session message matches “${debounced}”.`
+                  : `Nothing matches “${debounced}”.`
                 : 'Nothing matches those filters.'
             }
-            hint="Search covers every message, tool call and result — not just session ids."
+            hint={
+              (matches.data?.entities ?? []).length > 0
+                ? 'It does match findings and entities — those are listed above.'
+                : 'Search covers every message, tool call and result, plus findings, tools, MCP servers and files.'
+            }
           />
         ) : (
           <Empty

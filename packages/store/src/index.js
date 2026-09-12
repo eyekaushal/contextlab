@@ -35,6 +35,7 @@ export {
   listTurns,
   overallSummary,
   searchBlocks,
+  searchEntities,
   spendTotals,
   staleFindingSessions,
   systemSegments,

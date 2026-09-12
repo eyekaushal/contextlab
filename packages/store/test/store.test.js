@@ -16,6 +16,7 @@ import {
   listTurns,
   overallSummary,
   searchBlocks,
+  searchEntities,
   staleFindingSessions,
 } from '../src/read.js'
 import { localDay, recordTurn, replaceFindings } from '../src/write.js'
@@ -248,6 +249,120 @@ describe('full-text search', () => {
   it('escapes each term as a literal', () => {
     expect(escapeFtsQuery('npm ERR!')).toBe('"npm" "ERR!"')
     expect(escapeFtsQuery('  ')).toBe('')
+  })
+})
+
+describe('searching what a session is made of', () => {
+  /** @type {import('better-sqlite3').Database} */
+  let db
+
+  beforeEach(() => {
+    db = openDatabase(':memory:')
+    recordTurn(db, {
+      session: {
+        id: 'sess-1',
+        tool: 'claude',
+        provider: 'anthropic',
+        model: 'claude-opus-5',
+        projectPath: '/repo/contextlab',
+        projectName: 'contextlab',
+      },
+      turn: {
+        id: 'cap-1',
+        sessionId: 'sess-1',
+        capturedAt: Date.parse('2026-09-09T10:00:00Z'),
+        model: 'claude-opus-5',
+        inputTokens: 1000,
+        outputTokens: 10,
+        contextTokens: 1010,
+        costUsd: 0.02,
+        equivalentCostUsd: 0.02,
+      },
+      blocks: [block('the build is failing')],
+      attribution: [
+        {
+          entityType: 'mcp_server',
+          entityName: 'playwright',
+          tokens: 8000,
+          costUsd: 0.33,
+        },
+        {
+          entityType: 'file',
+          entityName: '/repo/contextlab/src/auth.js',
+          tokens: 4000,
+          costUsd: 0.69,
+        },
+        { entityType: 'tool', entityName: 'Bash', tokens: 300, costUsd: 0.01 },
+      ],
+    })
+
+    replaceFindings(db, 'sess-1', [
+      {
+        rule: 'unused-mcp-server',
+        title: 'MCP server "playwright" was never used',
+        severity: 'critical',
+        wastedCostUsd: 0.33,
+        wastedTokens: 8000,
+        claim: 'recoverable',
+      },
+    ])
+  })
+
+  it('finds an MCP server that appears in no message at all', () => {
+    // The gap this exists to close. Its cost is in the tool definitions, so
+    // full-text search over message content returns nothing for it.
+    expect(searchBlocks(db, 'playwright')).toHaveLength(0)
+
+    const hits = searchEntities(db, 'playwright')
+    expect(hits.map((hit) => hit.kind)).toContain('mcp_server')
+    expect(hits.map((hit) => hit.kind)).toContain('finding')
+  })
+
+  it('puts the finding first, because that is the answer to the question', () => {
+    expect(searchEntities(db, 'playwright')[0]?.kind).toBe('finding')
+  })
+
+  it('matches a prefix, the way a person types a name', () => {
+    expect(searchEntities(db, 'playw').length).toBeGreaterThan(0)
+    expect(searchEntities(db, 'auth.js').length).toBeGreaterThan(0)
+  })
+
+  it('matches a rule name as well as a title', () => {
+    const hits = searchEntities(db, 'unused-mcp-server')
+    expect(hits[0]?.kind).toBe('finding')
+  })
+
+  it('refuses a term too short to mean anything', () => {
+    // One character matches most of the database and answers nothing.
+    expect(searchEntities(db, 'a')).toEqual([])
+    expect(searchEntities(db, '   ')).toEqual([])
+  })
+
+  it('treats a wildcard as a literal', () => {
+    // `%` and `_` are LIKE syntax. Left unescaped, "%" would match everything
+    // and report it as a hit.
+    expect(searchEntities(db, '%%')).toEqual([])
+    expect(searchEntities(db, 'pl_ywright')).toEqual([])
+  })
+
+  it('leaves a dismissed finding out', () => {
+    dismissFinding(
+      db,
+      'sess-1',
+      'unused-mcp-server',
+      'MCP server "playwright" was never used',
+    )
+    expect(searchEntities(db, 'playwright').some((hit) => hit.kind === 'finding')).toBe(
+      false,
+    )
+  })
+
+  it('scopes to one session when asked', () => {
+    expect(
+      searchEntities(db, 'playwright', { sessionId: 'sess-1' }).length,
+    ).toBeGreaterThan(0)
+    expect(searchEntities(db, 'playwright', { sessionId: 'sess-other' })).toEqual([])
+    closeDatabase(db)
   })
 })
 
