@@ -76,9 +76,15 @@ export function SessionOverview({ sessionId, version }) {
       0,
     )
 
-  const criticalFindings = findings.filter(
-    (/** @type {any} */ finding) => finding.severity === 'critical',
-  ).length
+  // Counts come from the API's reconciled totals, not from this screen's own
+  // arithmetic over a list it is about to truncate.
+  const totals = session.data.total ?? {
+    count: findings.length,
+    critical: 0,
+    recoverableUsd: 0,
+  }
+  const criticalFindings = Number(totals.critical) || 0
+  const SHOWN = 3
 
   return (
     <div className="space-y-5 p-6">
@@ -130,7 +136,10 @@ export function SessionOverview({ sessionId, version }) {
             />
           </div>
           <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {findings.length} finding{findings.length === 1 ? '' : 's'}
+            {totals.count} finding{totals.count === 1 ? '' : 's'}
+            {totals.recoverableUsd > 0
+              ? ` · ${usd(totals.recoverableUsd)} recoverable`
+              : ''}
           </div>
         </div>
       </StatRow>
@@ -180,22 +189,26 @@ export function SessionOverview({ sessionId, version }) {
 
         {findings.length === 0 ? (
           <Card className="p-4 text-xs text-[var(--color-text-muted)]">
-            Nothing flagged for this session.{' '}
-            <button
-              type="button"
-              className="text-[var(--color-cat-system-prompt)] underline-offset-2 hover:underline"
-              onClick={() => navigate(`/s/${encoded}/optimize`)}
-            >
-              Run the rules
-            </button>{' '}
-            to check again.
+            Nothing flagged for this session. None of the ten rules matched.
           </Card>
         ) : (
-          findings
-            .slice(0, 3)
-            .map((/** @type {any} */ finding) => (
+          <>
+            {findings.slice(0, SHOWN).map((/** @type {any} */ finding) => (
               <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
-            ))
+            ))}
+
+            {/* Never truncate silently. The header says nine; this says which
+                nine you are looking at. */}
+            {findings.length > SHOWN ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/s/${encoded}/optimize`)}
+                className="w-full rounded border border-dashed border-[var(--color-border-subtle)] py-2 text-xs text-[var(--color-text-muted)] hover:border-[var(--color-baseline)] hover:text-[var(--color-text-primary)]"
+              >
+                Showing {SHOWN} of {findings.length} · view all
+              </button>
+            ) : null}
+          </>
         )}
       </section>
     </div>

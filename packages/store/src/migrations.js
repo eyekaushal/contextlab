@@ -303,11 +303,19 @@ ALTER TABLE attribution ADD COLUMN call_tokens INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE attribution ADD COLUMN result_tokens INTEGER NOT NULL DEFAULT 0;
 `
 
+const BLOCK_ESTIMATE = `
+-- What we counted in this block's own text, as distinct from its share of what
+-- the provider billed for the whole turn. Showing the share beside the text is
+-- how a 19-character message came to be labelled 69 tokens.
+ALTER TABLE blocks ADD COLUMN tokens_estimated INTEGER NOT NULL DEFAULT 0;
+`
+
 /** @type {Migration[]} */
 export const MIGRATIONS = [
   { version: 1, name: 'initial schema', sql: INITIAL },
   { version: 2, name: 'model prices', sql: PRICING },
   { version: 3, name: 'attribution breakdown', sql: ATTRIBUTION_BREAKDOWN },
+  { version: 4, name: 'estimated block tokens', sql: BLOCK_ESTIMATE },
 ]
 
 /**

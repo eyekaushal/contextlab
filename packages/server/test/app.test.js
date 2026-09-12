@@ -461,3 +461,44 @@ describe('the event hub', () => {
     closeDatabase(db)
   })
 })
+
+describe('what a block counts as, versus what it was billed', () => {
+  /** @type {any} */
+  let db
+  /** @type {any} */
+  let app
+  /** @type {string} */
+  let sessionId
+
+  beforeEach(() => {
+    db = openDatabase(':memory:')
+    app = createApp({ db }).app
+    sessionId = String(ingestCapture(db, capture(0)).sessionId)
+  })
+
+  /** @param {string} path */
+  async function read(path) {
+    const response = await app.fetch(new Request(`http://localhost${path}`))
+    return response.json()
+  }
+
+  it('returns both numbers for every block', async () => {
+    const body = await read(`/api/sessions/${sessionId}/messages`)
+    const blocks = body.messages.flatMap((/** @type {any} */ m) => m.blocks)
+    const text = blocks.find((/** @type {any} */ b) => b.blockType === 'text')
+
+    expect(text.tokensEstimated).toBeGreaterThan(0)
+    // A short message must never be reported as thousands of tokens just
+    // because it sat inside an expensive turn.
+    expect(text.tokensEstimated).toBeLessThan(text.chars)
+  })
+
+  it('gives the overview the same totals optimize computes', async () => {
+    const overview = await read(`/api/sessions/${sessionId}`)
+    const optimize = await read(`/api/sessions/${sessionId}/optimize`)
+
+    expect(overview.total.count).toBe(optimize.total.count)
+    expect(overview.total.critical).toBe(optimize.total.critical)
+    expect(overview.total.recoverableUsd).toBeCloseTo(optimize.total.recoverableUsd)
+  })
+})

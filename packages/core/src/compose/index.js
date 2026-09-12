@@ -26,7 +26,8 @@ export { classifyBlock, classifyMessage } from './classify.js'
 /**
  * @typedef {Object} ComposedBlock
  * @property {string} category
- * @property {number} tokens
+ * @property {number} tokens           this block's share of what was billed
+ * @property {number} tokensEstimated  what we counted in this block's own text
  * @property {string} type
  * @property {string} [text]
  * @property {string} [id]        tool_use id
@@ -119,11 +120,17 @@ export function composeRequest(parsed, options = {}) {
  */
 function composeBlock(block, role, model) {
   const category = classifyBlock(block, role)
+  const counted = tokensForBlock(block, model)
 
   return {
     ...block,
     category,
-    tokens: tokensForBlock(block, model),
+    tokens: counted,
+    // Kept through rescaling. `tokens` becomes this block's share of the
+    // provider's total, which is right for a chart about the bill and wrong to
+    // show beside the block's own text — a 19-character message does not
+    // contain 69 tokens.
+    tokensEstimated: counted,
   }
 }
 

@@ -227,6 +227,7 @@ function blocksFor(composition) {
         role: message.role,
         blockType: block.type,
         tokens: block.tokens,
+        tokensEstimated: block.tokensEstimated ?? block.tokens,
         chars: block.chars,
         isImage: block.type === 'image',
         text,

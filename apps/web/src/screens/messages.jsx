@@ -183,7 +183,13 @@ function MessageCard({ message, selected, onSelect }) {
           {message.index + 1} · {message.role}
         </span>
         <span className="tnum ml-auto text-xs text-[var(--color-text-muted)]">
-          {tokens(message.tokens)}
+          {tokens(
+            message.blocks.reduce(
+              (/** @type {number} */ sum, /** @type {any} */ block) =>
+                sum + measured(block),
+              0,
+            ),
+          )}
         </span>
       </div>
 
@@ -242,10 +248,27 @@ function BlockRow({ block, active, onSelect }) {
       </span>
 
       <span className="tnum shrink-0 text-xs text-[var(--color-text-muted)]">
-        {tokens(block.tokens)}
+        {tokens(measured(block))}
       </span>
     </button>
   )
+}
+
+/**
+ * What this block's own text counts as.
+ *
+ * `tokens` is the block's share of what the provider billed for the entire
+ * turn — the right basis for a chart about the bill, and the wrong number to
+ * print beside nineteen characters of text.
+ *
+ * @param {any} block
+ * @returns {number}
+ */
+function measured(block) {
+  const estimated = Number(block.tokensEstimated)
+  return Number.isFinite(estimated) && estimated > 0
+    ? estimated
+    : Number(block.tokens) || 0
 }
 
 /**
@@ -285,7 +308,7 @@ function Detail({ block }) {
       </div>
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-        <Meta label="Tokens" value={exact(block.tokens)} />
+        <Meta label="Tokens" value={exact(measured(block))} />
         <Meta label="Characters" value={exact(block.chars)} />
         <Meta label="Role" value={block.role || '—'} />
         <Meta label="Category" value={categoryLabel(block.category)} />
@@ -294,11 +317,13 @@ function Detail({ block }) {
         {block.toolUseId ? <Meta label="Answers call" value={block.toolUseId} /> : null}
       </dl>
 
+      <BilledShare block={block} />
+
       {block.turnsPresent > 1 ? (
         <p className="rounded border border-[var(--color-status-warning)]/40 bg-[color-mix(in_oklab,var(--color-status-warning)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)]">
-          This was sent {block.turnsPresent} times —{' '}
-          {exact(block.tokens * block.turnsPresent)} tokens in total, for{' '}
-          {exact(block.tokens)} tokens of content.
+          This was sent in {block.turnsPresent} turns —{' '}
+          {exact(measured(block) * block.turnsPresent)} tokens in total, for{' '}
+          {exact(measured(block))} tokens of content.
         </p>
       ) : null}
 
@@ -325,5 +350,32 @@ function Meta({ label, value }) {
         {value}
       </dd>
     </div>
+  )
+}
+
+/**
+ * The two numbers, and why they differ.
+ *
+ * A provider bills one figure for a whole turn. We divide it across the turn's
+ * blocks in proportion to their size so the composition adds up. That share is
+ * not a measurement of this block, and saying so is cheaper than letting
+ * someone discover it and stop trusting the rest.
+ *
+ * @param {{ block: any }} props
+ */
+function BilledShare({ block }) {
+  const counted = measured(block)
+  const billed = Number(block.tokens) || 0
+  // Only worth explaining when the two actually disagree.
+  if (billed <= 0 || Math.abs(billed - counted) / Math.max(counted, 1) < 0.1) return null
+
+  return (
+    <p className="rounded border border-[var(--color-border-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-muted)]">
+      {exact(block.chars)} characters counts as{' '}
+      <span className="text-[var(--color-text-secondary)]">{exact(counted)} tokens</span>.
+      Your provider billed for the whole turn at once; this block's share of that bill is{' '}
+      <span className="text-[var(--color-text-secondary)]">{exact(billed)}</span>, which
+      is what the composition chart uses.
+    </p>
   )
 }

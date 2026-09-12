@@ -382,8 +382,8 @@ export function listBlocksForTurn(db, turnId) {
     `
       SELECT
         b.id, b.role, b.block_type, b.category, b.tool_name, b.tool_use_id,
-        b.file_path, b.mcp_server, b.tokens, b.chars, b.is_image, b.preview,
-        b.text, b.hash,
+        b.file_path, b.mcp_server, b.tokens, b.tokens_estimated, b.chars,
+        b.is_image, b.preview, b.text, b.hash,
         tb.position, tb.message_index,
         (SELECT COUNT(DISTINCT x.turn_id) FROM turn_blocks x WHERE x.block_id = b.id)
           AS turns_present

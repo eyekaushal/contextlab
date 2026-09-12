@@ -71,7 +71,8 @@
  * @property {string} [toolUseId]
  * @property {string} [filePath]
  * @property {string} [mcpServer]
- * @property {number} [tokens]
+ * @property {number} [tokens]           share of what was billed
+ * @property {number} [tokensEstimated] counted in this block's own text
  * @property {number} [chars]
  * @property {boolean} [isImage]
  * @property {string} [text]
@@ -279,12 +280,12 @@ function insertBlocks(db, turn, blocks) {
   const insert = db.prepare(`
     INSERT INTO blocks (
       session_id, hash, role, block_type, category, tool_name, tool_use_id,
-      file_path, mcp_server, tokens, chars, is_image, text, preview,
-      first_seen_turn, first_seen_at
+      file_path, mcp_server, tokens, tokens_estimated, chars, is_image, text,
+      preview, first_seen_turn, first_seen_at
     ) VALUES (
       @sessionId, @hash, @role, @blockType, @category, @toolName, @toolUseId,
-      @filePath, @mcpServer, @tokens, @chars, @isImage, @text, @preview,
-      @firstSeenTurn, @firstSeenAt
+      @filePath, @mcpServer, @tokens, @tokensEstimated, @chars, @isImage, @text,
+      @preview, @firstSeenTurn, @firstSeenAt
     )
     ON CONFLICT(session_id, hash) DO NOTHING
   `)
@@ -306,6 +307,7 @@ function insertBlocks(db, turn, blocks) {
       filePath: block.filePath ?? null,
       mcpServer: block.mcpServer ?? null,
       tokens: block.tokens ?? 0,
+      tokensEstimated: block.tokensEstimated ?? block.tokens ?? 0,
       chars: block.chars ?? 0,
       isImage: block.isImage ? 1 : 0,
       text: block.text ?? null,

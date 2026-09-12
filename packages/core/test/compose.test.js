@@ -203,3 +203,38 @@ describe('rescaleToActual', () => {
     expect(rescaleToActual(composed, -5)).toBe(composed)
   })
 })
+
+describe('estimated tokens survive rescaling', () => {
+  const parsed = parseRequest(
+    {
+      model: 'claude-opus-5',
+      messages: [
+        { role: 'user', content: 'make the tests pass' },
+        { role: 'user', content: 'a much longer message '.repeat(200) },
+      ],
+    },
+    { apiFormat: 'anthropic-messages' },
+  )
+
+  it('keeps what each block actually counts as', () => {
+    const composed = composeRequest(/** @type {any} */ (parsed))
+    const short = composed.messages[0]?.blocks[0]
+    expect(short?.tokensEstimated).toBe(short?.tokens)
+    // 19 characters is about five tokens, not sixty-nine.
+    expect(short?.tokensEstimated).toBeLessThan(10)
+  })
+
+  it('leaves the estimate alone when tokens become a share of the bill', () => {
+    const composed = composeRequest(/** @type {any} */ (parsed))
+    const before = composed.messages[0]?.blocks[0]?.tokensEstimated
+
+    const exact = rescaleToActual(composed, 500_000)
+    const short = exact.messages[0]?.blocks[0]
+
+    // `tokens` is now this block's slice of half a million billed tokens.
+    expect(short?.tokens).toBeGreaterThan(100)
+    // What it actually says has not changed.
+    expect(short?.tokensEstimated).toBe(before)
+    expect(short?.tokensEstimated).toBeLessThan(10)
+  })
+})
