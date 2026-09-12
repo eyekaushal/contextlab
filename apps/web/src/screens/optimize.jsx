@@ -80,7 +80,7 @@ function EverySession({ version }) {
                   </span>
                 </button>
                 <span className="tnum text-sm font-semibold">
-                  {usd(report.total.wastedCostUsd)}
+                  {usd(report.total.recoverableUsd)}
                 </span>
               </div>
 
@@ -137,7 +137,7 @@ function OneSession({ sessionId, version }) {
         <Clean />
       ) : (
         <>
-          <Totals total={data.total} />
+          <Totals total={data.total} spentUsd={summary.totalCostUsd} />
           {findings.map((/** @type {any} */ finding) => (
             <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
           ))}
@@ -148,18 +148,28 @@ function OneSession({ sessionId, version }) {
 }
 
 /**
- * @param {{ total: any }} props
+ * @param {{ total: any, spentUsd?: number }} props
  */
-function Totals({ total }) {
+function Totals({ total, spentUsd }) {
   return (
     <Card className="p-4">
-      <StatRow className="sm:grid-cols-3">
+      {/* Three numbers that do not pretend to add up to one. Recoverable is
+          money already spent that a change gives back; potential is a saving
+          from a change not yet made. Summing them is what produced "$10.31
+          recoverable" on a session that cost $6.08. */}
+      <StatRow className="sm:grid-cols-4">
+        <Stat label="Spent" value={usd(spentUsd ?? 0)} hint="equivalent API cost" />
         <Stat
           label="Recoverable"
-          value={usd(total.wastedCostUsd)}
-          hint="at the rates these turns were priced at"
+          value={usd(total.recoverableUsd)}
+          hint={`${exact(total.recoverableTokens)} tokens`}
+          tone={total.recoverableUsd > 0 ? 'var(--color-status-warning)' : undefined}
         />
-        <Stat label="Wasted tokens" value={exact(total.wastedTokens)} />
+        <Stat
+          label="Potential"
+          value={usd(total.potentialUsd)}
+          hint="from changes not yet made"
+        />
         <Stat
           label="Findings"
           value={total.count}

@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { exact, usd } from '../lib/format.js'
 import { cn } from '../lib/utils.js'
 import { Severity } from './health.jsx'
+import { Badge } from './ui/badge.jsx'
 import { Card } from './ui/card.jsx'
 
 /**
@@ -22,13 +23,27 @@ export function Finding({ finding, className }) {
   return (
     <Card className={cn('p-4', className)}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Severity severity={finding.severity} />
           <h3 className="min-w-0 text-sm font-medium">{finding.title}</h3>
+          {finding.claim === 'potential' ? (
+            <Badge>potential</Badge>
+          ) : finding.countsTowardTotal === false ? (
+            <Badge>counted under {finding.supersededBy}</Badge>
+          ) : null}
         </div>
 
         <div className="tnum shrink-0 text-right text-sm">
-          <div className="font-semibold text-[var(--color-text-primary)]">
+          <div
+            className={cn(
+              'font-semibold',
+              // A figure that is not in the headline must not look like one
+              // that is.
+              counted(finding)
+                ? 'text-[var(--color-text-primary)]'
+                : 'text-[var(--color-text-muted)]',
+            )}
+          >
             {usd(finding.wastedCostUsd)}
           </div>
           {finding.wastedTokens > 0 ? (
@@ -169,4 +184,14 @@ function workingOut(finding) {
   }
 
   return null
+}
+
+/**
+ * Does this finding contribute to the headline figure?
+ *
+ * @param {any} finding
+ * @returns {boolean}
+ */
+function counted(finding) {
+  return finding.claim !== 'potential' && finding.countsTowardTotal !== false
 }

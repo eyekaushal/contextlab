@@ -58,7 +58,8 @@ export function searchBlocks(db, query, options = {}) {
         b.tokens, b.first_seen_at,
         s.tool, s.project_name, s.model,
         snippet(blocks_fts, 0, '[', ']', ' … ', 24) AS snippet,
-        (SELECT COUNT(*) FROM turn_blocks tb WHERE tb.block_id = b.id) AS resent_turns
+        (SELECT COUNT(DISTINCT tb.turn_id) FROM turn_blocks tb WHERE tb.block_id = b.id)
+          AS resent_turns
       FROM blocks_fts
       JOIN blocks   b ON b.id = blocks_fts.rowid
       JOIN sessions s ON s.id = b.session_id
@@ -177,8 +178,12 @@ export function findRepeatedBlocks(db, sessionId, options = {}) {
     `
       SELECT
         b.id, b.category, b.tool_name, b.file_path, b.tokens, b.preview,
-        COUNT(tb.turn_id)              AS turns_present,
-        b.tokens * COUNT(tb.turn_id)   AS tokens_resent
+        -- DISTINCT matters: the same content can appear several times inside a
+        -- single turn. Counting rows instead of turns made a block present in
+        -- 5 turns report as 15, and the waste rule multiplied by 14 rather
+        -- than 4 — claiming more tokens than the session was ever billed.
+        COUNT(DISTINCT tb.turn_id)            AS turns_present,
+        b.tokens * COUNT(DISTINCT tb.turn_id) AS tokens_resent
       FROM blocks b
       JOIN turn_blocks tb ON tb.block_id = b.id
       WHERE b.session_id = @sessionId
@@ -380,7 +385,8 @@ export function listBlocksForTurn(db, turnId) {
         b.file_path, b.mcp_server, b.tokens, b.chars, b.is_image, b.preview,
         b.text, b.hash,
         tb.position, tb.message_index,
-        (SELECT COUNT(*) FROM turn_blocks x WHERE x.block_id = b.id) AS turns_present
+        (SELECT COUNT(DISTINCT x.turn_id) FROM turn_blocks x WHERE x.block_id = b.id)
+          AS turns_present
       FROM turn_blocks tb
       JOIN blocks b ON b.id = tb.block_id
       WHERE tb.turn_id = ?
@@ -509,8 +515,9 @@ export function getBlock(db, blockId) {
   return /** @type {Record<string, unknown> | undefined} */ (
     prepare(
       db,
-      `SELECT b.*, (SELECT COUNT(*) FROM turn_blocks tb WHERE tb.block_id = b.id)
-              AS turns_present
+      `SELECT b.*,
+              (SELECT COUNT(DISTINCT tb.turn_id) FROM turn_blocks tb
+                WHERE tb.block_id = b.id) AS turns_present
        FROM blocks b WHERE b.id = ?`,
     ).get(blockId)
   )

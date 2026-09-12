@@ -10,6 +10,7 @@ import {
   modelTooExpensiveForWork,
   RULES,
   rankFindings,
+  reconcileFindings,
   redundantReads,
   runRules,
   stuckOnError,
@@ -545,8 +546,14 @@ describe('running every rule', () => {
     const total = totalWaste(findings)
     expect(total.count).toBe(findings.length)
     expect(total.critical).toBeGreaterThan(0)
-    expect(total.wastedCostUsd).toBeCloseTo(
-      findings.reduce((sum, finding) => sum + finding.wastedCostUsd, 0),
+    // Only findings that survived reconciliation, and only the recoverable
+    // kind, contribute to the headline.
+    const counted = findings.filter(
+      (/** @type {any} */ f) =>
+        f.claim === 'recoverable' && f.countsTowardTotal !== false,
+    )
+    expect(total.recoverableUsd).toBeCloseTo(
+      counted.reduce((sum, /** @type {any} */ f) => sum + f.wastedCostUsd, 0),
     )
   })
 
@@ -570,26 +577,177 @@ describe('running every rule', () => {
 
 describe('rankFindings', () => {
   it('breaks a cost tie with severity', () => {
-    const ranked = rankFindings([
+    const ranked = rankFindings(
+      /** @type {any[]} */ ([
+        {
+          rule: 'a',
+          severity: 'info',
+          title: 'A',
+          detail: '',
+          fix: '',
+          wastedTokens: 0,
+          wastedCostUsd: 0,
+        },
+        {
+          rule: 'b',
+          severity: 'warning',
+          title: 'B',
+          detail: '',
+          fix: '',
+          wastedTokens: 0,
+          wastedCostUsd: 0,
+        },
+      ]),
+    )
+    expect(ranked.map((finding) => finding.rule)).toEqual(['b', 'a'])
+  })
+})
+
+describe('reconciling what a finding claims', () => {
+  const authFile = 'export function login() {}\n'.repeat(400)
+
+  /** A session where a large file is both re-read and stuck in the history. */
+  const overlapping = session(
+    Array.from({ length: 6 }, (_, turn) => ({
+      tools: [{ name: 'Read', description: 'Read a file', input_schema: {} }],
+      messages: [
+        { role: 'user', content: 'fix the build' },
+        ...Array.from({ length: turn + 1 }, (_, i) => [
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool_use',
+                id: `r${i}`,
+                name: 'Read',
+                input: { file_path: '/repo/auth.js' },
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: `r${i}`, content: authFile }],
+          },
+        ]).flat(),
+      ],
+    })),
+  )
+
+  it('never lets two rules claim the same tokens', () => {
+    const findings = runRules(overlapping)
+    const counted = findings.filter(
+      (/** @type {any} */ f) =>
+        f.claim === 'recoverable' && f.countsTowardTotal !== false,
+    )
+    const keys = counted.map((/** @type {any} */ f) => f.claimKey)
+    // A file read many times is both a redundant read and a stuck result.
+    // Both are true; only one may be counted.
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('keeps a superseded finding visible, and says what took its claim', () => {
+    const findings = reconcileFindings(
+      /** @type {any[]} */ ([
+        {
+          rule: 'big',
+          severity: 'critical',
+          title: 'B',
+          detail: '',
+          fix: '',
+          wastedTokens: 900,
+          wastedCostUsd: 9,
+          claim: 'recoverable',
+          claimKey: 'file:/a.js',
+        },
+        {
+          rule: 'small',
+          severity: 'warning',
+          title: 'S',
+          detail: '',
+          fix: '',
+          wastedTokens: 100,
+          wastedCostUsd: 1,
+          claim: 'recoverable',
+          claimKey: 'file:/a.js',
+        },
+      ]),
+    )
+    const small = findings.find((f) => f.rule === 'small')
+    expect(small?.countsTowardTotal).toBe(false)
+    expect(small?.supersededBy).toBe('big')
+    // Still in the list — it is worth reading, it just is not counted twice.
+    expect(findings).toHaveLength(2)
+  })
+
+  it('keeps a hypothetical out of the money already spent', () => {
+    const findings = /** @type {any[]} */ ([
       {
-        rule: 'a',
-        severity: 'info',
-        title: 'A',
+        rule: 'r',
+        severity: 'critical',
+        title: 'R',
         detail: '',
         fix: '',
-        wastedTokens: 0,
-        wastedCostUsd: 0,
+        wastedTokens: 100,
+        wastedCostUsd: 2,
+        claim: 'recoverable',
+        claimKey: 'r',
       },
       {
-        rule: 'b',
-        severity: 'warning',
-        title: 'B',
+        rule: 'cache-not-working',
+        severity: 'critical',
+        title: 'C',
         detail: '',
         fix: '',
-        wastedTokens: 0,
-        wastedCostUsd: 0,
+        wastedTokens: 900,
+        wastedCostUsd: 9,
+        claim: 'potential',
+        claimKey: 'cache',
       },
     ])
-    expect(ranked.map((finding) => finding.rule)).toEqual(['b', 'a'])
+    const total = totalWaste(findings)
+    // "A working cache would have saved $9" is not $9 you lost.
+    expect(total.recoverableUsd).toBe(2)
+    expect(total.potentialUsd).toBe(9)
+  })
+
+  it('cannot report recovering more than the session cost', () => {
+    // The helper attaches no cost to its turns, so price the session's own
+    // billed tokens: the ceiling on what could possibly be recovered.
+    const spendUsd =
+      ((overlapping.usage.inputTokens + overlapping.usage.cacheReadTokens) / 1_000_000) *
+        overlapping.inputPricePerMillion || 5
+
+    const total = totalWaste(runRules(overlapping), { spendUsd })
+    expect(total.recoverableUsd).toBeLessThanOrEqual(spendUsd)
+  })
+
+  it('reports a clamp rather than hiding it', () => {
+    // The clamp is a seatbelt, not the fix. When it binds, `capped` says so,
+    // surfacing an over-claiming rule instead of quietly trimming it.
+    const overClaiming = /** @type {any[]} */ ([
+      {
+        rule: 'r',
+        severity: 'critical',
+        title: 'R',
+        detail: '',
+        fix: '',
+        wastedTokens: 10,
+        wastedCostUsd: 99,
+        claim: 'recoverable',
+        claimKey: 'r',
+      },
+    ])
+    expect(totalWaste(overClaiming, { spendUsd: 10 })).toMatchObject({
+      capped: true,
+      recoverableUsd: 10,
+    })
+    expect(totalWaste(overClaiming, { spendUsd: 200 }).capped).toBe(false)
+  })
+
+  it('gives every rule a claim type and a key', () => {
+    for (const finding of runRules(overlapping)) {
+      expect(['recoverable', 'potential']).toContain(finding.claim)
+      expect(String(finding.claimKey).length).toBeGreaterThan(0)
+    }
   })
 })

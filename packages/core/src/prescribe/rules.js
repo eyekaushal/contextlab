@@ -29,8 +29,31 @@ const MILLION = 1_000_000
  * @property {string} fix
  * @property {number} wastedTokens
  * @property {number} wastedCostUsd
+ * @property {'recoverable' | 'potential'} claim
+ * @property {string} claimKey   what these tokens are, so two rules cannot
+ *                               claim the same ones twice
+ * @property {boolean} [countsTowardTotal] set by reconciliation; false when
+ *                               another finding already claimed these tokens
+ * @property {string} [supersededBy] the rule that took the claim
  * @property {Record<string, unknown>} [evidence]
  */
+
+/**
+ * What a finding is claiming.
+ *
+ * **recoverable** — tokens you were actually billed for that this specific
+ * change would have removed. These are money already spent, so their sum can
+ * never exceed what the session cost.
+ *
+ * **potential** — what a different choice would have saved: a working cache, a
+ * cheaper model, a smaller thinking budget. Real, worth knowing, and *not money
+ * you lost*. Adding it to recoverable is what produced "$10.31 recoverable from
+ * a $6.08 session".
+ *
+ * The two are reported as separate figures and never summed together.
+ */
+export const CLAIM_RECOVERABLE = 'recoverable'
+export const CLAIM_POTENTIAL = 'potential'
 
 /** @typedef {import('./summary.js').SessionSummary} SessionSummary */
 
@@ -100,6 +123,8 @@ export function unusedMcpServer(session) {
         `Remove "${entry.entityName}" from .mcp.json, or start the agent with ` +
         `it disabled:\n\n  "mcpServers": {\n    "${entry.entityName}": { ... }  ` +
         `<- delete this\n  }`,
+      claim: CLAIM_RECOVERABLE,
+      claimKey: `mcp:${entry.entityName}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
       evidence: { server: entry.entityName, perTurn, turns: session.turnCount },
@@ -143,6 +168,8 @@ export function stuckOversizedResult(session) {
         'you need from this output. If it came from a command, redirect it to a ' +
         'file and read the part you need:\n\n  npm install > /tmp/install.log 2>&1\n' +
         '  tail -50 /tmp/install.log',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: block.filePath ? `file:${block.filePath}` : `block:${block.key}`,
       wastedTokens: block.tokensResent,
       wastedCostUsd: costOf(block.tokensResent, session),
       evidence: { tokens: block.tokens, turns: block.turnsPresent, tool: block.toolName },
@@ -187,6 +214,8 @@ export function bloatedMemoryFile(session) {
         `Trim ${entry.entityName}. Move reference material an agent can look up ` +
         'on demand — long examples, changelogs, API dumps — into files it can ' +
         'read when needed, and keep only the instructions it must always follow.',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: `segment:${entry.entityName}`,
       wastedTokens: excess,
       wastedCostUsd: costOf(excess, session),
       evidence: { file: entry.entityName, perTurn, turns: session.turnCount },
@@ -227,6 +256,8 @@ export function redundantReads(session) {
       fix:
         'Ask the agent to work from what it has already read rather than ' +
         're-reading. If the file changed in between, the repeat is legitimate.',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: `file:${entry.entityName}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
       evidence: { file: entry.entityName, reads: entry.calls },
@@ -268,6 +299,8 @@ export function approachingContextLimit(session) {
         'Clear the large tool results you no longer need, or start a fresh ' +
         'session for the next piece of work. Hitting the limit mid-task forces ' +
         'the agent to compact, which loses detail you may still need.',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: 'context-limit',
       wastedTokens: 0,
       wastedCostUsd: 0,
       evidence: { used: session.lastContextTokens, limit, share },
@@ -331,6 +364,8 @@ export function modelTooExpensiveForWork(session, options = {}) {
         `would have cost about ${usd(session.totalCostUsd * ratio)} instead of ` +
         `${usd(session.totalCostUsd)}.`,
       fix: `Use ${alternative.model} for exploration, and switch back for the edits.`,
+      claim: CLAIM_POTENTIAL,
+      claimKey: 'model',
       wastedTokens: 0,
       wastedCostUsd: Math.max(0, saving),
       evidence: { model: session.model, alternative: alternative.model, ratio },
@@ -378,6 +413,8 @@ export function cacheNotWorking(session) {
         'timestamp, a session id, a shuffled tool list. Caching matches on an ' +
         'exact prefix, so anything that varies at the head invalidates everything ' +
         'after it. Look at what sits before your first stable instruction.',
+      claim: CLAIM_POTENTIAL,
+      claimKey: 'cache',
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
       evidence: { hitRate, cacheReadTokens: session.usage.cacheReadTokens, billed },
@@ -417,6 +454,8 @@ export function stuckOnError(session) {
       fix:
         'Interrupt and tell the agent what is actually failing. A loop like this ' +
         'rarely resolves itself, and every attempt adds its output to the context.',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: `call:${call.signature}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
       evidence: { tool: call.name, count: call.count },
@@ -450,6 +489,8 @@ export function imageOverhead(session) {
       fix:
         'Start a fresh session once the agent has described what it saw, or ' +
         'paste the relevant text instead of a screenshot where that is possible.',
+      claim: CLAIM_RECOVERABLE,
+      claimKey: 'images',
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
       evidence: { perTurn: session.imageTokensPerTurn, turns: session.turnsWithImages },
@@ -488,6 +529,8 @@ export function thinkingDominates(session) {
       fix:
         'Lower the thinking budget for routine work and raise it only for the ' +
         'turns that need it.',
+      claim: CLAIM_POTENTIAL,
+      claimKey: 'thinking',
       wastedTokens: Math.max(0, excess),
       wastedCostUsd: costOf(Math.max(0, excess), session),
       evidence: { thinking, total, share },

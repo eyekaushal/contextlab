@@ -147,6 +147,12 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
     const turns = /** @type {any[]} */ (listTurns(db, id))
     const last = turns[turns.length - 1]
 
+    // Recomputed rather than read from the cache. The rules are pure, and the
+    // overview showing a different count from optimize for the same session is
+    // exactly the bug this route is fixing.
+    const summary = buildSessionSummary(db, id)
+    const findings = summary ? runRules(summary) : []
+
     return c.json({
       session: toCamel(session),
       turns: toCamelAll(turns),
@@ -163,7 +169,12 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
       repeated: toCamelAll(
         /** @type {any[]} */ (findRepeatedBlocks(db, id, { minTurns: 2, limit: 20 })),
       ),
-      findings: toCamelAll(/** @type {any[]} */ (listFindings(db, id))),
+      findings,
+      // Computed from every finding, not from the handful a screen chooses to
+      // render, so the header and the list can never disagree.
+      total: totalWaste(findings, {
+        spendUsd: Number(session.equivalent_cost_usd) || 0,
+      }),
     })
   })
 
@@ -265,7 +276,7 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
         contextLimit: summary.contextLimit,
         totalCostUsd: summary.totalCostUsd,
       },
-      total: totalWaste(findings),
+      total: totalWaste(findings, { spendUsd: summary.totalCostUsd }),
       findings,
     })
   })
@@ -306,23 +317,27 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
 
       reports.push({
         session: toCamel(row),
-        total: totalWaste(findings),
+        total: totalWaste(findings, { spendUsd: summary.totalCostUsd }),
         findings,
       })
     }
 
-    reports.sort((a, b) => b.total.wastedCostUsd - a.total.wastedCostUsd)
+    reports.sort((a, b) => b.total.recoverableUsd - a.total.recoverableUsd)
+
+    /** @param {(totals: any) => number} pick */
+    const sum = (pick) => reports.reduce((total, report) => total + pick(report.total), 0)
 
     return c.json({
       scanned: sessions.length,
+      // Two figures, never added together: money already spent that a change
+      // gives back, and saving available from a change not yet made.
       total: {
-        count: reports.reduce((sum, report) => sum + report.total.count, 0),
-        critical: reports.reduce((sum, report) => sum + report.total.critical, 0),
-        wastedTokens: reports.reduce((sum, report) => sum + report.total.wastedTokens, 0),
-        wastedCostUsd: reports.reduce(
-          (sum, report) => sum + report.total.wastedCostUsd,
-          0,
-        ),
+        count: sum((t) => t.count),
+        critical: sum((t) => t.critical),
+        recoverableUsd: sum((t) => t.recoverableUsd),
+        recoverableTokens: sum((t) => t.recoverableTokens),
+        potentialUsd: sum((t) => t.potentialUsd),
+        potentialTokens: sum((t) => t.potentialTokens),
       },
       reports,
     })

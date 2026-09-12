@@ -11,8 +11,10 @@
  * @module
  */
 
+import { reconcileFindings } from './reconcile.js'
 import { RULES } from './rules.js'
 
+export * from './reconcile.js'
 export * from './rules.js'
 export { hashText, stableStringify, summarizeSession } from './summary.js'
 
@@ -44,7 +46,9 @@ export function runRules(session, options = {}) {
     }
   }
 
-  return rankFindings(findings)
+  // Reconciled here rather than at the call site, so there is no path by which
+  // a caller sums two rules that claimed the same tokens.
+  return rankFindings(reconcileFindings(findings))
 }
 
 /**
@@ -64,20 +68,4 @@ export function rankFindings(findings) {
       (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3) ||
       a.title.localeCompare(b.title),
   )
-}
-
-/**
- * The one-line summary at the top of `contextlab optimize`.
- *
- * @param {Finding[]} findings
- * @returns {{ count: number, wastedTokens: number, wastedCostUsd: number,
- *             critical: number }}
- */
-export function totalWaste(findings) {
-  return {
-    count: findings.length,
-    wastedTokens: findings.reduce((sum, finding) => sum + finding.wastedTokens, 0),
-    wastedCostUsd: findings.reduce((sum, finding) => sum + finding.wastedCostUsd, 0),
-    critical: findings.filter((finding) => finding.severity === 'critical').length,
-  }
 }

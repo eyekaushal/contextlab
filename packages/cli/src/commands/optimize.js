@@ -70,7 +70,7 @@ export function optimize(options = {}) {
  */
 function printReport(report, many) {
   const { session, summary, findings } = report
-  const total = totalWaste(findings)
+  const total = totalWaste(findings, { spendUsd: summary.totalCostUsd })
 
   const label =
     `${session.tool || summary.tool || 'session'} · ${summary.model}` +
@@ -89,17 +89,32 @@ function printReport(report, many) {
     return
   }
 
+  // Three numbers that do not pretend to add up to one: what was spent, what a
+  // change would give back, and what a different choice would have saved.
   console.log(
     `\n  ${color.bold(`${total.count} findings`)}` +
       (total.critical > 0 ? color.red(` · ${total.critical} critical`) : '') +
-      ` · ${color.bold(usd(total.wastedCostUsd))} recoverable\n`,
+      ` · ${color.bold(usd(total.recoverableUsd))} recoverable of ` +
+      `${usd(summary.totalCostUsd)} spent` +
+      (total.potentialUsd > 0
+        ? color.gray(
+            `\n  ${usd(total.potentialUsd)} more available from changes you have not made`,
+          )
+        : '') +
+      '\n',
   )
 
   findings.forEach((/** @type {any} */ finding, /** @type {number} */ index) => {
     const paint = SEVERITY_PAINT[finding.severity] ?? color.gray
     console.log(`  ${paint('●')} ${color.bold(finding.title)}`)
+    const note =
+      finding.claim === 'potential'
+        ? ' · potential, not counted in recoverable'
+        : finding.countsTowardTotal === false
+          ? ` · already counted under ${finding.supersededBy}`
+          : ''
     console.log(
-      `    ${color.gray(`${tokens(finding.wastedTokens)} tokens · ${usd(finding.wastedCostUsd)}`)}`,
+      `    ${color.gray(`${tokens(finding.wastedTokens)} tokens · ${usd(finding.wastedCostUsd)}${note}`)}`,
     )
     for (const line of String(finding.detail).split('\n')) {
       console.log(`    ${color.gray(line)}`)

@@ -302,3 +302,23 @@ describe('findings', () => {
     closeDatabase(db)
   })
 })
+
+describe('counting how often content was re-sent', () => {
+  it('counts turns, not occurrences within a turn', () => {
+    const db = openDatabase(':memory:')
+    const log = block('E ModuleNotFoundError\n'.repeat(400), { toolName: 'Bash' })
+
+    // Three copies of the same content inside one turn, then two more turns.
+    // A row count says 5; the honest answer is 3 turns.
+    ingest(db, 'cap-1', [log, log, log])
+    ingest(db, 'cap-2', [log])
+    ingest(db, 'cap-3', [log])
+
+    const [repeated] = findRepeatedBlocks(db, 'sess-1', { minTokens: 100 })
+    expect(repeated.turns_present).toBe(3)
+    // Claiming 4 re-sends instead of 2 is how a rule ends up asserting more
+    // waste than the session was ever billed for.
+    expect(repeated.tokens_resent).toBe(Number(repeated.tokens) * 3)
+    closeDatabase(db)
+  })
+})

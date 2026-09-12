@@ -331,9 +331,9 @@ describe('the API', () => {
       const { body } = await get('/api/optimize?limit=10')
       expect(body.scanned).toBe(1)
       expect(body.reports.length).toBeGreaterThan(0)
-      expect(body.total.wastedCostUsd).toBeGreaterThan(0)
+      expect(body.total.recoverableUsd).toBeGreaterThan(0)
 
-      const costs = body.reports.map((/** @type {any} */ r) => r.total.wastedCostUsd)
+      const costs = body.reports.map((/** @type {any} */ r) => r.total.recoverableUsd)
       expect(
         [...costs].sort((/** @type {any} */ a, /** @type {any} */ b) => b - a),
       ).toEqual(costs)
