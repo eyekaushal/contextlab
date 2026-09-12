@@ -56,6 +56,9 @@ index groups them by area instead.
 - [Every finding shows its working out](#every-finding-shows-its-working-out)
 - [Optimize recomputes rather than reading cached findings](#optimize-recomputes-rather-than-reading-cached-findings)
 - [A dismissal lives in its own table, not on the finding](#a-dismissal-lives-in-its-own-table-not-on-the-finding)
+- [The findings cache stores what a finding claims, not just what it costs](#the-findings-cache-stores-what-a-finding-claims-not-just-what-it-costs)
+- [A screen that reads the cache refreshes what is stale first](#a-screen-that-reads-the-cache-refreshes-what-is-stale-first)
+- [Sorting is a whitelist in SQL, never a browser-side reorder](#sorting-is-a-whitelist-in-sql-never-a-browser-side-reorder)
 
 **CLI**
 
@@ -860,6 +863,62 @@ Dismissing is not deleting. The finding stays in the list, marked, behind a
 critical count, recoverable and potential alike. Both the dashboard and
 `contextlab optimize` read the same table, so a finding set aside in the browser
 is also gone from the terminal.
+
+---
+
+## The findings cache stores what a finding claims, not just what it costs
+
+Blocks 1 and 2 fixed the screens that recompute: optimize reconciles overlapping
+claims and reports recoverable and potential as two figures that are never
+added. The sessions list was still reading the cached `findings` table and
+summing every row into one "wasted" column — so the screen that greets you
+first still printed **$10.31 wasted on a session that cost $6.08**, which is the
+original bug, exactly.
+
+The cache could not do better, because it did not know what it held: no column
+said whether a row was money already lost or a saving from a change not yet
+made, or whether another rule had already claimed the same tokens.
+
+Migration 6 adds `claim` and `counts_toward_total`, written by
+`replaceFindings`. The sessions list now does the same reconciliation in SQL —
+`recoverable_cost_usd`, `potential_cost_usd`, a finding count and the worst
+severity still standing, each excluding anything dismissed. Four screens, one
+answer.
+
+---
+
+## A screen that reads the cache refreshes what is stale first
+
+The findings cache is written by whatever last ran the rules. Before this block
+that was only the optimize screen and the CLI, so the sessions list showed zero
+findings for any session nobody had opened — and a stale count for one that had
+grown since.
+
+The rules are pure and deterministic, so a cache can never *disagree* with a
+recomputation; it can only be older. That makes staleness a cheap question:
+which sessions have a turn newer than their newest finding? `/api/sessions` and
+`/api/summary` ask it and recompute only those, which on a warm database is
+none. A blanket recompute would be correct too, and would make the list quadratic
+in sessions for no gain.
+
+---
+
+## Sorting is a whitelist in SQL, never a browser-side reorder
+
+`ORDER BY` cannot be a bound parameter, so a sort key is the one piece of a query
+that could be string-interpolated. `SESSION_SORTS` maps a handful of names to
+fixed SQL and falls back to "most recent" for anything else — the key never
+reaches the query, only a value looked up by it.
+
+Sorting in the browser was the alternative and is worse for a different reason:
+the list is a page of rows, so reordering it would rank a subset and present it
+as a ranking. A column that cannot be sorted by the store is therefore a plain
+heading rather than a button, and the two that can't — source, model, directory
+— stay plain.
+
+Each sort is descending only. Every question this screen asks is "which is the
+most", and clicking the active column returns to most recent rather than
+reversing into a question nobody asked.
 
 ---
 

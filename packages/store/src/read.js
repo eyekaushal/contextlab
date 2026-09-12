@@ -78,28 +78,86 @@ export function searchBlocks(db, query, options = {}) {
 }
 
 /**
- * Sessions, newest first, for the sessions screen.
+ * A finding still standing: not set aside by the reader.
+ *
+ * Written once because four subqueries need it and a copy that drifts would
+ * make two columns of the same row disagree.
+ */
+const LIVE_FINDING = `
+  f.session_id = s.id
+  AND NOT EXISTS (
+    SELECT 1 FROM dismissals d
+     WHERE d.session_id = f.session_id AND d.rule = f.rule AND d.title = f.title
+  )
+`
+
+/**
+ * Columns a session may be ordered by.
+ *
+ * A whitelist rather than an interpolated string: ORDER BY cannot be a bound
+ * parameter, so this is the only place a sort key is allowed to come from.
+ *
+ * @type {Record<string, string>}
+ */
+const SESSION_SORTS = {
+  recent: 's.last_seen_at DESC',
+  oldest: 's.last_seen_at ASC',
+  cost: 's.equivalent_cost_usd DESC',
+  recoverable: 'recoverable_cost_usd DESC',
+  turns: 's.turn_count DESC',
+  context: 's.peak_context_tokens DESC',
+  findings: 'finding_count DESC',
+}
+
+/**
+ * Sessions for the sessions screen.
+ *
+ * The three finding columns are the same reconciliation the optimize screen
+ * does, expressed in SQL: money already lost, a saving from a change not yet
+ * made, and how many findings are still standing. Summing all of them into one
+ * "wasted" figure is what listed a $6.08 session as $10.31 wasted.
  *
  * @param {Db} db
  * @param {{ limit?: number, offset?: number, tool?: string, model?: string,
- *           project?: string, since?: number, until?: number }} [options]
+ *           project?: string, since?: number, until?: number,
+ *           sort?: string }} [options]
  * @returns {Record<string, unknown>[]}
  */
 export function listSessions(db, options = {}) {
+  const order = SESSION_SORTS[String(options.sort ?? 'recent')] ?? SESSION_SORTS.recent
+
   return prepare(
     db,
     `
       SELECT s.*,
-        (SELECT COUNT(*) FROM findings f WHERE f.session_id = s.id) AS finding_count,
+        (SELECT COUNT(*) FROM findings f WHERE ${LIVE_FINDING})
+          AS finding_count,
+        (SELECT COUNT(*) FROM findings f
+          WHERE ${LIVE_FINDING} AND f.severity = 'critical')
+          AS critical_count,
+        (SELECT COUNT(*) FROM dismissals d WHERE d.session_id = s.id)
+          AS dismissed_count,
         (SELECT COALESCE(SUM(f.wasted_cost_usd), 0) FROM findings f
-          WHERE f.session_id = s.id) AS wasted_cost_usd
+          WHERE ${LIVE_FINDING}
+            AND f.claim = 'recoverable' AND f.counts_toward_total = 1)
+          AS recoverable_cost_usd,
+        (SELECT COALESCE(SUM(f.wasted_cost_usd), 0) FROM findings f
+          WHERE ${LIVE_FINDING} AND f.claim = 'potential')
+          AS potential_cost_usd,
+        (SELECT f.severity FROM findings f
+          WHERE ${LIVE_FINDING}
+          ORDER BY CASE f.severity
+                     WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 ELSE 2 END,
+                   f.wasted_cost_usd DESC
+          LIMIT 1)
+          AS worst_severity
       FROM sessions s
       WHERE (@tool    IS NULL OR s.tool = @tool)
         AND (@model   IS NULL OR s.model = @model)
         AND (@project IS NULL OR s.project_path = @project)
         AND (@since   IS NULL OR s.last_seen_at >= @since)
         AND (@until   IS NULL OR s.last_seen_at <= @until)
-      ORDER BY s.last_seen_at DESC
+      ORDER BY ${order}
       LIMIT @limit OFFSET @offset
     `,
   ).all({
@@ -111,6 +169,102 @@ export function listSessions(db, options = {}) {
     limit: options.limit ?? 50,
     offset: options.offset ?? 0,
   })
+}
+
+/**
+ * Sessions whose cached findings are older than their newest turn.
+ *
+ * The cache is written by whatever last ran the rules. A screen that reads it
+ * without checking would show a finding count from before the last three turns
+ * landed — or zero, on a session nobody has opened yet. This is the cheap
+ * question "which of these need recomputing", so the answer is usually none.
+ *
+ * @param {Db} db
+ * @param {string[]} [ids] limit to these sessions; omit for all
+ * @returns {string[]}
+ */
+export function staleFindingSessions(db, ids) {
+  const scoped = Array.isArray(ids) && ids.length > 0
+  const placeholders = scoped ? ids.map(() => '?').join(',') : ''
+
+  const rows = /** @type {any[]} */ (
+    db
+      .prepare(
+        `SELECT s.id
+           FROM sessions s
+           LEFT JOIN (
+             SELECT session_id, MAX(created_at) AS at FROM findings GROUP BY session_id
+           ) f ON f.session_id = s.id
+          WHERE (f.at IS NULL OR f.at < s.last_seen_at)
+            ${scoped ? `AND s.id IN (${placeholders})` : ''}`,
+      )
+      .all(...(scoped ? ids : []))
+  )
+
+  return rows.map((row) => String(row.id))
+}
+
+/**
+ * The figures behind the sessions screen's summary strip.
+ *
+ * One query rather than five, and the same reconciliation as everywhere else:
+ * recoverable and potential are reported separately and never added.
+ *
+ * @param {Db} db
+ * @param {{ day?: string, weekStart?: string }} [scope]
+ * @returns {Record<string, number>}
+ */
+export function overallSummary(db, scope = {}) {
+  const day = scope.day ?? localDayString()
+  const weekStart =
+    scope.weekStart ??
+    new Date(Date.parse(`${day}T00:00:00`) - 6 * 86_400_000).toISOString().slice(0, 10)
+
+  const spend = /** @type {any} */ (
+    prepare(
+      db,
+      `SELECT
+         COALESCE(SUM(CASE WHEN captured_day = @day
+           THEN equivalent_cost_usd END), 0)                  AS today,
+         COALESCE(SUM(CASE WHEN captured_day >= @weekStart
+           THEN equivalent_cost_usd END), 0)                  AS week,
+         COALESCE(SUM(equivalent_cost_usd), 0)                AS total,
+         COUNT(*)                                             AS turns,
+         COUNT(DISTINCT session_id)                           AS sessions
+       FROM turns`,
+    ).get({ day, weekStart })
+  )
+
+  const findings = /** @type {any} */ (
+    prepare(
+      db,
+      `SELECT
+         COUNT(*)                                             AS findings,
+         COALESCE(SUM(CASE WHEN f.severity = 'critical'
+           THEN 1 ELSE 0 END), 0)                             AS critical,
+         COALESCE(SUM(CASE WHEN f.claim = 'recoverable' AND f.counts_toward_total = 1
+           THEN f.wasted_cost_usd ELSE 0 END), 0)             AS recoverable,
+         COALESCE(SUM(CASE WHEN f.claim = 'potential'
+           THEN f.wasted_cost_usd ELSE 0 END), 0)             AS potential
+       FROM findings f
+       WHERE NOT EXISTS (
+         SELECT 1 FROM dismissals d
+          WHERE d.session_id = f.session_id AND d.rule = f.rule AND d.title = f.title
+       )`,
+    ).get({})
+  )
+
+  return {
+    today: Number(spend?.today) || 0,
+    week: Number(spend?.week) || 0,
+    total: Number(spend?.total) || 0,
+    turns: Number(spend?.turns) || 0,
+    sessions: Number(spend?.sessions) || 0,
+    findings: Number(findings?.findings) || 0,
+    critical: Number(findings?.critical) || 0,
+    recoverable: Number(findings?.recoverable) || 0,
+    potential: Number(findings?.potential) || 0,
+  }
 }
 
 /**

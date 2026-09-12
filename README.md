@@ -202,7 +202,7 @@ functions, no I/O, no network.
 ## Status
 
 Under active development, and **not yet published to npm**. The analysis
-pipeline is covered by 415 tests, but it has not yet been exercised against a
+pipeline is covered by 466 tests, but it has not yet been exercised against a
 full day of real traffic across every supported agent. Treat the numbers as
 good, not proven.
 

@@ -33,10 +33,12 @@ import {
   listSessions,
   listTurns,
   markDismissed,
+  overallSummary,
   replaceFindings,
   restoreFinding,
   searchBlocks,
   spendTotals,
+  staleFindingSessions,
   systemSegments,
 } from '@contextlab/store'
 import { Hono } from 'hono'
@@ -75,9 +77,31 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
   // Screen 1 — Sessions
   // -------------------------------------------------------------------------
 
+  /**
+   * Bring the cached findings up to date, for the sessions that need it.
+   *
+   * The rules are pure and deterministic, so a cache can never disagree with a
+   * recomputation — it can only be *older*. Screens that read the cache rather
+   * than recomputing (the sessions list, the summary strip) call this first, so
+   * a session nobody has opened still reports its findings, and one that has
+   * grown since reports the current set rather than a stale one.
+   *
+   * @param {string[]} [ids]
+   * @returns {number} how many sessions were recomputed
+   */
+  function refreshFindings(ids) {
+    const stale = staleFindingSessions(db, ids)
+    for (const id of stale) {
+      const summary = buildSessionSummary(db, id)
+      if (summary) replaceFindings(db, id, runRules(summary))
+    }
+    return stale.length
+  }
+
   app.get('/api/sessions', (c) => {
     const query = c.req.query()
     const limit = clamp(Number(query.limit ?? 50), 1, 500)
+    refreshFindings()
 
     const filters = {
       ...(query.tool ? { tool: query.tool } : {}),
@@ -90,6 +114,7 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
     let sessions = /** @type {any[]} */ (
       listSessions(db, {
         ...filters,
+        ...(query.sort ? { sort: query.sort } : {}),
         limit: query.q ? 500 : limit,
         offset: Number(query.offset ?? 0),
       })
@@ -124,6 +149,28 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
         ...(query.q ? (matched[String(session.id)] ?? { matches: 0, snippet: '' }) : {}),
       })),
       ...(query.q ? { query: query.q } : {}),
+    })
+  })
+
+  /**
+   * The sessions screen's summary strip: where the money went, and what is
+   * still outstanding.
+   *
+   * Recoverable and potential come back separately, as everywhere else. The
+   * budget block is only present when the user configured one.
+   */
+  app.get('/api/summary', (c) => {
+    refreshFindings()
+
+    const summary = overallSummary(db)
+    const budget = config.budget ?? {}
+    const spend = spendTotals(db)
+
+    return c.json({
+      ...summary,
+      budget: hasBudget(budget)
+        ? { configured: true, budget, spend, progress: budgetProgress(spend, budget) }
+        : { configured: false },
     })
   })
 

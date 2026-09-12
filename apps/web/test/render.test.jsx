@@ -19,10 +19,12 @@ import { Health, healthOf } from '../src/components/health.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
 import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
+import { SummaryStrip } from '../src/components/summary-strip.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
 import { href, match } from '../src/lib/router.js'
 import { Messages } from '../src/screens/messages.jsx'
+import { COLUMNS, Column, Sessions } from '../src/screens/sessions.jsx'
 
 describe('the shell', () => {
   it('renders without throwing', () => {
@@ -353,6 +355,111 @@ describe('findings as a ranked table', () => {
     // Session-wide claims have no scope to name, and must not invent one.
     expect(scopeOf({ claimKey: 'cache' }).label).toBe('')
     expect(scopeOf({}).label).toBe('')
+  })
+})
+
+describe('the sessions summary strip', () => {
+  const data = {
+    today: 2.5,
+    week: 18.51,
+    total: 18.51,
+    turns: 26,
+    sessions: 5,
+    findings: 17,
+    critical: 5,
+    recoverable: 6.47,
+    potential: 5.41,
+    budget: { configured: false },
+  }
+
+  it('states the position before the table lists the rows', () => {
+    const html = renderToString(<SummaryStrip data={data} />)
+    expect(html).toContain('$2.50')
+    expect(html).toContain('$18.51')
+    expect(html).toContain('26')
+  })
+
+  it('keeps recoverable and potential apart', () => {
+    const html = renderToString(<SummaryStrip data={data} />)
+    expect(html).toContain('$6.47')
+    expect(html).toContain('$5.41')
+    expect(html).toContain('potential')
+  })
+
+  it('shows no budget bar when none is configured', () => {
+    const html = renderToString(<SummaryStrip data={data} />)
+    expect(html).not.toContain('daily')
+  })
+
+  it('draws the bar when a budget exists', () => {
+    const html = renderToString(
+      <SummaryStrip
+        data={{
+          ...data,
+          budget: {
+            configured: true,
+            progress: [{ scope: 'daily', share: 0.5, spent: 2.5, limit: 5, level: 'ok' }],
+          },
+        }}
+      />,
+    )
+    expect(html).toContain('daily')
+    expect(html).toContain('width:50%')
+  })
+
+  it('renders nothing at all before the figures arrive', () => {
+    expect(renderToString(<SummaryStrip data={null} />)).toBe('')
+  })
+})
+
+describe('sessions screen', () => {
+  it('names the question it answers', () => {
+    expect(renderToString(<Sessions />)).toContain('Where did my money go?')
+  })
+
+  /** @param {any} column */
+  const head = (column, sort = 'recent') =>
+    renderToString(
+      <table>
+        <thead>
+          <tr>
+            <Column column={column} sort={sort} onSort={() => {}} />
+          </tr>
+        </thead>
+      </table>,
+    )
+
+  it('makes a column sortable only when the server can order by it', () => {
+    const cost = COLUMNS.find((column) => column.key === 'cost')
+    const source = COLUMNS.find((column) => column.key === 'tool')
+
+    expect(head(cost)).toContain('Sort by Cost')
+    // Sorting one page of rows in the browser would reorder a subset and call
+    // it a ranking, so an unsortable column is a plain heading.
+    expect(head(source)).not.toContain('Sort by Source')
+  })
+
+  it('marks the column currently sorted', () => {
+    const cost = COLUMNS.find((column) => column.key === 'cost')
+    expect(head(cost, 'cost')).toContain('aria-pressed="true"')
+    expect(head(cost, 'recent')).toContain('aria-pressed="false"')
+  })
+
+  it('offers no sort key the store does not know', () => {
+    // The store whitelists these; a column naming anything else would silently
+    // fall back to most recent and look broken.
+    const known = new Set([
+      'recent',
+      'oldest',
+      'cost',
+      'recoverable',
+      'turns',
+      'context',
+      'findings',
+    ])
+    for (const column of COLUMNS) {
+      if (column.sort) expect(known.has(column.sort)).toBe(true)
+    }
   })
 })
 

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { closeDatabase, openDatabase } from '../src/db.js'
+import { dismissFinding } from '../src/dismissals.js'
 import { MIGRATIONS, runMigrations, schemaVersion } from '../src/migrations.js'
 import {
   attributionFor,
@@ -13,7 +14,9 @@ import {
   listFindings,
   listSessions,
   listTurns,
+  overallSummary,
   searchBlocks,
+  staleFindingSessions,
 } from '../src/read.js'
 import { localDay, recordTurn, replaceFindings } from '../src/write.js'
 
@@ -298,7 +301,138 @@ describe('findings', () => {
     const findings = listFindings(db, 'sess-1')
     expect(findings).toHaveLength(1)
     expect(findings[0].wasted_cost_usd).toBe(1.8)
-    expect(listSessions(db)[0].wasted_cost_usd).toBe(1.8)
+    expect(listSessions(db)[0].recoverable_cost_usd).toBe(1.8)
+    closeDatabase(db)
+  })
+
+  it('does not add a potential saving to money that was lost', () => {
+    // The bug this column exists to kill: a session that cost $6.08 listed as
+    // $10.31 wasted, because a hypothetical cache saving was summed with a
+    // real loss and a superseded claim was counted a second time.
+    const db = openDatabase(':memory:')
+    ingest(db, 'cap-1', [block('a')])
+
+    replaceFindings(db, 'sess-1', [
+      {
+        rule: 'stuck-oversized-result',
+        title: 'A 100,729-token result has been re-sent 8 times',
+        severity: 'critical',
+        wastedCostUsd: 3.57,
+        claim: 'recoverable',
+        countsTowardTotal: true,
+      },
+      {
+        rule: 'redundant-read',
+        title: 'the same file, again',
+        severity: 'warning',
+        wastedCostUsd: 2.0,
+        claim: 'recoverable',
+        countsTowardTotal: false,
+      },
+      {
+        rule: 'cache-not-working',
+        title: 'The prompt cache is not being hit',
+        severity: 'critical',
+        wastedCostUsd: 4.87,
+        claim: 'potential',
+        countsTowardTotal: false,
+      },
+    ])
+
+    const [session] = listSessions(db)
+    expect(session.recoverable_cost_usd).toBe(3.57)
+    expect(session.potential_cost_usd).toBe(4.87)
+    expect(session.finding_count).toBe(3)
+    expect(session.critical_count).toBe(2)
+    expect(session.worst_severity).toBe('critical')
+    closeDatabase(db)
+  })
+
+  it('leaves a dismissed finding out of every column it feeds', () => {
+    const db = openDatabase(':memory:')
+    ingest(db, 'cap-1', [block('a')])
+
+    replaceFindings(db, 'sess-1', [
+      {
+        rule: 'a',
+        title: 'A',
+        severity: 'critical',
+        wastedCostUsd: 3,
+        claim: 'recoverable',
+      },
+      {
+        rule: 'b',
+        title: 'B',
+        severity: 'warning',
+        wastedCostUsd: 1,
+        claim: 'recoverable',
+      },
+    ])
+    dismissFinding(db, 'sess-1', 'a', 'A')
+
+    const [session] = listSessions(db)
+    expect(session.finding_count).toBe(1)
+    expect(session.critical_count).toBe(0)
+    expect(session.dismissed_count).toBe(1)
+    expect(session.recoverable_cost_usd).toBe(1)
+    // The severity shown on the row is the worst one still standing.
+    expect(session.worst_severity).toBe('warning')
+
+    expect(overallSummary(db).findings).toBe(1)
+    expect(overallSummary(db).recoverable).toBe(1)
+    closeDatabase(db)
+  })
+
+  it('sorts by a whitelist, and falls back rather than trusting the caller', () => {
+    const db = openDatabase(':memory:')
+    ingest(db, 'cap-1', [block('a')], { costUsd: 1, equivalentCostUsd: 1 })
+    recordTurn(db, {
+      session: {
+        id: 'sess-2',
+        tool: 'codex',
+        provider: 'anthropic',
+        model: 'claude-opus-5',
+        projectPath: '/repo/other',
+        projectName: 'other',
+      },
+      turn: {
+        id: 'cap-2',
+        sessionId: 'sess-2',
+        capturedAt: Date.parse('2026-09-08T10:00:00Z'),
+        model: 'claude-opus-5',
+        inputTokens: 10,
+        outputTokens: 1,
+        contextTokens: 11,
+        costUsd: 99,
+        equivalentCostUsd: 99,
+      },
+      blocks: [block('b')],
+    })
+
+    expect(listSessions(db, { sort: 'recent' })[0].id).toBe('sess-1')
+    expect(listSessions(db, { sort: 'cost' })[0].id).toBe('sess-2')
+    // An unknown key is not interpolated into the query; it falls back.
+    expect(listSessions(db, { sort: 'id; DROP TABLE sessions' })[0].id).toBe('sess-1')
+    closeDatabase(db)
+  })
+
+  it('reports which sessions need their findings recomputed', () => {
+    const db = openDatabase(':memory:')
+    ingest(db, 'cap-1', [block('a')])
+
+    // Never analysed: stale by definition, or the sessions list would print
+    // zero findings for a session that has them.
+    expect(staleFindingSessions(db)).toEqual(['sess-1'])
+
+    replaceFindings(db, 'sess-1', [
+      { rule: 'a', title: 'A', wastedCostUsd: 1, claim: 'recoverable' },
+    ])
+    expect(staleFindingSessions(db)).toEqual([])
+
+    // A turn landing after the last analysis makes it stale again.
+    ingest(db, 'cap-2', [block('b')], { capturedAt: Date.now() + 60_000 })
+    expect(staleFindingSessions(db)).toEqual(['sess-1'])
+    expect(staleFindingSessions(db, ['sess-other'])).toEqual([])
     closeDatabase(db)
   })
 })

@@ -326,6 +326,18 @@ CREATE TABLE dismissals (
 CREATE INDEX dismissals_session ON dismissals(session_id);
 `
 
+const FINDING_CLAIM = `
+-- What a finding is claiming, stored rather than recomputed.
+--
+-- Without these two columns the sessions list summed every cached finding into
+-- one "wasted" figure, which is how a session that cost $6.08 came to be listed
+-- as $10.31 wasted: a hypothetical saving from caching added to money actually
+-- lost, plus two rules claiming the same tokens. The screens that recompute
+-- were fixed first; this is the same fix for the ones that read the cache.
+ALTER TABLE findings ADD COLUMN claim TEXT NOT NULL DEFAULT 'recoverable';
+ALTER TABLE findings ADD COLUMN counts_toward_total INTEGER NOT NULL DEFAULT 1;
+`
+
 /** @type {Migration[]} */
 export const MIGRATIONS = [
   { version: 1, name: 'initial schema', sql: INITIAL },
@@ -333,6 +345,7 @@ export const MIGRATIONS = [
   { version: 3, name: 'attribution breakdown', sql: ATTRIBUTION_BREAKDOWN },
   { version: 4, name: 'estimated block tokens', sql: BLOCK_ESTIMATE },
   { version: 5, name: 'dismissals', sql: DISMISSALS },
+  { version: 6, name: 'what a finding claims', sql: FINDING_CLAIM },
 ]
 
 /**

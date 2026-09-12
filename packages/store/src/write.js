@@ -381,7 +381,8 @@ export function refreshSessionTotals(db, sessionId) {
  * @param {string} sessionId
  * @param {{ rule: string, title: string, severity?: string, detail?: string,
  *           fix?: string, wastedTokens?: number, wastedCostUsd?: number,
- *           evidence?: unknown }[]} findings
+ *           evidence?: unknown, claim?: string,
+ *           countsTowardTotal?: boolean }[]} findings
  * @returns {number} how many were written
  */
 export function replaceFindings(db, sessionId, findings) {
@@ -390,8 +391,9 @@ export function replaceFindings(db, sessionId, findings) {
     const insert = db.prepare(`
       INSERT INTO findings (
         session_id, rule, severity, title, detail, fix,
-        wasted_tokens, wasted_cost_usd, evidence, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        wasted_tokens, wasted_cost_usd, evidence, created_at,
+        claim, counts_toward_total
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(session_id, rule, title) DO NOTHING
     `)
     const now = Date.now()
@@ -407,6 +409,10 @@ export function replaceFindings(db, sessionId, findings) {
         finding.wastedCostUsd ?? 0,
         finding.evidence === undefined ? null : JSON.stringify(finding.evidence),
         now,
+        // Stored so a reader of the cache can tell money lost from money that
+        // a change might have saved, without re-running the rules.
+        finding.claim ?? 'recoverable',
+        finding.countsTowardTotal === false ? 0 : 1,
       )
     }
     return findings.length

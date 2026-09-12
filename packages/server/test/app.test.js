@@ -309,6 +309,108 @@ describe('the API', () => {
     })
   })
 
+  describe('the sessions summary strip', () => {
+    it('separates money lost from money a change might have saved', async () => {
+      const { body } = await get('/api/summary')
+      // Never one "wasted" figure. That is how a $6.08 session was listed as
+      // $10.31 wasted.
+      expect(body).toHaveProperty('recoverable')
+      expect(body).toHaveProperty('potential')
+      expect(body.sessions).toBe(1)
+      expect(body.turns).toBe(4)
+      expect(body.total).toBeGreaterThan(0)
+      expect(body.recoverable).toBeLessThanOrEqual(body.total)
+    })
+
+    it('agrees with optimize on what is outstanding', async () => {
+      const summary = await get('/api/summary')
+      const optimize = await get('/api/optimize?limit=50')
+      expect(summary.body.findings).toBe(optimize.body.total.count)
+      expect(summary.body.critical).toBe(optimize.body.total.critical)
+      expect(summary.body.recoverable).toBeCloseTo(optimize.body.total.recoverableUsd, 10)
+    })
+
+    it('says a budget is absent rather than inventing one', async () => {
+      const { body } = await get('/api/summary')
+      expect(body.budget.configured).toBe(false)
+    })
+  })
+
+  describe('the sessions list', () => {
+    it('reports findings on a session nothing has analysed yet', async () => {
+      // The cache is written by whatever last ran the rules. Reading it without
+      // refreshing would print zero findings for a session with findings.
+      const fresh = openDatabase(':memory:')
+      const tracker = createSessionTracker()
+      for (let turn = 0; turn < 4; turn += 1)
+        ingestCapture(fresh, capture(turn), { tracker })
+
+      const { app: cold } = createApp({ db: fresh })
+      const response = await cold.fetch(new Request('http://localhost/api/sessions'))
+      const body = /** @type {any} */ (await response.json())
+
+      expect(body.sessions[0].findingCount).toBeGreaterThan(0)
+      closeDatabase(fresh)
+    })
+
+    it('reconciles the row the same way optimize reconciles the screen', async () => {
+      const sessions = await get('/api/sessions')
+      const optimize = await get(`/api/sessions/${sessionId}/optimize`)
+      const [row] = sessions.body.sessions
+
+      expect(row.findingCount).toBe(optimize.body.total.count)
+      expect(row.recoverableCostUsd).toBeCloseTo(optimize.body.total.recoverableUsd, 10)
+      expect(row.potentialCostUsd).toBeCloseTo(optimize.body.total.potentialUsd, 10)
+    })
+
+    it('carries the worst severity still standing, not a derived score', async () => {
+      const { body } = await get('/api/sessions')
+      const optimize = await get(`/api/sessions/${sessionId}/optimize`)
+      const worst = optimize.body.findings.some(
+        (/** @type {any} */ f) => f.severity === 'critical',
+      )
+      expect(body.sessions[0].worstSeverity).toBe(worst ? 'critical' : 'warning')
+    })
+
+    it('drops a dismissed finding out of the row and the strip together', async () => {
+      const before = await get('/api/sessions')
+      const target = (
+        await get(`/api/sessions/${sessionId}/optimize`)
+      ).body.findings.find(
+        (/** @type {any} */ f) => f.claim === 'recoverable' && f.wastedCostUsd > 0,
+      )
+
+      await get('/api/findings/dismiss', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId, rule: target.rule, title: target.title }),
+      })
+
+      const after = await get('/api/sessions')
+      const summary = await get('/api/summary')
+      expect(after.body.sessions[0].findingCount).toBe(
+        before.body.sessions[0].findingCount - 1,
+      )
+      expect(after.body.sessions[0].dismissedCount).toBe(1)
+      expect(after.body.sessions[0].recoverableCostUsd).toBeCloseTo(
+        before.body.sessions[0].recoverableCostUsd - target.wastedCostUsd,
+        10,
+      )
+      expect(summary.body.findings).toBe(after.body.sessions[0].findingCount)
+    })
+
+    it('orders by a whitelist and ignores anything else', async () => {
+      const byCost = await get('/api/sessions?sort=cost')
+      expect(byCost.status).toBe(200)
+
+      // ORDER BY cannot be a bound parameter, so an unknown key must fall back
+      // rather than reach the query.
+      const hostile = await get('/api/sessions?sort=id%3B%20DROP%20TABLE%20sessions')
+      expect(hostile.status).toBe(200)
+      expect((await get('/api/sessions')).body.sessions).toHaveLength(1)
+    })
+  })
+
   describe('screen 4 — optimize', () => {
     it('runs the rules and ranks them by money', async () => {
       const { body } = await get(`/api/sessions/${sessionId}/optimize`)

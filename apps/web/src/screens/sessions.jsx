@@ -1,18 +1,23 @@
 /**
- * Screen 1 — Sessions.
+ * Screen 1 — Sessions. *Where did my money go?*
  *
  * Every session, with the one thing the prior tool could not do: search across
  * what was actually said, rather than matching a session id nobody remembers.
  *
+ * A summary strip states the position before the table lists the rows, and the
+ * columns sort — a table you cannot rank is a list, and the question this
+ * screen answers is which session deserves attention.
+ *
  * @module
  */
 
-import { Search, X } from 'lucide-react'
+import { ArrowDown, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ExportMenu } from '../components/export-menu.jsx'
-import { Health, healthOf } from '../components/health.jsx'
+import { Severity } from '../components/health.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
 import { Empty, Failed, Loading } from '../components/states.jsx'
+import { SummaryStrip } from '../components/summary-strip.jsx'
 import { Card } from '../components/ui/card.jsx'
 import { Input } from '../components/ui/input.jsx'
 import { url, useApi } from '../lib/api.js'
@@ -24,12 +29,34 @@ import { cn } from '../lib/utils.js'
 const DEBOUNCE_MS = 200
 
 /**
+ * The table, declared once.
+ *
+ * `sort` is the key the server orders by; a column without one is not sortable,
+ * because sorting a page of rows in the browser would quietly reorder a subset
+ * and call it a ranking.
+ *
+ * @type {{ key: string, label: string, sort?: string, align?: string }[]}
+ */
+export const COLUMNS = [
+  { key: 'tool', label: 'Source' },
+  { key: 'model', label: 'Model' },
+  { key: 'project', label: 'Directory' },
+  { key: 'turns', label: 'Turns', sort: 'turns', align: 'right' },
+  { key: 'context', label: 'Context', sort: 'context', align: 'right' },
+  { key: 'cost', label: 'Cost', sort: 'cost', align: 'right' },
+  { key: 'findings', label: 'Findings', sort: 'recoverable' },
+  { key: 'trend', label: 'Trend' },
+  { key: 'time', label: 'Time', sort: 'recent', align: 'right' },
+]
+
+/**
  * @param {{ version?: number }} props
  */
 export function Sessions({ version }) {
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [filters, setFilters] = useState({ tool: '', model: '', project: '' })
+  const [sort, setSort] = useState('recent')
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), DEBOUNCE_MS)
@@ -37,8 +64,9 @@ export function Sessions({ version }) {
   }, [query])
 
   const options = useApi('/api/filters', { refreshKey: version })
+  const summary = useApi('/api/summary', { refreshKey: version })
   const { data, error, loading } = useApi(
-    url('/api/sessions', { limit: 100, q: debounced, ...filters }),
+    url('/api/sessions', { limit: 100, q: debounced, sort, ...filters }),
     { refreshKey: version },
   )
 
@@ -48,12 +76,20 @@ export function Sessions({ version }) {
   return (
     <div className="space-y-4 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold tracking-tight">Sessions</h1>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-lg font-semibold tracking-tight">Sessions</h1>
+          {/* Every screen answers one question, and says which one. */}
+          <span className="text-xs text-[var(--color-text-muted)]">
+            Where did my money go?
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <SearchBox value={query} onChange={setQuery} />
           <ExportMenu />
         </div>
       </header>
+
+      <SummaryStrip data={summary.data} onOpenOptimize={() => navigate('/optimize')} />
 
       <Filters
         options={options.data}
@@ -94,15 +130,14 @@ export function Sessions({ version }) {
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border-subtle)] text-left text-[11px] uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-3 py-2 font-medium">Source</th>
-                  <th className="px-3 py-2 font-medium">Model</th>
-                  <th className="px-3 py-2 font-medium">Directory</th>
-                  <th className="px-3 py-2 text-right font-medium">Turns</th>
-                  <th className="px-3 py-2 text-right font-medium">Context</th>
-                  <th className="px-3 py-2 text-right font-medium">Cost</th>
-                  <th className="px-3 py-2 font-medium">Health</th>
-                  <th className="px-3 py-2 font-medium">Trend</th>
-                  <th className="px-3 py-2 text-right font-medium">Time</th>
+                  {COLUMNS.map((column) => (
+                    <Column
+                      key={column.key}
+                      column={column}
+                      sort={sort}
+                      onSort={setSort}
+                    />
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -116,6 +151,7 @@ export function Sessions({ version }) {
           <p className="text-xs text-[var(--color-text-muted)]">
             {sessions.length} session{sessions.length === 1 ? '' : 's'}
             {debounced ? ` matching “${debounced}”` : ''}
+            {sort !== 'recent' ? `, by ${SORT_LABEL[sort] ?? sort}` : ''}
           </p>
         </>
       ) : null}
@@ -131,10 +167,8 @@ function SessionRow({ session, query }) {
   const peak = Number(session.peakContextTokens) || 0
   const share = limit > 0 ? peak / limit : 0
 
-  const health = healthOf({
-    contextShare: share,
-    findings: Number(session.findingCount) || 0,
-  })
+  const findings = Number(session.findingCount) || 0
+  const recoverable = Number(session.recoverableCostUsd) || 0
 
   return (
     <>
@@ -170,8 +204,20 @@ function SessionRow({ session, query }) {
           ) : null}
         </td>
         <td className="tnum px-3 py-2 text-right">{usd(session.equivalentCostUsd)}</td>
+        {/* The worst finding still standing, not a score derived from a count.
+            A score hid which of two "warning" sessions had a critical in it. */}
         <td className="px-3 py-2">
-          <Health level={health} />
+          {findings === 0 ? (
+            <span className="text-xs text-[var(--color-text-muted)]">clean</span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Severity severity={session.worstSeverity ?? 'info'} />
+              <span className="tnum text-xs text-[var(--color-text-secondary)]">
+                {findings}
+                {recoverable > 0 ? ` · ${usd(recoverable)}` : ''}
+              </span>
+            </div>
+          )}
         </td>
         <td className="px-3 py-2">
           <Sparkline values={session.trend} limit={limit} />
@@ -194,6 +240,57 @@ function SessionRow({ session, query }) {
         </tr>
       ) : null}
     </>
+  )
+}
+
+/** How a sort reads in the count line under the table. */
+/** @type {Record<string, string>} */
+const SORT_LABEL = {
+  cost: 'cost',
+  recoverable: 'recoverable',
+  turns: 'turns',
+  context: 'peak context',
+  oldest: 'oldest first',
+}
+
+/**
+ * A column heading, which sorts if the server can order by it.
+ *
+ * One arrow, always descending: every sort here answers "which is the most",
+ * and an ascending toggle on "cost" is a question nobody asks. Clicking the
+ * active column returns to most recent.
+ *
+ * @param {{ column: any, sort: string, onSort: (key: string) => void }} props
+ */
+export function Column({ column, sort, onSort }) {
+  const align = column.align === 'right' ? 'text-right' : 'text-left'
+  if (!column.sort) {
+    return <th className={cn('px-3 py-2 font-medium', align)}>{column.label}</th>
+  }
+
+  const active = sort === column.sort
+  return (
+    <th className={cn('px-3 py-2 font-medium', align)}>
+      <button
+        type="button"
+        aria-label={`Sort by ${column.label}`}
+        aria-pressed={active}
+        onClick={() => onSort(active ? 'recent' : column.sort)}
+        className={cn(
+          'inline-flex items-center gap-1 uppercase tracking-wide',
+          column.align === 'right' ? 'flex-row-reverse' : '',
+          active
+            ? 'text-[var(--color-text-primary)]'
+            : 'hover:text-[var(--color-text-secondary)]',
+        )}
+      >
+        {column.label}
+        <ArrowDown
+          aria-hidden="true"
+          className={cn('size-3', active ? 'opacity-100' : 'opacity-0')}
+        />
+      </button>
+    </th>
   )
 }
 
