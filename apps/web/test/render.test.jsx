@@ -19,6 +19,7 @@ import { ExportMenu } from '../src/components/export-menu.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
+import { PageHeader } from '../src/components/page-header.jsx'
 import {
   parseArguments,
   parseMarkdown,
@@ -176,6 +177,85 @@ describe('density', () => {
       /text-\[\d+px\]/.test(readFileSync(file, 'utf8')),
     )
     expect(offenders).toEqual([])
+  })
+})
+
+describe('the page header', () => {
+  it('puts the question under the title, not beside it', () => {
+    const html = renderToString(
+      <PageHeader
+        title="Optimize"
+        question="What do I change first?"
+        note="5 sessions"
+      />,
+    )
+    // Title first, then the question, then the note — three lines in order.
+    expect(html.indexOf('Optimize')).toBeLessThan(html.indexOf('What do I change first?'))
+    expect(html.indexOf('What do I change first?')).toBeLessThan(
+      html.indexOf('5 sessions'),
+    )
+    expect(html).toContain('text-xl')
+  })
+
+  it('offers a way back when told where back is', () => {
+    const html = renderToString(
+      <PageHeader title="Compare" back={{ to: '/', label: 'All sessions' }} />,
+    )
+    expect(html).toContain('All sessions')
+    expect(renderToString(<PageHeader title="Sessions" />)).not.toContain('All sessions')
+  })
+})
+
+describe('compare aligns its worst findings under their columns', () => {
+  it('renders them as rows of the same table', () => {
+    const columns = [
+      {
+        session: {
+          id: 'a',
+          projectName: 'api',
+          tool: 'codex',
+          turnCount: 5,
+          equivalentCostUsd: 1,
+          peakContextTokens: 1,
+          lastSeenAt: 0,
+        },
+        categories: {},
+        total: { count: 2, recoverableUsd: 0.3, potentialUsd: 0 },
+        topFindings: [
+          { rule: 'r', title: 'first worst', severity: 'critical', wastedCostUsd: 0.26 },
+          { rule: 'r', title: 'second worst', severity: 'warning', wastedCostUsd: 0.05 },
+        ],
+      },
+      {
+        session: {
+          id: 'b',
+          projectName: 'design',
+          tool: 'gemini',
+          turnCount: 4,
+          equivalentCostUsd: 1,
+          peakContextTokens: 1,
+          lastSeenAt: 0,
+        },
+        categories: {},
+        total: { count: 0, recoverableUsd: 0, potentialUsd: 0 },
+        topFindings: [],
+      },
+    ]
+    const html = renderToString(
+      <CompareTable
+        columns={columns}
+        categories={[]}
+        baseline={0}
+        onBaseline={() => {}}
+      />,
+    )
+    expect(html).toContain('Worst findings')
+    expect(html).toContain('first worst')
+    expect(html).toContain('second worst')
+    // The column with nothing says so in the first row and stays empty below.
+    expect(html).toContain('Nothing to fix.')
+    // Inside the table, not a card underneath it.
+    expect(html.lastIndexOf('</table>')).toBeGreaterThan(html.indexOf('second worst'))
   })
 })
 
@@ -882,28 +962,78 @@ describe('messages screen', () => {
 })
 
 describe('the arithmetic behind a finding', () => {
-  it('shows tokens x turns = wasted, as the design spec writes it', () => {
+  it('renders the working the rule stated, term by term', () => {
     const html = renderToString(
       <Finding
         finding={{
           rule: 'stuck-oversized-result',
           severity: 'critical',
-          title: 'A result has been re-sent 6 times',
+          title: 'A result has been re-sent 8 times',
           detail: '',
           fix: 'Start a fresh session.',
-          wastedTokens: 528_580,
-          wastedCostUsd: 2.67,
-          evidence: { tokens: 105_716, turns: 6 },
+          wastedTokens: 705_103,
+          wastedCostUsd: 3.57,
+          evidence: {
+            tokens: 100_729,
+            turns: 8,
+            working: {
+              unit: 'tokens',
+              factors: [
+                { value: 100_729, label: 'tokens' },
+                {
+                  value: 8,
+                  label: 'turns',
+                  minus: { value: 1, label: 'the first send' },
+                },
+              ],
+            },
+          },
         }}
       />,
     )
-    expect(html).toContain('105,716')
-    expect(html).toContain('×')
-    expect(html).toContain('6')
-    expect(html).toContain('528,580')
+    expect(html).toContain('100,729 tokens')
+    expect(html).toContain('(8 turns \u2212 1 the first send)')
+    expect(html).toContain('705,103')
+    expect(html).toContain('$3.57')
   })
 
-  it('says how many times for a repeat, where there is no per-turn size', () => {
+  it('shows the subtraction the rule made, not a bare product', () => {
+    // The bug report: `20,057 × 8 = 144,454` was printed, and 20,057 × 8 is
+    // 160,456. The rule claimed the excess over 2,000; the line now says so.
+    const html = renderToString(
+      <Finding
+        finding={{
+          rule: 'bloated-memory-file',
+          severity: 'warning',
+          title: 'CLAUDE.md is 20,057 tokens on every turn',
+          detail: '',
+          fix: 'Trim it.',
+          wastedTokens: 144_454,
+          wastedCostUsd: 0.73,
+          evidence: {
+            working: {
+              unit: 'tokens',
+              factors: [
+                {
+                  value: 20_056.75,
+                  label: 'tokens per turn',
+                  minus: { value: 2000, label: 'kept' },
+                },
+                { value: 8, label: 'turns' },
+              ],
+            },
+          },
+        }}
+      />,
+    )
+    expect(html).toContain('\u2212 2,000 kept')
+    expect(html).toContain('144,454')
+    expect(html).not.toContain('160,456')
+  })
+
+  it('derives nothing from loose evidence fields', () => {
+    // Two numbers in evidence used to be enough for the card to invent an
+    // equation. They are not any more.
     const html = renderToString(
       <Finding
         finding={{
@@ -914,31 +1044,45 @@ describe('the arithmetic behind a finding', () => {
           fix: 'Work from what is already read.',
           wastedTokens: 6200,
           wastedCostUsd: 0.03,
-          evidence: { file: '/repo/auth.js', reads: 15 },
+          evidence: { file: '/repo/auth.js', reads: 15, perTurn: 400, turns: 15 },
         }}
       />,
     )
-    expect(html).toContain('15 times')
-    expect(html).toContain('6,200')
+    expect(html).not.toContain('\u00d7')
+    expect(html).not.toContain(' = ')
   })
 
-  it('shows no working out when the evidence does not support one', () => {
+  it('shows money working in dollars', () => {
     const html = renderToString(
       <Finding
         finding={{
-          rule: 'approaching-context-limit',
-          severity: 'warning',
-          title: 'Context is 88% full',
+          rule: 'model-too-expensive',
+          severity: 'info',
+          title: '6 turns of reading on claude-opus-5',
           detail: '',
-          fix: 'Clear large results.',
+          fix: 'Use haiku.',
           wastedTokens: 0,
-          wastedCostUsd: 0,
-          evidence: { used: 175_000, limit: 200_000, share: 0.88 },
+          wastedCostUsd: 1.6,
+          claim: 'potential',
+          evidence: {
+            working: {
+              unit: 'usd',
+              factors: [
+                { value: 2, label: 'spent' },
+                {
+                  value: 1,
+                  label: '',
+                  minus: { value: 0.2, label: 'the haiku price ratio' },
+                },
+              ],
+            },
+          },
         }}
       />,
     )
-    // Inventing a multiplication where none exists would be worse than none.
-    expect(html).not.toContain('×')
+    expect(html).toContain('$2.00 spent')
+    expect(html).toContain('= ')
+    expect(html).toContain('$1.60')
   })
 })
 

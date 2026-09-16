@@ -17,6 +17,7 @@ import { RULES } from './rules.js'
 export * from './reconcile.js'
 export * from './rules.js'
 export { hashText, stableStringify, summarizeSession } from './summary.js'
+export * from './working.js'
 
 /** @typedef {import('./rules.js').Finding} Finding */
 /** @typedef {import('./summary.js').SessionSummary} SessionSummary */

@@ -12,8 +12,9 @@
  * @module
  */
 
-import { ArrowLeft, CircleCheck } from 'lucide-react'
+import { CircleCheck } from 'lucide-react'
 import { FindingsTable } from '../components/findings-table.jsx'
+import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
@@ -64,7 +65,7 @@ function EverySession({ version }) {
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <Header
+      <PageHeader
         title="Optimize"
         question="What do I change first?"
         note={`${data.scanned} recent session${data.scanned === 1 ? '' : 's'} checked against ten rules. No model was called — every number here is arithmetic.`}
@@ -105,19 +106,11 @@ function OneSession({ sessionId, version }) {
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <button
-        type="button"
-        onClick={() => navigate(`/s/${encoded}`)}
-        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-      >
-        <ArrowLeft className="size-3" />
-        Session overview
-      </button>
-
-      <Header
+      <PageHeader
         title="Optimize"
         question="What do I change first?"
         note={`${summary.turnCount} turns · ${truncate(summary.model ?? '', 30)}`}
+        back={{ to: `/s/${encoded}`, label: 'Session overview' }}
       />
 
       {findings.length === 0 ? (
@@ -129,22 +122,6 @@ function OneSession({ sessionId, version }) {
         </>
       )}
     </div>
-  )
-}
-
-/**
- * @param {{ title: string, question: string, note: string }} props
- */
-function Header({ title, question, note }) {
-  return (
-    <header>
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-        {/* Every screen answers one question, and says which one. */}
-        <span className="text-xs text-[var(--color-text-muted)]">{question}</span>
-      </div>
-      <p className="text-xs text-[var(--color-text-muted)]">{note}</p>
-    </header>
   )
 }
 

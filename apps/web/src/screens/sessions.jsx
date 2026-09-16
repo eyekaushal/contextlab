@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { EntityMatches } from '../components/entity-matches.jsx'
 import { ExportMenu } from '../components/export-menu.jsx'
 import { Severity } from '../components/health.jsx'
+import { PageHeader } from '../components/page-header.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
 import { Empty, Failed, Loading } from '../components/states.jsx'
 import { SummaryStrip } from '../components/summary-strip.jsx'
@@ -98,19 +99,16 @@ export function Sessions({ version }) {
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-lg font-semibold tracking-tight">Sessions</h1>
-          {/* Every screen answers one question, and says which one. */}
-          <span className="text-xs text-[var(--color-text-muted)]">
-            Where did my money go?
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <SearchBox value={query} onChange={setQuery} />
-          <ExportMenu />
-        </div>
-      </header>
+      <PageHeader
+        title="Sessions"
+        question="Where did my money go?"
+        actions={
+          <>
+            <SearchBox value={query} onChange={setQuery} />
+            <ExportMenu />
+          </>
+        }
+      />
 
       <SummaryStrip data={summary.data} onOpenOptimize={() => navigate('/optimize')} />
 

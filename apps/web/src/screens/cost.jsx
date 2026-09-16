@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react'
+import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Badge } from '../components/ui/badge.jsx'
@@ -65,36 +66,36 @@ export function Cost({ version }) {
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Cost</h1>
-          {pricing.data ? (
-            // Prices move. A cost figure with no date on it implies a currency
-            // it does not have.
-            <p className="text-xs text-[var(--color-text-muted)]">
-              Equivalent API cost · pricing as of {pricing.data.updatedAt}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex items-center gap-1">
-          {RANGES.map((range) => (
-            <button
-              key={range.days}
-              type="button"
-              onClick={() => setDays(range.days)}
-              className={cn(
-                'h-7 rounded px-2 text-xs',
-                days === range.days
-                  ? 'bg-[var(--color-cat-system-prompt)] text-white'
-                  : 'bg-[var(--color-gridline)] text-[var(--color-text-secondary)]',
-              )}
-            >
-              {range.label}
-            </button>
-          ))}
-        </div>
-      </header>
+      <PageHeader
+        title="Cost"
+        question="What has this been costing me?"
+        // Prices move. A cost figure with no date on it implies a currency it
+        // does not have.
+        note={
+          pricing.data
+            ? `Equivalent API cost · pricing as of ${pricing.data.updatedAt}`
+            : null
+        }
+        actions={
+          <div className="flex items-center gap-1">
+            {RANGES.map((range) => (
+              <button
+                key={range.days}
+                type="button"
+                onClick={() => setDays(range.days)}
+                className={cn(
+                  'h-7 rounded px-2 text-xs',
+                  days === range.days
+                    ? 'bg-[var(--color-cat-system-prompt)] text-white'
+                    : 'bg-[var(--color-gridline)] text-[var(--color-text-secondary)]',
+                )}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <StatRow>
         <Stat label={`Last ${days} days`} value={usd(total)} hint={`${turns} turns`} />

@@ -14,15 +14,15 @@
  * @module
  */
 
-import { ArrowLeft, ChevronDown, ChevronRight, Repeat2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Repeat2 } from 'lucide-react'
 import { useState } from 'react'
+import { PageHeader } from '../components/page-header.jsx'
 import { Rendered } from '../components/rendered-block.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Badge } from '../components/ui/badge.jsx'
 import { Card } from '../components/ui/card.jsx'
 import { useApi } from '../lib/api.js'
 import { categoryColor, categoryLabel, exact, tokens } from '../lib/format.js'
-import { navigate } from '../lib/router.js'
 import { cn } from '../lib/utils.js'
 
 /**
@@ -54,18 +54,17 @@ export function Messages({ sessionId, version }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="space-y-2 border-b border-[var(--color-border-subtle)] px-6 py-4">
-        <button
-          type="button"
-          onClick={() => navigate(`/s/${encoded}`)}
-          className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-        >
-          <ArrowLeft className="size-3" />
-          Session overview
-        </button>
+      <div className="space-y-2 border-b border-[var(--color-border-subtle)] px-5 py-4">
+        <PageHeader
+          title="Messages"
+          question="What exactly was sent?"
+          back={{ to: `/s/${encoded}`, label: 'Session overview' }}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-semibold tracking-tight">Messages</h1>
+          {turns.length > 1 ? (
+            <span className="text-xs text-[var(--color-text-muted)]">Turn</span>
+          ) : null}
           {turns.length > 1 ? (
             <div className="flex flex-wrap items-center gap-1">
               {turns.map((/** @type {any} */ turn) => (
@@ -89,7 +88,7 @@ export function Messages({ sessionId, version }) {
             </div>
           ) : null}
         </div>
-      </header>
+      </div>
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="min-h-0 space-y-2 overflow-y-auto border-r border-[var(--color-border-subtle)] p-4">
@@ -324,7 +323,7 @@ function Detail({ block }) {
       <BilledShare block={block} />
 
       {block.turnsPresent > 1 ? (
-        <p className="rounded border border-[var(--color-status-warning)]/40 bg-[color-mix(in_oklab,var(--color-status-warning)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)]">
+        <p className="rounded border border-[var(--color-status-warning)]/40 bg-[color-mix(in_oklab,var(--color-status-warning)_8%,transparent)] px-2.5 py-1.5 text-sm text-[var(--color-text-secondary)]">
           This was sent in {block.turnsPresent} turns —{' '}
           {exact(measured(block) * block.turnsPresent)} tokens in total, for{' '}
           {exact(measured(block))} tokens of content.
@@ -351,7 +350,7 @@ function Detail({ block }) {
 
         <div className="max-h-[60vh] overflow-auto px-2.5 py-2">
           {raw ? (
-            <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
+            <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap break-words text-[var(--color-text-secondary)]">
               {block.isImage ? '[image data is never stored]' : text || block.preview}
             </pre>
           ) : (
@@ -415,7 +414,7 @@ function BilledShare({ block }) {
   if (billed <= 0 || Math.abs(billed - counted) / Math.max(counted, 1) < 0.1) return null
 
   return (
-    <p className="rounded border border-[var(--color-border-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-muted)]">
+    <p className="rounded border border-[var(--color-border-subtle)] px-2.5 py-1.5 text-sm text-[var(--color-text-muted)]">
       {exact(block.chars)} characters counts as{' '}
       <span className="text-[var(--color-text-secondary)]">{exact(counted)} tokens</span>.
       Your provider billed for the whole turn at once; this block's share of that bill is{' '}

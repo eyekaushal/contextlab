@@ -50,7 +50,7 @@ function ToolCall({ block, text }) {
 
   return (
     <div className="space-y-2">
-      <div className="font-mono text-xs">
+      <div className="font-mono text-sm">
         <span className="text-[var(--color-cat-tool_calls)]">{name}</span>
         <span className="text-[var(--color-text-muted)]">
           ({args ? args.map((argument) => argument.name).join(', ') : '…'})
@@ -60,7 +60,7 @@ function ToolCall({ block, text }) {
       {args === null ? (
         // The serialisation did not have the shape we write, so no table is
         // invented for it. A wrong table is worse than none.
-        <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-[var(--color-text-secondary)]">
+        <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm text-[var(--color-text-secondary)]">
           {text}
         </pre>
       ) : args.length === 0 ? (
@@ -68,7 +68,7 @@ function ToolCall({ block, text }) {
           Called with no arguments.
         </p>
       ) : (
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             {args.map((argument) => (
               <tr
@@ -78,7 +78,7 @@ function ToolCall({ block, text }) {
                 <td className="w-32 py-1 pr-3 font-mono text-[var(--color-text-muted)]">
                   {argument.name}
                 </td>
-                <td className="py-1 font-mono text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                <td className="py-1 font-mono text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   <span className="whitespace-pre-wrap break-words">
                     {argument.value || <em className="not-italic opacity-60">empty</em>}
                   </span>
@@ -147,7 +147,7 @@ function Folded({ text }) {
  */
 function Lines({ lines }) {
   return (
-    <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--color-text-secondary)]">
+    <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-[var(--color-text-secondary)]">
       {lines.join('\n')}
     </pre>
   )
@@ -189,13 +189,13 @@ export function Markdown({ text }) {
   const blocks = parseMarkdown(String(text ?? ''))
 
   return (
-    <div className="space-y-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+    <div className="space-y-2 text-sm leading-relaxed text-[var(--color-text-secondary)]">
       {blocks.map((node) => {
         if (node.kind === 'code') {
           return (
             <pre
               key={node.key}
-              className="overflow-x-auto rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] px-2.5 py-2 font-mono text-xs leading-relaxed"
+              className="overflow-x-auto rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] px-2.5 py-2 font-mono text-sm leading-relaxed"
             >
               {node.lines.join('\n')}
             </pre>
@@ -208,7 +208,7 @@ export function Markdown({ text }) {
               key={node.key}
               className={cn(
                 'font-semibold text-[var(--color-text-primary)]',
-                node.level <= 2 ? 'text-sm' : 'text-xs',
+                node.level <= 2 ? 'text-base' : 'text-sm',
               )}
             >
               <Inline text={node.text} />

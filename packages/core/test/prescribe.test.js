@@ -6,6 +6,8 @@ import {
   approachingContextLimit,
   bloatedMemoryFile,
   cacheNotWorking,
+  describeWorking,
+  evaluateWorking,
   imageOverhead,
   modelTooExpensiveForWork,
   RULES,
@@ -19,6 +21,7 @@ import {
   thinkingDominates,
   totalWaste,
   unusedMcpServer,
+  workingMatches,
 } from '../src/prescribe/index.js'
 
 /**
@@ -801,5 +804,267 @@ describe('reconciling what a finding claims', () => {
       expect(['recoverable', 'potential']).toContain(finding.claim)
       expect(String(finding.claimKey).length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('every rule shows a working-out that produces its own number', () => {
+  // The bug this exists to kill: the card built an equation from two evidence
+  // fields on its own and printed `20,057 × 8 = 144,454`, which is false. The
+  // rule had claimed the excess over a 2,000-token file. Now the rule states
+  // its working, and this test holds each one to it.
+
+  const npmLog = 'npm WARN deprecated package@1.0.0 this is deprecated\n'.repeat(1200)
+  const bigResult = {
+    messages: [
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'npm install' } },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'c1', content: npmLog }],
+      },
+    ],
+  }
+  const withImage = {
+    messages: [
+      {
+        role: 'user',
+        content: [{ type: 'image', source: { media_type: 'image/png', data: 'AAAA' } }],
+      },
+    ],
+  }
+  const attempt = {
+    messages: [
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'c', name: 'Bash', input: { command: 'pytest -q' } },
+        ],
+      },
+    ],
+  }
+  const reread = (/** @type {number} */ i) => ({
+    messages: [
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: `r${i}`,
+            name: 'Read',
+            input: { file_path: '/repo/a.js' },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: `r${i}`, content: 'x'.repeat(6000) },
+        ],
+      },
+    ],
+  })
+  const thinking = {
+    messages: [
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'thinking',
+            thinking: 'Let me reason about this at length. '.repeat(400),
+          },
+          { type: 'text', text: 'ok' },
+        ],
+      },
+    ],
+  }
+  const memoryAndMcp = {
+    system:
+      'You are Claude Code.\nContents of /repo/CLAUDE.md (project instructions):\n' +
+      '# rule\n'.repeat(800),
+    tools: Array.from({ length: 12 }, (_, i) => mcpTool('playwright', `action_${i}`)),
+    messages: [{ role: 'user', content: 'hello' }],
+  }
+
+  /** Every fixture, run through the whole engine the way the server does. */
+  const findings = [
+    ...runRules(session(Array.from({ length: 6 }, () => memoryAndMcp))),
+    ...runRules(session([bigResult, bigResult, bigResult, bigResult])),
+    ...runRules(session([withImage, withImage, withImage])),
+    ...runRules(session([attempt, attempt, attempt, attempt])),
+    ...runRules(session([reread(0), reread(1), reread(2)])),
+    ...runRules(session([thinking])),
+    ...runRules(
+      /** @type {any} */ ({
+        ...session([{ messages: [] }, { messages: [] }, { messages: [] }]),
+        turnCount: 4,
+        usage: {
+          inputTokens: 120_000,
+          outputTokens: 400,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          thinkingTokens: 0,
+        },
+        turns: [
+          { seq: 0, contextTokens: 30_000 },
+          { seq: 1, contextTokens: 30_000 },
+          { seq: 2, contextTokens: 30_000 },
+          { seq: 3, contextTokens: 30_000 },
+        ],
+      }),
+    ),
+    ...runRules(
+      /** @type {any} */ ({
+        ...session(
+          Array.from({ length: 6 }, (_, i) => ({
+            messages: [
+              {
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool_use',
+                    id: `c${i}`,
+                    name: 'Read',
+                    input: { file_path: `/${i}` },
+                  },
+                ],
+              },
+            ],
+          })),
+        ),
+        model: 'claude-opus-5',
+        totalCostUsd: 2,
+      }),
+      { alternative: { model: 'claude-haiku-4-5', inputPricePerMillion: 1 } },
+    ),
+  ]
+
+  it('exercises every rule that claims anything', () => {
+    const claiming = new Set(
+      findings
+        .filter((f) => f.wastedTokens > 0 || f.wastedCostUsd > 0)
+        .map((f) => f.rule),
+    )
+    // Nine of ten. `approaching-context-limit` claims no tokens and no money —
+    // it is a warning about what is coming, not a bill — so it has no working.
+    expect([...claiming].sort()).toEqual([
+      'bloated-memory-file',
+      'cache-not-working',
+      'image-overhead',
+      'model-too-expensive',
+      'redundant-read',
+      'stuck-on-error',
+      'stuck-oversized-result',
+      'thinking-dominates',
+      'unused-mcp-server',
+    ])
+  })
+
+  it('states a working for every finding that claims something', () => {
+    for (const finding of findings) {
+      if (finding.wastedTokens === 0 && finding.wastedCostUsd === 0) continue
+      expect(finding.evidence?.working, finding.rule).toBeDefined()
+    }
+  })
+
+  it('reproduces the finding’s own number from the working, exactly', () => {
+    for (const finding of findings) {
+      const working = finding.evidence?.working
+      if (!working) continue
+      const claimed =
+        working.unit === 'usd' ? finding.wastedCostUsd : finding.wastedTokens
+      expect(
+        workingMatches(working, claimed),
+        `${finding.rule}: ${describeWorking(working)} but claimed ${claimed}`,
+      ).toBe(true)
+    }
+  })
+
+  it('does not print the false equation from the bug report', () => {
+    const memory = findings.find((f) => f.rule === 'bloated-memory-file')
+    const line = describeWorking(/** @type {any} */ (memory?.evidence?.working))
+    // The excess is what is claimed, and the line says so.
+    expect(line).toContain('− 2,000 kept')
+    expect(line).toContain('× 6 turns')
+  })
+
+  it('charges the re-sends of an oversized result, not the first send', () => {
+    const stuck = findings.find((f) => f.rule === 'stuck-oversized-result')
+    const line = describeWorking(/** @type {any} */ (stuck?.evidence?.working))
+    expect(line).toContain('(4 turns − 1 the first send)')
+  })
+})
+
+describe('the working-out itself', () => {
+  it('evaluates a product of factors, each optionally a subtraction', () => {
+    expect(
+      evaluateWorking({
+        unit: 'tokens',
+        factors: [
+          {
+            value: 20_056.75,
+            label: 'tokens per turn',
+            minus: { value: 2000, label: 'kept' },
+          },
+          { value: 8, label: 'turns' },
+        ],
+      }),
+    ).toBe(144_454)
+  })
+
+  it('rounds tokens and leaves money alone', () => {
+    expect(
+      evaluateWorking({ unit: 'tokens', factors: [{ value: 2.5, label: '' }] }),
+    ).toBe(3)
+    expect(evaluateWorking({ unit: 'usd', factors: [{ value: 2.5, label: '' }] })).toBe(
+      2.5,
+    )
+  })
+
+  it('describes itself as one checkable line', () => {
+    expect(
+      describeWorking({
+        unit: 'tokens',
+        factors: [
+          { value: 100_729, label: 'tokens' },
+          { value: 8, label: 'turns', minus: { value: 1, label: 'the first send' } },
+        ],
+      }),
+    ).toBe('100,729 tokens × (8 turns − 1 the first send) = 705,103 tokens')
+  })
+
+  it('needs no brackets around a lone subtraction', () => {
+    expect(
+      describeWorking({
+        unit: 'tokens',
+        factors: [
+          { value: 500, label: 'reasoning', minus: { value: 200, label: 'allowed' } },
+        ],
+      }),
+    ).toBe('500 reasoning − 200 allowed = 300 tokens')
+  })
+
+  it('puts the dollar sign on the amount, not on the ratio', () => {
+    expect(
+      describeWorking({
+        unit: 'usd',
+        factors: [
+          { value: 2, label: 'spent' },
+          { value: 1, label: '', minus: { value: 0.2, label: 'the price ratio' } },
+        ],
+      }),
+    ).toBe('$2.00 spent × (1 − 0.2 the price ratio) = $1.60')
+  })
+
+  it('refuses a working that does not match', () => {
+    expect(
+      workingMatches({ unit: 'tokens', factors: [{ value: 3, label: '' }] }, 4),
+    ).toBe(false)
+    expect(
+      workingMatches({ unit: 'usd', factors: [{ value: 1.5, label: '' }] }, 1.5),
+    ).toBe(true)
   })
 })

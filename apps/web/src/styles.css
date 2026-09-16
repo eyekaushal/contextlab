@@ -63,8 +63,10 @@
   --text-sm--line-height: 1.45;
   --text-base: 0.875rem; /* 14px */
   --text-base--line-height: 1.5;
-  --text-lg: 1rem; /* 16px — screen titles */
+  --text-lg: 1rem; /* 16px — card titles, KPI figures */
   --text-lg--line-height: 1.4;
+  --text-xl: 1.25rem; /* 20px — the screen title */
+  --text-xl--line-height: 1.3;
 
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,

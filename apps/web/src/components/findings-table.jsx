@@ -297,7 +297,7 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
             <Arithmetic finding={finding} />
 
             {finding.detail ? (
-              <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[var(--color-text-secondary)]">
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-text-secondary)]">
                 {finding.detail}
               </p>
             ) : null}

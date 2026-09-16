@@ -8,13 +8,14 @@
  * @module
  */
 
-import { ArrowLeft, MessagesSquare, Wrench } from 'lucide-react'
+import { MessagesSquare, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { CompositionBar, CompositionLegend } from '../components/composition-bar.jsx'
 import { ContextDiff } from '../components/context-diff.jsx'
 import { ExportMenu } from '../components/export-menu.jsx'
 import { Finding } from '../components/finding.jsx'
 import { Health, healthOf } from '../components/health.jsx'
+import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { SystemPromptPanel } from '../components/system-prompt-panel.jsx'
@@ -226,29 +227,15 @@ export function SessionOverview({ sessionId, version }) {
  */
 function Header({ meta, sessionId }) {
   return (
-    <header className="space-y-2">
-      <button
-        type="button"
-        onClick={() => navigate('/')}
-        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-      >
-        <ArrowLeft className="size-3" />
-        All sessions
-      </button>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            {meta.projectName || meta.tool || 'Session'}
-          </h1>
-          <p className="truncate text-xs text-[var(--color-text-muted)]">
-            {[meta.tool, truncate(meta.model ?? '', 32), when(meta.lastSeenAt)]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <PageHeader
+      title={meta.projectName || meta.tool || 'Session'}
+      question="What is in this window?"
+      note={[meta.tool, truncate(meta.model ?? '', 32), when(meta.lastSeenAt)]
+        .filter(Boolean)
+        .join(' · ')}
+      back={{ to: '/', label: 'All sessions' }}
+      actions={
+        <>
           <Button
             variant="outline"
             size="sm"
@@ -258,9 +245,9 @@ function Header({ meta, sessionId }) {
             Messages
           </Button>
           <ExportMenu sessionId={sessionId} />
-        </div>
-      </div>
-    </header>
+        </>
+      }
+    />
   )
 }
 

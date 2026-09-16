@@ -35,7 +35,9 @@ const MILLION = 1_000_000
  * @property {boolean} [countsTowardTotal] set by reconciliation; false when
  *                               another finding already claimed these tokens
  * @property {string} [supersededBy] the rule that took the claim
- * @property {Record<string, unknown>} [evidence]
+ * @property {Record<string, unknown> & { working?: import('./working.js').Working }} [evidence]
+ *   `evidence.working` is the rule's own arithmetic. The screen renders it and
+ *   derives nothing; a test holds every rule to it.
  */
 
 /**
@@ -127,7 +129,18 @@ export function unusedMcpServer(session) {
       claimKey: `mcp:${entry.entityName}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
-      evidence: { server: entry.entityName, perTurn, turns: session.turnCount },
+      evidence: {
+        server: entry.entityName,
+        perTurn,
+        turns: session.turnCount,
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: perTurn, label: 'tokens of definitions per turn' },
+            { value: session.turnCount, label: 'turns' },
+          ],
+        },
+      },
     })
   }
   return findings
@@ -172,7 +185,23 @@ export function stuckOversizedResult(session) {
       claimKey: block.filePath ? `file:${block.filePath}` : `block:${block.key}`,
       wastedTokens: block.tokensResent,
       wastedCostUsd: costOf(block.tokensResent, session),
-      evidence: { tokens: block.tokens, turns: block.turnsPresent, tool: block.toolName },
+      evidence: {
+        tokens: block.tokens,
+        turns: block.turnsPresent,
+        tool: block.toolName,
+        // The first send was the work. Only the re-sends are waste.
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: block.tokens, label: 'tokens' },
+            {
+              value: block.turnsPresent,
+              label: 'turns',
+              minus: { value: 1, label: 'the first send' },
+            },
+          ],
+        },
+      },
     })
   }
   return findings
@@ -218,7 +247,23 @@ export function bloatedMemoryFile(session) {
       claimKey: `segment:${entry.entityName}`,
       wastedTokens: excess,
       wastedCostUsd: costOf(excess, session),
-      evidence: { file: entry.entityName, perTurn, turns: session.turnCount },
+      evidence: {
+        file: entry.entityName,
+        perTurn,
+        turns: session.turnCount,
+        // Only the excess is claimed. The file is useful; the size is not.
+        working: {
+          unit: 'tokens',
+          factors: [
+            {
+              value: perTurn,
+              label: 'tokens per turn',
+              minus: { value: BLOATED_MEMORY_TOKENS, label: 'kept' },
+            },
+            { value: session.turnCount, label: 'turns' },
+          ],
+        },
+      },
     })
   }
   return findings
@@ -260,7 +305,21 @@ export function redundantReads(session) {
       claimKey: `file:${entry.entityName}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
-      evidence: { file: entry.entityName, reads: entry.calls },
+      evidence: {
+        file: entry.entityName,
+        reads: entry.calls,
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: perRead, label: 'tokens per read' },
+            {
+              value: entry.calls,
+              label: 'reads',
+              minus: { value: 1, label: 'the read that was needed' },
+            },
+          ],
+        },
+      },
     })
   }
   return findings
@@ -368,7 +427,22 @@ export function modelTooExpensiveForWork(session, options = {}) {
       claimKey: 'model',
       wastedTokens: 0,
       wastedCostUsd: Math.max(0, saving),
-      evidence: { model: session.model, alternative: alternative.model, ratio },
+      evidence: {
+        model: session.model,
+        alternative: alternative.model,
+        ratio,
+        working: {
+          unit: 'usd',
+          factors: [
+            { value: session.totalCostUsd, label: 'spent' },
+            {
+              value: 1,
+              label: '',
+              minus: { value: ratio, label: `the ${alternative.model} price ratio` },
+            },
+          ],
+        },
+      },
     },
   ]
 }
@@ -417,7 +491,18 @@ export function cacheNotWorking(session) {
       claimKey: 'cache',
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
-      evidence: { hitRate, cacheReadTokens: session.usage.cacheReadTokens, billed },
+      evidence: {
+        hitRate,
+        cacheReadTokens: session.usage.cacheReadTokens,
+        billed,
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: resent, label: 'tokens re-sent after the first turn' },
+            { value: CACHE_READ_DISCOUNT, label: 'that a cache would not have charged' },
+          ],
+        },
+      },
     },
   ]
 }
@@ -458,7 +543,21 @@ export function stuckOnError(session) {
       claimKey: `call:${call.signature}`,
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
-      evidence: { tool: call.name, count: call.count },
+      evidence: {
+        tool: call.name,
+        count: call.count,
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: perCall, label: 'tokens per call' },
+            {
+              value: call.count,
+              label: 'calls',
+              minus: { value: 1, label: 'the first attempt' },
+            },
+          ],
+        },
+      },
     })
   }
   return findings
@@ -493,7 +592,21 @@ export function imageOverhead(session) {
       claimKey: 'images',
       wastedTokens: wasted,
       wastedCostUsd: costOf(wasted, session),
-      evidence: { perTurn: session.imageTokensPerTurn, turns: session.turnsWithImages },
+      evidence: {
+        perTurn: session.imageTokensPerTurn,
+        turns: session.turnsWithImages,
+        working: {
+          unit: 'tokens',
+          factors: [
+            { value: session.imageTokensPerTurn, label: 'tokens of images per turn' },
+            {
+              value: session.turnsWithImages,
+              label: 'turns with images',
+              minus: { value: 1, label: 'the turn that needed them' },
+            },
+          ],
+        },
+      },
     },
   ]
 }
@@ -533,7 +646,24 @@ export function thinkingDominates(session) {
       claimKey: 'thinking',
       wastedTokens: Math.max(0, excess),
       wastedCostUsd: costOf(Math.max(0, excess), session),
-      evidence: { thinking, total, share },
+      evidence: {
+        thinking,
+        total,
+        share,
+        working: {
+          unit: 'tokens',
+          factors: [
+            {
+              value: thinking,
+              label: 'tokens of reasoning',
+              minus: {
+                value: total * THINKING_SHARE_LIMIT,
+                label: `(${Math.round(THINKING_SHARE_LIMIT * 100)}% of the window)`,
+              },
+            },
+          ],
+        },
+      },
     },
   ]
 }

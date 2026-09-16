@@ -54,6 +54,7 @@ index groups them by area instead.
 - [Waste is what the user could have avoided, never the total](#waste-is-what-the-user-could-have-avoided-never-the-total)
 - [Rules are ranked by money, and are total functions](#rules-are-ranked-by-money-and-are-total-functions)
 - [Every finding shows its working out](#every-finding-shows-its-working-out)
+- [The rule states its working; the screen derives nothing](#the-rule-states-its-working-the-screen-derives-nothing)
 - [Optimize recomputes rather than reading cached findings](#optimize-recomputes-rather-than-reading-cached-findings)
 - [A dismissal lives in its own table, not on the finding](#a-dismissal-lives-in-its-own-table-not-on-the-finding)
 - [The findings cache stores what a finding claims, not just what it costs](#the-findings-cache-stores-what-a-finding-claims-not-just-what-it-costs)
@@ -831,6 +832,40 @@ size of any single thing.
 
 Rules whose evidence does not contain a multiplication print no line at all.
 Inventing one would be worse than omitting it.
+
+---
+
+## The rule states its working; the screen derives nothing
+
+The entry above promised that a reader could check the headline against the
+terms that produced it. For four of the ten rules, they could not.
+
+The finding card had been building the equation itself: it took whatever two
+numbers a rule left in `evidence` — `perTurn` and `turns`, `tokens` and
+`turns` — and printed `a × b = wasted`. On rules whose claim was a plain
+product that was fine. On rules that subtract before multiplying it was a lie
+printed under a true number:
+
+```
+bloated-memory-file      printed  20,057 × 8 = 144,454     truth  (20,057 − 2,000) × 8
+stuck-oversized-result   printed 100,729 × 8 = 705,103     truth  100,729 × 7
+image-overhead           printed  perTurn × turns          truth  perTurn × (turns − 1)
+redundant-read           printed  "28 times = 136,501"     truth  perRead × 27
+```
+
+A user checked the multiplication and it did not come out. That is the exact
+failure this product exists to never have.
+
+Now `evidence.working` is written by the rule: a product of factors, each
+optionally a subtraction — every formula the ten rules use fits that shape.
+The card renders the terms and derives nothing; if a rule states no working,
+no equation is shown, because an invented one is worse than none. A test runs
+every rule over fixtures and asserts `evaluateWorking(working)` equals that
+finding's `wastedTokens` (or `wastedCostUsd`, for money workings) exactly. The
+CLI prints the same line from the same data.
+
+The rule that claims nothing — `approaching-context-limit` — has no working,
+and the test says so explicitly rather than letting it pass by absence.
 
 ---
 

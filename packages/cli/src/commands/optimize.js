@@ -7,7 +7,7 @@
  * @module
  */
 
-import { runRules, totalWaste } from '@contextlab/core/prescribe'
+import { describeWorking, runRules, totalWaste } from '@contextlab/core/prescribe'
 import { buildSessionSummary } from '@contextlab/server'
 import {
   listDismissals,
@@ -130,6 +130,11 @@ function printReport(report, many) {
     console.log(
       `    ${color.gray(`${tokens(finding.wastedTokens)} tokens · ${usd(finding.wastedCostUsd)}${note}`)}`,
     )
+    // The rule's own arithmetic, so the headline can be checked against the
+    // terms that produced it.
+    if (finding.evidence?.working) {
+      console.log(`    ${color.gray(describeWorking(finding.evidence.working))}`)
+    }
     for (const line of String(finding.detail).split('\n')) {
       console.log(`    ${color.gray(line)}`)
     }

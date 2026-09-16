@@ -15,9 +15,10 @@
  * @module
  */
 
-import { ArrowLeft, Star, X } from 'lucide-react'
+import { Star, X } from 'lucide-react'
 import { useState } from 'react'
 import { Severity } from '../components/health.jsx'
+import { PageHeader } from '../components/page-header.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
 import { Card } from '../components/ui/card.jsx'
@@ -107,21 +108,12 @@ export function Compare({ ids, version }) {
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <button
-        type="button"
-        onClick={() => navigate('/')}
-        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-      >
-        <ArrowLeft className="size-3" />
-        All sessions
-      </button>
-
-      <header className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg font-semibold tracking-tight">Compare</h1>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          Which session was worse, and where?
-        </span>
-      </header>
+      <PageHeader
+        title="Compare"
+        question="Which session was worse, and where?"
+        note={`${columns.length} sessions, measured against the one marked as baseline`}
+        back={{ to: '/', label: 'All sessions' }}
+      />
 
       {data.missing ? (
         <p className="text-xs text-[var(--color-status-warning)]">
@@ -146,8 +138,6 @@ export function Compare({ ids, version }) {
           )
         }
       />
-
-      <WorstFindings columns={columns} />
     </div>
   )
 }
@@ -223,6 +213,36 @@ export function CompareTable({ columns, categories, baseline, onBaseline, onRemo
               cells={row((column) => Number(column.categories[category]) || 0, true)}
             />
           ))}
+
+          {/* Rows of the same table, so each session's findings sit under that
+              session's column. A separate card underneath could only line up
+              by coincidence — and did not. */}
+          {worstRows(columns) > 0 ? (
+            <>
+              <SectionRow label="Worst findings" span={columns.length + 1} />
+              {Array.from({ length: worstRows(columns) }, (_, rank) => (
+                <tr
+                  // Keyed by what the row holds, not by where it sits.
+                  key={columns
+                    .map((column) => column.topFindings[rank]?.title ?? '')
+                    .join('|')}
+                  className="border-b border-[var(--color-border-subtle)] last:border-0 align-top"
+                >
+                  <td className="px-3 py-1.5 text-[var(--color-text-muted)]">
+                    {rank === 0 ? 'Most expensive' : `#${rank + 1}`}
+                  </td>
+                  {columns.map((column) => (
+                    <WorstCell
+                      key={column.session.id}
+                      sessionId={String(column.session.id)}
+                      finding={column.topFindings[rank]}
+                      rank={rank}
+                    />
+                  ))}
+                </tr>
+              ))}
+            </>
+          ) : null}
         </tbody>
       </table>
     </Card>
@@ -376,47 +396,43 @@ function Delta({ cell }) {
 }
 
 /**
- * @param {{ columns: any[] }} props
+ * How many finding rows the table needs: the longest column's list.
+ *
+ * @param {any[]} columns
+ * @returns {number}
  */
-function WorstFindings({ columns }) {
-  if (columns.every((column) => column.topFindings.length === 0)) return null
+function worstRows(columns) {
+  return Math.max(0, ...columns.map((column) => column.topFindings?.length ?? 0))
+}
+
+/**
+ * One session's n-th worst finding, in that session's column.
+ *
+ * @param {{ sessionId: string, finding: any, rank: number }} props
+ */
+function WorstCell({ sessionId, finding, rank }) {
+  if (!finding) {
+    return (
+      <td className="px-3 py-1.5 text-[var(--color-text-muted)]">
+        {rank === 0 ? 'Nothing to fix.' : '\u2014'}
+      </td>
+    )
+  }
 
   return (
-    <Card className="overflow-x-auto p-3">
-      <div className="mb-2 text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-        Worst findings
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {columns.map((column) => (
-          <div key={column.session.id} className="min-w-0 space-y-1.5">
-            <div className="text-xs font-medium">
-              {truncate(
-                String(column.session.projectName || column.session.tool || ''),
-                24,
-              )}
-            </div>
-            {column.topFindings.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)]">Nothing to fix.</p>
-            ) : (
-              column.topFindings.map((/** @type {any} */ finding) => (
-                <button
-                  key={`${finding.rule}:${finding.title}`}
-                  type="button"
-                  onClick={() =>
-                    navigate(`/s/${encodeURIComponent(column.session.id)}/optimize`)
-                  }
-                  className="flex w-full items-start gap-1.5 text-left text-xs hover:text-[var(--color-cat-system-prompt)]"
-                >
-                  <Severity severity={finding.severity} />
-                  <span className="min-w-0 flex-1">{finding.title}</span>
-                  <span className="tnum shrink-0">{usd(finding.wastedCostUsd)}</span>
-                </button>
-              ))
-            )}
-          </div>
-        ))}
-      </div>
-    </Card>
+    <td className="px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => navigate(`/s/${encodeURIComponent(sessionId)}/optimize`)}
+        className="flex w-full items-start gap-1.5 text-left hover:text-[var(--color-cat-system-prompt)]"
+      >
+        <Severity severity={finding.severity} />
+        <span className="min-w-0 flex-1 text-sm leading-snug">{finding.title}</span>
+        <span className="tnum shrink-0 text-[var(--color-text-secondary)]">
+          {usd(finding.wastedCostUsd)}
+        </span>
+      </button>
+    </td>
   )
 }
 

@@ -57,7 +57,7 @@ export function Finding({ finding, className }) {
       <Arithmetic finding={finding} />
 
       {finding.detail ? (
-        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[var(--color-text-secondary)]">
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-text-secondary)]">
           {finding.detail}
         </p>
       ) : null}
@@ -107,7 +107,7 @@ export function Fix({ text }) {
 
       <pre
         className={cn(
-          'overflow-x-auto px-2.5 py-2 text-xs leading-relaxed text-[var(--color-text-secondary)]',
+          'overflow-x-auto px-2.5 py-2 text-sm leading-relaxed text-[var(--color-text-secondary)]',
           isBlock ? 'font-mono' : 'whitespace-pre-wrap font-sans',
         )}
       >
@@ -124,66 +124,82 @@ export function Fix({ text }) {
  *
  *   12,400 tokens x 84 turns = 1,041,600 wasted  ·  $3.12
  *
- * It is the difference between a claim and a calculation. A reader who does not
- * believe the headline can check it against the two numbers that produced it,
- * and a reader who does believe it now understands *why* the number is that big
- * — it is the multiplication, not the size of any single thing.
+ * It is the difference between a claim and a calculation — *if* the line is
+ * the rule's own arithmetic. For a while it was not: this component built an
+ * equation from whatever two evidence fields it could find and printed
+ * `20,057 × 8 = 144,454`, which is false, under a number that was right.
+ *
+ * Now it renders `evidence.working` — the terms the rule itself multiplied —
+ * and derives nothing. If a rule states no working, nothing is shown; a
+ * fabricated equation is worse than none. A test in core holds every rule's
+ * working to its own number, so what is printed here is what was computed.
  *
  * @param {{ finding: any }} props
  */
 export function Arithmetic({ finding }) {
-  const parts = workingOut(finding)
-  if (!parts) return null
+  const working = finding.evidence?.working
+  if (!working || !Array.isArray(working.factors) || working.factors.length === 0) {
+    return null
+  }
+
+  const money = working.unit === 'usd'
+  const result = money
+    ? usd(finding.wastedCostUsd)
+    : `${exact(finding.wastedTokens)} wasted`
 
   return (
-    <p className="tnum mt-2 font-mono text-xs text-[var(--color-text-secondary)]">
-      {parts.map((part) => (
-        <span
-          key={part.key}
-          className={part.emphasis ? 'text-[var(--color-text-primary)]' : undefined}
-        >
-          {part.text}
+    <p className="tnum mt-2 font-mono text-sm text-[var(--color-text-secondary)]">
+      {working.factors.map((/** @type {any} */ factor, /** @type {number} */ index) => (
+        <span key={`${factor.label}:${factor.value}`}>
+          {index > 0 ? ' \u00d7 ' : ''}
+          <FactorText
+            factor={factor}
+            bracket={working.factors.length > 1}
+            // In a money working the first term is the amount spent; the rest
+            // are ratios. Only the amount wears a dollar sign.
+            money={money && index === 0}
+          />
         </span>
       ))}
+      <span> = </span>
+      <span className="text-[var(--color-text-primary)]">{result}</span>
+      {money ? null : (
+        <>
+          <span> \u00b7 </span>
+          <span className="text-[var(--color-text-primary)]">
+            {usd(finding.wastedCostUsd)}
+          </span>
+        </>
+      )}
     </p>
   )
 }
 
 /**
- * @param {any} finding
- * @returns {{ key: string, text: string, emphasis?: boolean }[] | null}
+ * One term of the working: `20,057 tokens per turn`, or with a subtraction,
+ * `(20,057 tokens per turn − 2,000 kept)`.
+ *
+ * @param {{ factor: any, bracket: boolean, money?: boolean }} props
  */
-function workingOut(finding) {
-  const evidence = finding.evidence
-  if (!evidence || typeof evidence !== 'object') return null
+function FactorText({ factor, bracket, money = false }) {
+  const head =
+    `${money ? usd(factor.value) : figure(factor.value)} ${factor.label}`.trim()
+  if (!factor.minus) return <>{head}</>
+  const inner =
+    `${head} \u2212 ${figure(factor.minus.value)} ${factor.minus.label}`.trim()
+  return <>{bracket ? `(${inner})` : inner}</>
+}
 
-  const perTurn = Number(evidence.perTurn ?? evidence.tokens)
-  const turns = Number(evidence.turns)
-
-  if (Number.isFinite(perTurn) && Number.isFinite(turns) && turns > 1 && perTurn > 0) {
-    return [
-      { key: 'per', text: `${exact(perTurn)} tokens` },
-      { key: 'x', text: ' \u00d7 ' },
-      { key: 'turns', text: `${exact(turns)} turns` },
-      { key: 'eq', text: ' = ' },
-      { key: 'total', text: `${exact(finding.wastedTokens)} wasted`, emphasis: true },
-      { key: 'sep', text: '  \u00b7  ' },
-      { key: 'cost', text: usd(finding.wastedCostUsd), emphasis: true },
-    ]
-  }
-
-  const reads = Number(evidence.reads ?? evidence.count)
-  if (Number.isFinite(reads) && reads > 1) {
-    return [
-      { key: 'times', text: `${exact(reads)} times` },
-      { key: 'eq', text: ' = ' },
-      { key: 'total', text: `${exact(finding.wastedTokens)} wasted`, emphasis: true },
-      { key: 'sep', text: '  \u00b7  ' },
-      { key: 'cost', text: usd(finding.wastedCostUsd), emphasis: true },
-    ]
-  }
-
-  return null
+/**
+ * A whole number with separators; a rate or a share to two decimals.
+ *
+ * @param {number} value
+ * @returns {string}
+ */
+function figure(value) {
+  return Number.isInteger(value)
+    ? exact(value)
+    : value.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
 /**
