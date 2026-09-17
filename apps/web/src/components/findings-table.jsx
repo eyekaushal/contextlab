@@ -136,7 +136,7 @@ export function FindingsTable({ rows, showSession = false, onChanged }) {
       <div className="overflow-x-auto rounded border border-[var(--color-border-subtle)]">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-page)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
               <th className="w-6" />
               <th className="px-2 py-1.5 font-medium">Severity</th>
               <th className="px-2 py-1.5 font-medium">Finding</th>

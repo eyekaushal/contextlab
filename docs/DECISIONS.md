@@ -73,6 +73,7 @@ index groups them by area instead.
 - [A facet rail instead of three dropdowns](#a-facet-rail-instead-of-three-dropdowns)
 - [Rings for what dominates, a stacked area for when](#rings-for-what-dominates-a-stacked-area-for-when)
 - [The budget is set from the dashboard, and the file stays the truth](#the-budget-is-set-from-the-dashboard-and-the-file-stays-the-truth)
+- [Five primitives, and every screen is made of them](#five-primitives-and-every-screen-is-made-of-them)
 
 **CLI**
 
@@ -1230,6 +1231,28 @@ would type ($5 · $20 · $50 · $100 daily), and a suggestion computed from the
 reader's own last thirty days — the 90th-percentile day rounded up to the next
 preset, the month with a quarter's headroom. There is no ideal range and the
 product does not pretend to know one; it knows yours.
+
+---
+
+## Five primitives, and every screen is made of them
+
+The first screenshot of the second revision looked, in the user's words, like
+it had no design system. It did not. Each screen composed its own row of
+figures, its own section heading, its own table head, and the result was six
+screens that agreed on colours and on nothing else.
+
+Now there are five things and every screen is built from them: `PageHeader`
+(title, the question under it, actions right), `Stat` (a card with an icon, a
+large figure, an arrow), `Card` with `CardHeader` (a raised band with an icon
+and a small-caps title) and `CardContent`, `Tooltip`, and the table head on the
+raised band. Overview, Optimize, Compare, Cost and Sessions were brought onto
+them in one pass, and the fix for the last inconsistency — a health tile that
+was the one figure on its row not in a card — was to make it a `Stat` like the
+other three, not to style it to match.
+
+The rule going forward: a screen may not introduce a new way to do something
+one of the five already does. If a primitive is wrong, the primitive changes,
+and every screen moves with it.
 
 ---
 

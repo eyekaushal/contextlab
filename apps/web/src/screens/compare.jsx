@@ -15,13 +15,13 @@
  * @module
  */
 
-import { Star, X } from 'lucide-react'
+import { GitCompare, Star, X } from 'lucide-react'
 import { useState } from 'react'
 import { Severity } from '../components/health.jsx'
 import { PageHeader } from '../components/page-header.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
-import { Card } from '../components/ui/card.jsx'
+import { Card, CardHeader, CardTitle } from '../components/ui/card.jsx'
 import { Tooltip } from '../components/ui/tooltip.jsx'
 import { useApi } from '../lib/api.js'
 import {
@@ -173,9 +173,15 @@ export function CompareTable({ columns, categories, baseline, onBaseline, onRemo
 
   return (
     <Card className="overflow-x-auto">
+      <CardHeader>
+        <CardTitle icon={GitCompare}>Side by side</CardTitle>
+        <span className="text-xs text-[var(--color-text-muted)]">
+          red is worse, green is better, grey has no better
+        </span>
+      </CardHeader>
       <table className="w-full border-collapse text-xs">
         <thead>
-          <tr className="border-b border-[var(--color-border-subtle)]">
+          <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)]">
             <th className="w-40 px-3 py-1.5 text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
               Measure
             </th>

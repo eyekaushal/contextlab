@@ -8,7 +8,14 @@
  * @module
  */
 
-import { CalendarDays, FolderKanban } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  CalendarDays,
+  CalendarRange,
+  Database,
+  Divide,
+  FolderKanban,
+} from 'lucide-react'
 import { useState } from 'react'
 import { BudgetCard } from '../components/budget-card.jsx'
 import { PageHeader } from '../components/page-header.jsx'
@@ -99,9 +106,15 @@ export function Cost({ version }) {
       />
 
       <StatRow>
-        <Stat label={`Last ${days} days`} value={usd(total)} hint={`${turns} turns`} />
-        <Stat label="Input tokens" value={tokens(inputTokens)} />
         <Stat
+          icon={CalendarRange}
+          label={`Last ${days} days`}
+          value={usd(total)}
+          hint={`${turns} turns`}
+        />
+        <Stat icon={ArrowDownToLine} label="Input tokens" value={tokens(inputTokens)} />
+        <Stat
+          icon={Database}
           label="Served from cache"
           value={tokens(cached)}
           hint={
@@ -111,6 +124,7 @@ export function Cost({ version }) {
           }
         />
         <Stat
+          icon={Divide}
           label="Per turn"
           value={turns > 0 ? usd(total / turns) : usd(0)}
           hint="average"

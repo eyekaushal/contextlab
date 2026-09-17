@@ -8,7 +8,16 @@
  * @module
  */
 
-import { MessagesSquare, PieChart, Wrench } from 'lucide-react'
+import {
+  AlertTriangle,
+  Coins,
+  Gauge,
+  HeartPulse,
+  MessageSquare,
+  MessagesSquare,
+  PieChart,
+  Wrench,
+} from 'lucide-react'
 import { useState } from 'react'
 import { CompositionBar, CompositionLegend } from '../components/composition-bar.jsx'
 import { ContextDiff } from '../components/context-diff.jsx'
@@ -97,6 +106,7 @@ export function SessionOverview({ sessionId, version }) {
 
       <StatRow>
         <Stat
+          icon={Gauge}
           label="Context"
           value={
             <>
@@ -118,23 +128,25 @@ export function SessionOverview({ sessionId, version }) {
           }
         />
         <Stat
+          icon={Coins}
           label="Turn cost"
           value={usd(current.equivalentCostUsd)}
           hint={`${usd(meta.equivalentCostUsd)} this session`}
         />
         <Stat
+          icon={MessageSquare}
           label="Output"
           value={tokens(current.outputTokens)}
           hint={`${exact(meta.outputTokens ?? 0)} total`}
         />
-        <div>
-          <div className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-            Health
-          </div>
-          <div className="mt-1.5">
-            {/* The status and its number are one object. A chip with the count
-                floating underneath made the reader do the joining. */}
+        {/* The same card as the other three; the status and its number are
+            one object inside it. */}
+        <Stat
+          icon={HeartPulse}
+          label="Health"
+          value={
             <Health
+              className="text-sm"
               level={healthOf({
                 contextShare: share,
                 criticalFindings,
@@ -142,13 +154,13 @@ export function SessionOverview({ sessionId, version }) {
               })}
               note={`${totals.count} finding${totals.count === 1 ? '' : 's'}`}
             />
-          </div>
-          {totals.recoverableUsd > 0 ? (
-            <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              {usd(totals.recoverableUsd)} recoverable
-            </div>
-          ) : null}
-        </div>
+          }
+          hint={
+            totals.recoverableUsd > 0
+              ? `${usd(totals.recoverableUsd)} recoverable`
+              : 'nothing to recover'
+          }
+        />
       </StatRow>
 
       <TurnPicker turns={turns} current={turnId} onSelect={setSelected} />
@@ -177,11 +189,16 @@ export function SessionOverview({ sessionId, version }) {
 
       <ContextDiff rows={turn.data?.delta ?? []} />
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+      <Card>
+        <CardHeader>
+          <CardTitle icon={AlertTriangle}>
             Findings
-          </h2>
+            {findings.length > 0 ? (
+              <span className="tnum normal-case tracking-normal text-[var(--color-text-muted)]">
+                · {totals.count}
+              </span>
+            ) : null}
+          </CardTitle>
           {findings.length > 0 ? (
             <Button
               variant="outline"
@@ -192,32 +209,34 @@ export function SessionOverview({ sessionId, version }) {
               Optimize
             </Button>
           ) : null}
-        </div>
+        </CardHeader>
 
-        {findings.length === 0 ? (
-          <Card className="p-4 text-xs text-[var(--color-text-muted)]">
-            Nothing flagged for this session. None of the ten rules matched.
-          </Card>
-        ) : (
-          <>
-            {findings.slice(0, SHOWN).map((/** @type {any} */ finding) => (
-              <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
-            ))}
+        <CardContent className="space-y-3">
+          {findings.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Nothing flagged for this session. None of the ten rules matched.
+            </p>
+          ) : (
+            <>
+              {findings.slice(0, SHOWN).map((/** @type {any} */ finding) => (
+                <Finding key={`${finding.rule}:${finding.title}`} finding={finding} />
+              ))}
 
-            {/* Never truncate silently. The header says nine; this says which
+              {/* Never truncate silently. The header says nine; this says which
                 nine you are looking at. */}
-            {findings.length > SHOWN ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/s/${encoded}/optimize`)}
-                className="w-full rounded border border-dashed border-[var(--color-border-subtle)] py-2 text-xs text-[var(--color-text-muted)] hover:border-[var(--color-baseline)] hover:text-[var(--color-text-primary)]"
-              >
-                Showing {SHOWN} of {findings.length} · view all
-              </button>
-            ) : null}
-          </>
-        )}
-      </section>
+              {findings.length > SHOWN ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/s/${encoded}/optimize`)}
+                  className="w-full rounded border border-dashed border-[var(--color-border-subtle)] py-2 text-xs text-[var(--color-text-muted)] hover:border-[var(--color-baseline)] hover:text-[var(--color-text-primary)]"
+                >
+                  Showing {SHOWN} of {findings.length} · view all
+                </button>
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

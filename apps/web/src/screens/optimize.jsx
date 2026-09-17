@@ -12,13 +12,20 @@
  * @module
  */
 
-import { CircleCheck } from 'lucide-react'
+import {
+  AlertOctagon,
+  AlertTriangle,
+  CircleCheck,
+  Coins,
+  Lightbulb,
+  PiggyBank,
+} from 'lucide-react'
 import { FindingsTable } from '../components/findings-table.jsx'
 import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
-import { Card } from '../components/ui/card.jsx'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.jsx'
 import { useApi } from '../lib/api.js'
 import { exact, truncate, usd } from '../lib/format.js'
 import { navigate } from '../lib/router.js'
@@ -76,7 +83,17 @@ function EverySession({ version }) {
       ) : (
         <>
           <Totals total={data.total} spentUsd={data.total.spentUsd} />
-          <FindingsTable rows={rows} showSession onChanged={reload} />
+          <Card>
+            <CardHeader>
+              <CardTitle icon={AlertTriangle}>Findings</CardTitle>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                ranked by money · click a row for the fix
+              </span>
+            </CardHeader>
+            <CardContent className="p-3">
+              <FindingsTable rows={rows} showSession onChanged={reload} />
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -118,7 +135,17 @@ function OneSession({ sessionId, version }) {
       ) : (
         <>
           <Totals total={data.total} spentUsd={summary.totalCostUsd} />
-          <FindingsTable rows={rows} onChanged={reload} />
+          <Card>
+            <CardHeader>
+              <CardTitle icon={AlertTriangle}>Findings</CardTitle>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                ranked by money · click a row for the fix
+              </span>
+            </CardHeader>
+            <CardContent className="p-3">
+              <FindingsTable rows={rows} onChanged={reload} />
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -130,25 +157,33 @@ function OneSession({ sessionId, version }) {
  */
 function Totals({ total, spentUsd }) {
   return (
-    <Card className="p-3">
+    <>
       {/* Three numbers that do not pretend to add up to one. Recoverable is
           money already spent that a change gives back; potential is a saving
           from a change not yet made. Summing them is what produced "$10.31
           recoverable" on a session that cost $6.08. */}
       <StatRow className="sm:grid-cols-4">
-        <Stat label="Spent" value={usd(spentUsd ?? 0)} hint="equivalent API cost" />
         <Stat
+          icon={Coins}
+          label="Spent"
+          value={usd(spentUsd ?? 0)}
+          hint="equivalent API cost"
+        />
+        <Stat
+          icon={PiggyBank}
           label="Recoverable"
           value={usd(total.recoverableUsd)}
           hint={`${exact(total.recoverableTokens)} tokens already paid for`}
           tone={total.recoverableUsd > 0 ? 'var(--color-status-warning)' : undefined}
         />
         <Stat
+          icon={Lightbulb}
           label="Potential"
           value={usd(total.potentialUsd)}
           hint="from changes not yet made"
         />
         <Stat
+          icon={AlertOctagon}
           label="Findings"
           value={total.count}
           hint={
@@ -159,7 +194,7 @@ function Totals({ total, spentUsd }) {
           tone={total.critical > 0 ? 'var(--color-status-critical)' : undefined}
         />
       </StatRow>
-    </Card>
+    </>
   )
 }
 
