@@ -11,10 +11,9 @@
  * @module
  */
 
-import { ArrowDown, GitCompare, Search, X } from 'lucide-react'
+import { ArrowDown, GitCompare, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { EntityMatches } from '../components/entity-matches.jsx'
-import { ExportMenu } from '../components/export-menu.jsx'
 import { Severity } from '../components/health.jsx'
 import { PageHeader } from '../components/page-header.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
@@ -22,7 +21,6 @@ import { Empty, Failed, Loading } from '../components/states.jsx'
 import { SummaryStrip } from '../components/summary-strip.jsx'
 import { Button } from '../components/ui/button.jsx'
 import { Card } from '../components/ui/card.jsx'
-import { Input } from '../components/ui/input.jsx'
 import { url, useApi } from '../lib/api.js'
 import { percent, tokens, truncate, usd, when } from '../lib/format.js'
 import { navigate } from '../lib/router.js'
@@ -57,11 +55,11 @@ export const COLUMNS = [
 ]
 
 /**
- * @param {{ version?: number }} props
+ * @param {{ version?: number, initialQuery?: string, selecting?: boolean }} props
  */
-export function Sessions({ version }) {
-  const [query, setQuery] = useState('')
-  const [debounced, setDebounced] = useState('')
+export function Sessions({ version, initialQuery = '', selecting = false }) {
+  const [query, setQuery] = useState(initialQuery)
+  const [debounced, setDebounced] = useState(initialQuery)
   const [filters, setFilters] = useState({ tool: '', model: '', project: '' })
   const [sort, setSort] = useState('recent')
   const [selected, setSelected] = useState(/** @type {string[]} */ ([]))
@@ -70,6 +68,11 @@ export function Sessions({ version }) {
     const timer = setTimeout(() => setDebounced(query), DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [query])
+
+  // Arriving from the top bar's search box, or from it again with a new term.
+  useEffect(() => {
+    setQuery(initialQuery)
+  }, [initialQuery])
 
   const options = useApi('/api/filters', { refreshKey: version })
   const summary = useApi('/api/summary', { refreshKey: version })
@@ -102,11 +105,27 @@ export function Sessions({ version }) {
       <PageHeader
         title="Sessions"
         question="Where did my money go?"
+        note={
+          selecting
+            ? 'Tick two or more sessions, then press Compare.'
+            : query
+              ? `Showing sessions matching “${query}”`
+              : undefined
+        }
         actions={
-          <>
-            <SearchBox value={query} onChange={setQuery} />
-            <ExportMenu />
-          </>
+          query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('')
+                navigate('/')
+              }}
+              className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            >
+              <X className="size-3" />
+              Clear search
+            </button>
+          ) : null
         }
       />
 
@@ -159,7 +178,13 @@ export function Sessions({ version }) {
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="w-8 px-3 py-1.5">
+                  <th
+                    className={cn(
+                      'w-8 px-3 py-1.5',
+                      selecting &&
+                        'bg-[color-mix(in_oklab,var(--color-cat-system-prompt)_18%,transparent)]',
+                    )}
+                  >
                     <span className="sr-only">Select for comparison</span>
                   </th>
                   {COLUMNS.map((column) => (
@@ -179,6 +204,7 @@ export function Sessions({ version }) {
                     session={session}
                     query={debounced}
                     selected={selected.includes(String(session.id))}
+                    selecting={selecting}
                     atLimit={selected.length >= MAX_COMPARE}
                     onToggle={() => toggle(String(session.id))}
                   />
@@ -205,10 +231,10 @@ export function Sessions({ version }) {
 }
 
 /**
- * @param {{ session: any, query: string, selected: boolean, atLimit: boolean,
- *           onToggle: () => void }} props
+ * @param {{ session: any, query: string, selected: boolean, selecting: boolean,
+ *           atLimit: boolean, onToggle: () => void }} props
  */
-function SessionRow({ session, query, selected, atLimit, onToggle }) {
+function SessionRow({ session, query, selected, selecting, atLimit, onToggle }) {
   const limit = Number(session.contextLimit) || 0
   const peak = Number(session.peakContextTokens) || 0
   const share = limit > 0 ? peak / limit : 0
@@ -225,7 +251,13 @@ function SessionRow({ session, query, selected, atLimit, onToggle }) {
           selected && 'bg-[var(--color-gridline)]',
         )}
       >
-        <td className="px-3 py-1.5">
+        <td
+          className={cn(
+            'px-3 py-1.5',
+            selecting &&
+              'bg-[color-mix(in_oklab,var(--color-cat-system-prompt)_18%,transparent)]',
+          )}
+        >
           {/* The click stops here: ticking a box and being navigated away from
               the list you are ticking is the worst answer to either gesture. */}
           <input
@@ -429,37 +461,6 @@ function Snippet({ text }) {
         ),
       )}
     </span>
-  )
-}
-
-/**
- * @param {{ value: string, onChange: (value: string) => void }} props
- */
-function SearchBox({ value, onChange }) {
-  return (
-    <div className="relative w-full max-w-sm">
-      <Search
-        aria-hidden="true"
-        className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
-      />
-      <Input
-        value={value}
-        onChange={(/** @type {any} */ event) => onChange(event.target.value)}
-        placeholder="Search every message, call and result"
-        aria-label="Search session content"
-        className="pl-7 pr-7"
-      />
-      {value ? (
-        <button
-          type="button"
-          onClick={() => onChange('')}
-          aria-label="Clear search"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-        >
-          <X className="size-3.5" />
-        </button>
-      ) : null}
-    </div>
   )
 }
 

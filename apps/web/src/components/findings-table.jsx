@@ -23,6 +23,7 @@ import { Arithmetic, Fix } from './finding.jsx'
 import { Severity } from './health.jsx'
 import { Badge } from './ui/badge.jsx'
 import { Button } from './ui/button.jsx'
+import { Tooltip } from './ui/tooltip.jsx'
 
 /** Order for the severity sort. Money still breaks ties inside a level. */
 const SEVERITY_RANK = { critical: 0, warning: 1, info: 2 }
@@ -48,16 +49,18 @@ const SCOPE_LABEL = {
  */
 export function FindingsTable({ rows, showSession = false, onChanged }) {
   const [severity, setSeverity] = useState('all')
-  const [rule, setRule] = useState('all')
+  const [project, setProject] = useState('all')
   const [sort, setSort] = useState('money')
   const [withDismissed, setWithDismissed] = useState(false)
   const [open, setOpen] = useState(/** @type {Record<string, boolean>} */ ({}))
   const [busy, setBusy] = useState(/** @type {string | null} */ (null))
 
-  // Built from everything, not from the filtered set, so choosing one rule does
-  // not make the other rules disappear from the control that chooses them.
-  const rules = useMemo(
-    () => [...new Set(rows.map((row) => String(row.finding.rule)))].sort(),
+  // Built from everything, not from the filtered set, so choosing one project
+  // does not make the others disappear from the control that chooses them.
+  // Projects rather than rules: a reader thinks "what is wrong with api", not
+  // "show me every bloated-memory-file".
+  const projects = useMemo(
+    () => [...new Set(rows.map((row) => row.sessionLabel).filter(Boolean))].sort(),
     [rows],
   )
 
@@ -68,7 +71,7 @@ export function FindingsTable({ rows, showSession = false, onChanged }) {
       const finding = row.finding
       if (finding.dismissedAt && !withDismissed) return false
       if (severity !== 'all' && finding.severity !== severity) return false
-      if (rule !== 'all' && finding.rule !== rule) return false
+      if (project !== 'all' && row.sessionLabel !== project) return false
       return true
     })
 
@@ -89,7 +92,7 @@ export function FindingsTable({ rows, showSession = false, onChanged }) {
       if (kind !== 0) return kind
       return b.finding.wastedCostUsd - a.finding.wastedCostUsd
     })
-  }, [rows, severity, rule, sort, withDismissed])
+  }, [rows, severity, project, sort, withDismissed])
 
   /**
    * @param {Row} row
@@ -118,9 +121,9 @@ export function FindingsTable({ rows, showSession = false, onChanged }) {
       <Controls
         severity={severity}
         setSeverity={setSeverity}
-        rule={rule}
-        setRule={setRule}
-        rules={rules}
+        project={project}
+        setProject={setProject}
+        projects={projects}
         sort={sort}
         setSort={setSort}
         withDismissed={withDismissed}
@@ -275,18 +278,31 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
         </td>
 
         <td className="px-2 py-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            aria-label={dismissed ? 'Restore this finding' : 'Dismiss this finding'}
-            onClick={(/** @type {any} */ event) => {
-              event.stopPropagation()
-              onAct(row, dismissed ? 'restore' : 'dismiss')
-            }}
+          <Tooltip
+            side="left"
+            text={
+              dismissed
+                ? 'Restore — counts toward the totals again.'
+                : 'Dismiss — set aside as judged. Stops counting toward the totals. Reversible.'
+            }
           >
-            {dismissed ? <RotateCcw className="size-3" /> : <EyeOff className="size-3" />}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              aria-label={dismissed ? 'Restore this finding' : 'Dismiss this finding'}
+              onClick={(/** @type {any} */ event) => {
+                event.stopPropagation()
+                onAct(row, dismissed ? 'restore' : 'dismiss')
+              }}
+            >
+              {dismissed ? (
+                <RotateCcw className="size-3" />
+              ) : (
+                <EyeOff className="size-3" />
+              )}
+            </Button>
+          </Tooltip>
         </td>
       </tr>
 
@@ -321,9 +337,9 @@ function FindingRow({ row, open, onToggle, showSession, busy, onAct }) {
 function Controls({
   severity,
   setSeverity,
-  rule,
-  setRule,
-  rules,
+  project,
+  setProject,
+  projects,
   sort,
   setSort,
   withDismissed,
@@ -349,19 +365,22 @@ function Controls({
         <option value="info">Info</option>
       </select>
 
-      <select
-        aria-label="Filter by rule"
-        className={select}
-        value={rule}
-        onChange={(event) => setRule(event.target.value)}
-      >
-        <option value="all">All rules</option>
-        {rules.map((/** @type {string} */ name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
+      {/* Only offered when there is more than one project to choose from. */}
+      {projects.length > 1 ? (
+        <select
+          aria-label="Filter by project"
+          className={select}
+          value={project}
+          onChange={(event) => setProject(event.target.value)}
+        >
+          <option value="all">All projects</option>
+          {projects.map((/** @type {string} */ name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      ) : null}
 
       <select
         aria-label="Sort by"

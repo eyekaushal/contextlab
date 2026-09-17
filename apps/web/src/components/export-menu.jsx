@@ -11,7 +11,7 @@
  * @module
  */
 
-import { ChevronDown, Download } from 'lucide-react'
+import { ChevronDown, Download, FileJson, FileText, Hash, Waypoints } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { url } from '../lib/api.js'
 import { cn } from '../lib/utils.js'
@@ -42,35 +42,7 @@ export function ExportMenu({ sessionId, className }) {
     }
   }, [open])
 
-  const scope = sessionId ? { session: sessionId } : {}
-  const label = sessionId ? 'This session' : 'All sessions'
-
-  const items = [
-    {
-      key: 'preview',
-      label: `${label} (.ctxlab.json)`,
-      hint: 'previews only',
-      href: url('/api/export', { ...scope, content: 'preview' }),
-    },
-    {
-      key: 'full',
-      label: `${label}, full text`,
-      hint: 'includes your prompts and code',
-      href: url('/api/export', { ...scope, content: 'full' }),
-    },
-    {
-      key: 'none',
-      label: `${label}, numbers only`,
-      hint: 'no message content at all',
-      href: url('/api/export', { ...scope, content: 'none' }),
-    },
-    {
-      key: 'otlp',
-      label: 'OpenTelemetry traces (.otlp.json)',
-      hint: 'for an existing pipeline',
-      href: url('/api/export', { ...scope, format: 'otlp', content: 'none' }),
-    },
-  ]
+  const items = exportItems(sessionId)
 
   return (
     <div ref={container} className={cn('relative', className)}>
@@ -101,10 +73,22 @@ export function ExportMenu({ sessionId, className }) {
               href={item.href}
               download
               onClick={() => setOpen(false)}
-              className="block px-3 py-2 hover:bg-[var(--color-gridline)]"
+              className="flex items-start gap-2.5 px-3 py-2 hover:bg-[var(--color-gridline)]"
             >
-              <div className="text-sm text-[var(--color-text-primary)]">{item.label}</div>
-              <div className="text-xs text-[var(--color-text-muted)]">{item.hint}</div>
+              {/* An icon per option: the shape is what a reader remembers the
+                  next time, before they have read the words again. */}
+              <item.Icon
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-[var(--color-text-secondary)]"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm text-[var(--color-text-primary)]">
+                  {item.label}
+                </span>
+                <span className="block text-xs text-[var(--color-text-muted)]">
+                  {item.hint}
+                </span>
+              </span>
             </a>
           ))}
 
@@ -117,4 +101,46 @@ export function ExportMenu({ sessionId, className }) {
       ) : null}
     </div>
   )
+}
+
+/**
+ * The four ways out, each with the mark a reader remembers it by.
+ *
+ * @param {string} [sessionId]
+ * @returns {{ key: string, Icon: any, label: string, hint: string, href: string }[]}
+ */
+export function exportItems(sessionId) {
+  const scope = sessionId ? { session: sessionId } : {}
+  const label = sessionId ? 'This session' : 'All sessions'
+
+  return [
+    {
+      key: 'preview',
+      Icon: FileJson,
+      label: `${label} (.ctxlab.json)`,
+      hint: 'previews only',
+      href: url('/api/export', { ...scope, content: 'preview' }),
+    },
+    {
+      key: 'full',
+      Icon: FileText,
+      label: `${label}, full text`,
+      hint: 'includes your prompts and code',
+      href: url('/api/export', { ...scope, content: 'full' }),
+    },
+    {
+      key: 'none',
+      Icon: Hash,
+      label: `${label}, numbers only`,
+      hint: 'no message content at all',
+      href: url('/api/export', { ...scope, content: 'none' }),
+    },
+    {
+      key: 'otlp',
+      Icon: Waypoints,
+      label: 'OpenTelemetry traces (.otlp.json)',
+      hint: 'for an existing pipeline',
+      href: url('/api/export', { ...scope, format: 'otlp', content: 'none' }),
+    },
+  ]
 }

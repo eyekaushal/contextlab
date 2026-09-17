@@ -11,6 +11,7 @@
  * @module
  */
 
+import { Diff } from 'lucide-react'
 import { categoryColor, categoryLabel, tokens } from '../lib/format.js'
 import { cn } from '../lib/utils.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card.jsx'
@@ -24,7 +25,7 @@ export function ContextDiff({ rows = [], className }) {
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Since the previous turn</CardTitle>
+        <CardTitle icon={Diff}>Since the previous turn</CardTitle>
         {moved.length > 0 ? (
           <span className="tnum text-xs text-[var(--color-text-muted)]">
             {signed(moved.reduce((sum, row) => sum + Number(row.delta), 0))} total

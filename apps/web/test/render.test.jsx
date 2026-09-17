@@ -11,11 +11,11 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { App, Route } from '../src/App.jsx'
+import { App, activeNav, Route } from '../src/App.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { EntityMatches } from '../src/components/entity-matches.jsx'
-import { ExportMenu } from '../src/components/export-menu.jsx'
+import { ExportMenu, exportItems } from '../src/components/export-menu.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
@@ -30,6 +30,7 @@ import { Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
 import { SummaryStrip } from '../src/components/summary-strip.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
+import { Tooltip } from '../src/components/ui/tooltip.jsx'
 import { Wordmark } from '../src/components/wordmark.jsx'
 import { categoryColor, categoryLabel, tokens, usd, when } from '../src/lib/format.js'
 import { href, match, pathOf, queryOf } from '../src/lib/router.js'
@@ -177,6 +178,52 @@ describe('density', () => {
       /text-\[\d+px\]/.test(readFileSync(file, 'utf8')),
     )
     expect(offenders).toEqual([])
+  })
+})
+
+describe('the top bar', () => {
+  it('has one entry per view, icon and word, Compare included', () => {
+    const html = renderToString(<App />)
+    for (const label of ['Sessions', 'Optimize', 'Compare', 'Cost']) {
+      expect(html).toContain(label)
+    }
+    expect(html).toContain('aria-current="page"')
+    expect(html).toContain('Search everything')
+  })
+
+  it('knows which entry a route belongs to', () => {
+    expect(activeNav('/')).toBe('/')
+    expect(activeNav('/s/tag%3Aa/messages')).toBe('/')
+    expect(activeNav('/optimize')).toBe('/optimize')
+    expect(activeNav('/cost')).toBe('/cost')
+    // A comparison belongs to Compare however it was reached.
+    expect(activeNav('/compare?ids=a&ids=b')).toBe('/?select=1')
+    expect(activeNav('/?select=1')).toBe('/?select=1')
+  })
+
+  it('opens the sessions list in selection mode for Compare', () => {
+    const html = renderToString(<Route route="/?select=1" version={0} />)
+    expect(html).toContain('Tick two or more sessions')
+  })
+
+  it('carries a search term from the bar to the list', () => {
+    const html = renderToString(<Route route="/?q=playwright" version={0} />)
+    expect(html).toContain('matching \u201cplaywright\u201d')
+  })
+})
+
+describe('a tooltip', () => {
+  it('links its sentence to the control for a screen reader', () => {
+    const html = renderToString(
+      <Tooltip text="Dismiss — set aside as judged.">
+        <button type="button">x</button>
+      </Tooltip>,
+    )
+    expect(html).toContain('role="tooltip"')
+    expect(html).toContain('Dismiss — set aside as judged.')
+    const id = /aria-describedby="([^"]+)"/.exec(html)?.[1]
+    expect(id).toBeTruthy()
+    expect(html).toContain(`id="${id}"`)
   })
 })
 
@@ -508,6 +555,28 @@ describe('findings as a ranked table', () => {
     const html = renderToString(<FindingsTable rows={rows} />)
     expect(html).toContain('Recoverable')
     expect(html).toContain('Potential')
+  })
+
+  it('filters by project, not by rule', () => {
+    const two = [...rows, { ...rows[0], sessionId: 's2', sessionLabel: 'monolith' }]
+    const html = renderToString(<FindingsTable rows={two} showSession />)
+    expect(html).toContain('Filter by project')
+    expect(html).toContain('All projects')
+    expect(html).toContain('monolith')
+    // A reader thinks "what is wrong with api", not "show me every
+    // bloated-memory-file".
+    expect(html).not.toContain('Filter by rule')
+  })
+
+  it('offers no project filter when there is only one project', () => {
+    expect(renderToString(<FindingsTable rows={rows} />)).not.toContain(
+      'Filter by project',
+    )
+  })
+
+  it('explains the eye', () => {
+    const html = renderToString(<FindingsTable rows={rows} />)
+    expect(html).toContain('Dismiss — set aside as judged')
   })
 
   it('says which figures are a potential saving rather than a loss', () => {
@@ -1087,6 +1156,15 @@ describe('the arithmetic behind a finding', () => {
 })
 
 describe('export menu', () => {
+  it('puts a distinct icon in front of every option', () => {
+    // The menu is closed on first paint, so the items are checked directly.
+    const items = exportItems()
+    expect(items).toHaveLength(4)
+    // lucide icons are forwardRef objects, not plain functions.
+    for (const item of items) expect(item.Icon).toBeTruthy()
+    expect(new Set(items.map((item) => item.Icon)).size).toBe(4)
+  })
+
   it('offers every content level, and says what each costs in privacy', () => {
     const html = renderToString(<ExportMenu />)
     // Closed by default: the trigger renders, the items do not.

@@ -1,24 +1,29 @@
 @import "tailwindcss";
 
 /*
- * The palette is from docs/DESIGN.md and was validated for contrast and
- * colourblind separation against the dark surface below. Every check passed:
- * lightness band, chroma floor, CVD separation, normal-vision floor, 3:1
- * contrast.
+ * The palette is from docs/DESIGN.md.
+ *
+ * Surfaces are slate — a desaturated blue-grey, not near-black — after the
+ * second UI revision aligned the product with the Gotham reference. That
+ * changed what every mark sits on, so the category and status colours were
+ * re-run through the validator against these exact surfaces rather than
+ * trusted from the previous set. Two moved; the rest held. The run is recorded
+ * in docs/DESIGN.md.
  *
  * Do not substitute a colour by eye. If you change one, re-validate the set.
  */
 
 @theme {
   /* Surfaces and ink */
-  --color-page: #0d0e12;
-  --color-surface: #12141a;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #c3c2b7;
-  --color-text-muted: #898781;
-  --color-gridline: #2c2c2a;
-  --color-baseline: #383835;
-  --color-border-subtle: rgb(255 255 255 / 0.1);
+  --color-page: #1a222c; /* the window behind everything */
+  --color-surface: #222d38; /* cards, table bodies */
+  --color-raised: #2a3744; /* card headers, hover rows, the top bar */
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #a9b6c3;
+  --color-text-muted: #7d8b99;
+  --color-gridline: #34424f;
+  --color-baseline: #41515f;
+  --color-border-subtle: rgb(255 255 255 / 0.08);
 
   /*
    * Composition categories, assigned in this fixed order. Never cycle the
@@ -30,7 +35,7 @@
   --color-cat-tool-results: #199e70;
   --color-cat-tool-calls: #c98500;
   --color-cat-user-text: #d55181;
-  --color-cat-assistant-text: #008300;
+  --color-cat-assistant-text: #0d880b; /* was #008300 — 2.83:1 on slate */
   --color-cat-thinking: #9085e9;
   --color-cat-images: #e66767;
   --color-cat-other: #6e7681;
@@ -43,7 +48,7 @@
   --color-status-good: #0ca30c;
   --color-status-warning: #fab219;
   --color-status-serious: #ec835a;
-  --color-status-critical: #d03b3b;
+  --color-status-critical: #d43f3e; /* was #d03b3b — 2.91:1 on slate */
 
   /*
    * Density is respect.

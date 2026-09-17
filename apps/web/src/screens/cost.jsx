@@ -8,6 +8,7 @@
  * @module
  */
 
+import { CalendarDays, FolderKanban, PiggyBank } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
@@ -120,7 +121,7 @@ export function Cost({ version }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>By day</CardTitle>
+          <CardTitle icon={CalendarDays}>By day</CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
           {rows.length === 0 ? (
@@ -136,7 +137,7 @@ export function Cost({ version }) {
       {projects.data?.rows?.length ? (
         <Card>
           <CardHeader>
-            <CardTitle>By project</CardTitle>
+            <CardTitle icon={FolderKanban}>By project</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
             <ul className="space-y-1.5">
@@ -190,7 +191,7 @@ function BudgetPanel({ data }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Budget</CardTitle>
+        <CardTitle icon={PiggyBank}>Budget</CardTitle>
         {data.alerts.length > 0 ? (
           <Badge tone={data.alerts[0].level === 'exceeded' ? 'critical' : 'warning'}>
             {data.alerts[0].title}

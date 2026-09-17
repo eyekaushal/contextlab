@@ -28,22 +28,34 @@ export function Card({ className, ...props }) {
 export function CardHeader({ className, ...props }) {
   return (
     <div
-      className={cn('flex items-baseline justify-between gap-3 px-3 pt-3', className)}
+      className={cn('flex items-center justify-between gap-3 px-3 py-2', className)}
       {...props}
     />
   )
 }
 
-/** @param {any} props */
-export function CardTitle({ className, ...props }) {
+/**
+ * A card's title, with the icon that names what kind of thing the card is.
+ *
+ * Section titles in the Gotham reference are small caps with a mark beside
+ * them; the mark is what lets a reader find the section again without reading.
+ *
+ * @param {any} props
+ */
+export function CardTitle({ className, icon: Icon, children, ...props }) {
   return (
     <h2
       className={cn(
-        'text-sm font-medium tracking-tight text-[var(--color-text-secondary)]',
+        'flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]',
         className,
       )}
       {...props}
-    />
+    >
+      {Icon ? (
+        <Icon aria-hidden="true" className="size-3.5 text-[var(--color-text-muted)]" />
+      ) : null}
+      {children}
+    </h2>
   )
 }
 

@@ -66,6 +66,9 @@ index groups them by area instead.
 - [Rendered is the default, and raw never goes away](#rendered-is-the-default-and-raw-never-goes-away)
 - [The type scale is redefined in one place, not rewritten in three hundred](#the-type-scale-is-redefined-in-one-place-not-rewritten-in-three-hundred)
 - [The mark is a context window](#the-mark-is-a-context-window)
+- [Slate surfaces, and a palette re-validated rather than carried over](#slate-surfaces-and-a-palette-re-validated-rather-than-carried-over)
+- [A top bar instead of a sidebar](#a-top-bar-instead-of-a-sidebar)
+- [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 
 **CLI**
 
@@ -1082,6 +1085,60 @@ reads the same custom properties they do.
 
 Four rectangles do not deserve a network request, and an image file would be a
 fourth place the palette is written down.
+
+---
+
+## Slate surfaces, and a palette re-validated rather than carried over
+
+The second UI revision moved the surfaces from near-black (`#0d0e12`) to a
+desaturated blue-grey (`#1a222c` page, `#222d38` cards) to match the reference
+dashboard. That is a palette change even though no category colour was
+touched, because contrast is a ratio against whatever sits behind the mark.
+
+So the sets were re-run through the validator against the new surfaces, not
+trusted from the old run. Eight category hues: all checks pass on both
+surfaces, after one move — assistant-text green fell to 2.83:1 and was lifted
+along its own hue to `#0d880b`. Status: only contrast binds, since status is
+never colour alone; critical fell to 2.91:1 and was lifted to `#d43f3e`.
+
+Two things this run made honest. The earlier "all checks pass" was true of the
+eight hues and not of the nine-slot set: the grey for *other* fails the chroma
+floor by design — it is a neutral, and is now documented as excluded from the
+hue checks rather than quietly included. And warning-vs-serious sits under the
+categorical normal-vision floor; it was left alone, because the two never
+appear without different icons and different words, and lifting a colour to
+satisfy a check that does not apply is churn.
+
+---
+
+## A top bar instead of a sidebar
+
+The sidebar spent 192px of every screen on four words. The reference
+dashboard puts its views in a bar along the top — an icon above a label — and
+gives the width back to the content, which on this product is tables of
+numbers that were being squeezed.
+
+Compare gets a nav entry. It needs a selection, so the entry opens the
+sessions list with selection mode on and a note saying what to do, rather than
+an empty compare page or no entry at all. A global search box lives in the bar
+and lands on the sessions list with the term applied, which is where every
+search result already lived. The per-screen search box on Sessions was removed
+rather than duplicated.
+
+---
+
+## Every icon-only control carries a sentence
+
+An icon with no word next to it is a guess, and the eye-off icon in the
+findings table was one nobody got right: it dismisses a finding, and nothing on
+the screen said so.
+
+Every icon-only control now has a tooltip on hover and on keyboard focus, and
+every menu option and card title has an icon beside its words. The tooltip is
+plain CSS with `aria-describedby`, so a screen reader hears the same sentence
+the pointer sees. The rule is symmetrical: an icon never travels without a
+sentence, and a sentence that names an action gets an icon a reader can find
+again without reading.
 
 ---
 

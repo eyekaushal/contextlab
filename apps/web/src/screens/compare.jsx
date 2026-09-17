@@ -22,6 +22,7 @@ import { PageHeader } from '../components/page-header.jsx'
 import { Failed, Loading } from '../components/states.jsx'
 import { Button } from '../components/ui/button.jsx'
 import { Card } from '../components/ui/card.jsx'
+import { Tooltip } from '../components/ui/tooltip.jsx'
 import { useApi } from '../lib/api.js'
 import {
   categoryColor,
@@ -268,14 +269,16 @@ function ColumnHead({ column, isBaseline, onBaseline, onRemove }) {
           {truncate(String(label), 22)}
         </button>
         {onRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`Remove ${label} from the comparison`}
-            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-          >
-            <X className="size-3" />
-          </button>
+          <Tooltip text="Remove from the comparison" side="left">
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label={`Remove ${label} from the comparison`}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            >
+              <X className="size-3" />
+            </button>
+          </Tooltip>
         ) : null}
       </div>
 
@@ -287,20 +290,22 @@ function ColumnHead({ column, isBaseline, onBaseline, onRemove }) {
 
       {/* Which column everything is measured against is the reader's choice,
           so it is a control here rather than a rule on the server. */}
-      <button
-        type="button"
-        onClick={onBaseline}
-        aria-pressed={isBaseline}
-        className={cn(
-          'mt-1 inline-flex items-center gap-1 text-xs',
-          isBaseline
-            ? 'text-[var(--color-cat-system-prompt)]'
-            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-        )}
-      >
-        <Star className={cn('size-3', isBaseline && 'fill-current')} />
-        {isBaseline ? 'baseline' : 'set as baseline'}
-      </button>
+      <Tooltip text="Every other column is measured against the baseline" side="bottom">
+        <button
+          type="button"
+          onClick={onBaseline}
+          aria-pressed={isBaseline}
+          className={cn(
+            'mt-1 inline-flex items-center gap-1 text-xs',
+            isBaseline
+              ? 'text-[var(--color-cat-system-prompt)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
+          )}
+        >
+          <Star className={cn('size-3', isBaseline && 'fill-current')} />
+          {isBaseline ? 'baseline' : 'set as baseline'}
+        </button>
+      </Tooltip>
     </th>
   )
 }

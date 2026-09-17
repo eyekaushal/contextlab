@@ -59,17 +59,19 @@ export function Mark({ className }) {
 }
 
 /**
- * @param {{ className?: string }} props
+ * @param {{ className?: string, compact?: boolean }} props
  */
-export function Wordmark({ className }) {
+export function Wordmark({ className, compact = false }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <Mark className="size-5" />
       <div className="min-w-0 leading-none">
         <div className="text-sm font-semibold tracking-tight">contextlab</div>
-        <div className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
-          what is filling the window
-        </div>
+        {compact ? null : (
+          <div className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
+            what is filling the window
+          </div>
+        )}
       </div>
     </div>
   )

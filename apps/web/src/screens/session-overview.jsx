@@ -8,7 +8,7 @@
  * @module
  */
 
-import { MessagesSquare, Wrench } from 'lucide-react'
+import { MessagesSquare, PieChart, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { CompositionBar, CompositionLegend } from '../components/composition-bar.jsx'
 import { ContextDiff } from '../components/context-diff.jsx'
@@ -156,7 +156,7 @@ export function SessionOverview({ sessionId, version }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>What is in the window</CardTitle>
+            <CardTitle icon={PieChart}>What is in the window</CardTitle>
             <span className="tnum text-xs text-[var(--color-text-muted)]">
               {exact(contextTokens)} tokens
             </span>

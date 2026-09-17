@@ -17,7 +17,7 @@
  * @module
  */
 
-import { Lock, Pencil } from 'lucide-react'
+import { FileText, Lock, Pencil } from 'lucide-react'
 import { exact, percent, tokens } from '../lib/format.js'
 import { cn } from '../lib/utils.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card.jsx'
@@ -53,7 +53,7 @@ export function SystemPromptPanel({
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle>System prompt</CardTitle>
+          <CardTitle icon={FileText}>System prompt</CardTitle>
         </CardHeader>
         <CardContent className="text-xs text-[var(--color-text-muted)]">
           Nothing recorded for this turn.
@@ -67,7 +67,7 @@ export function SystemPromptPanel({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>System prompt</CardTitle>
+        <CardTitle icon={FileText}>System prompt</CardTitle>
         <span className="tnum text-xs text-[var(--color-text-muted)]">
           {exact(total)} tokens
           {contextTokens > 0 ? ` · ${percent(total / contextTokens)} of context` : ''}
