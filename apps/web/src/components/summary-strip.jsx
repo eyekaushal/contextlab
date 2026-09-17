@@ -1,20 +1,22 @@
 /**
- * Where the money went, in one row.
+ * Where the money went, in five cards.
  *
- * The sessions screen was a table with nothing above it — no sense of "this is
- * the week", no indication of what is outstanding, no entry point into the
- * thing the reader came to do. A table is a list of rows; a dashboard states a
- * position first and then lets you go looking.
+ * The strip states the position before the table lists the rows. Five equal
+ * tiles, each with its mark, its number large, and — where a prior period
+ * exists — an arrow saying which way it moved. Today is measured against
+ * yesterday and the week against the week before; all-time has no prior
+ * period and shows none rather than inventing one.
  *
- * Recoverable and potential stay separate here as everywhere else, and the
- * budget bar appears only when one is configured — an empty bar is a worse
- * answer than no bar.
+ * Recoverable and potential stay separate here as everywhere else. The budget
+ * bar appears only when one is configured — an empty bar is a worse answer
+ * than no bar.
  *
  * @module
  */
 
+import { AlertOctagon, CalendarDays, CalendarRange, PiggyBank, Sigma } from 'lucide-react'
 import { usd } from '../lib/format.js'
-import { Stat, StatRow } from './stat.jsx'
+import { Stat } from './stat.jsx'
 import { Card } from './ui/card.jsx'
 
 /**
@@ -27,32 +29,57 @@ export function SummaryStrip({ data, onOpenOptimize }) {
   const critical = Number(data.critical) || 0
 
   return (
-    <Card className="space-y-2.5 p-3">
-      <StatRow className="sm:grid-cols-5">
-        <Stat label="Today" value={usd(data.today)} hint="equivalent API cost" />
-        <Stat label="7 days" value={usd(data.week)} hint={`${data.turns ?? 0} turns`} />
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat
-          label="All time"
-          value={usd(data.total)}
-          hint={`${data.sessions ?? 0} session${data.sessions === 1 ? '' : 's'}`}
+          icon={CalendarDays}
+          label="Today"
+          value={usd(data.today)}
+          hint="equivalent API cost"
+          delta={{
+            current: Number(data.today) || 0,
+            previous: Number(data.yesterday) || 0,
+            label: 'vs yesterday',
+            higherIsWorse: true,
+          }}
         />
         <Stat
+          icon={CalendarRange}
+          label="7 days"
+          value={usd(data.week)}
+          hint={`${data.weekTurns ?? data.turns ?? 0} turns`}
+          delta={{
+            current: Number(data.week) || 0,
+            previous: Number(data.priorWeek) || 0,
+            label: 'vs the 7 days before',
+            higherIsWorse: true,
+          }}
+        />
+        <Stat
+          icon={Sigma}
+          label="All time"
+          value={usd(data.total)}
+          hint={`${data.sessions ?? 0} session${data.sessions === 1 ? '' : 's'} · ${data.turns ?? 0} turns`}
+        />
+        <Stat
+          icon={PiggyBank}
           label="Recoverable"
           value={usd(data.recoverable)}
-          hint={`${usd(data.potential)} potential`}
+          hint={`${usd(data.potential)} more is potential`}
           tone={Number(data.recoverable) > 0 ? 'var(--color-status-warning)' : undefined}
         />
         <Stat
+          icon={AlertOctagon}
           label="Outstanding"
           value={outstanding}
           hint={
             outstanding === 0
               ? 'nothing to fix'
-              : `${critical} critical · finding${outstanding === 1 ? '' : 's'}`
+              : `${critical} critical · ${outstanding === 1 ? 'finding' : 'findings'}`
           }
           tone={critical > 0 ? 'var(--color-status-critical)' : undefined}
         />
-      </StatRow>
+      </div>
 
       {data.budget?.configured ? <BudgetBars budget={data.budget} /> : null}
 
@@ -60,12 +87,12 @@ export function SummaryStrip({ data, onOpenOptimize }) {
         <button
           type="button"
           onClick={onOpenOptimize}
-          className="text-xs text-[var(--color-cat-system-prompt)] underline-offset-2 hover:underline"
+          className="text-sm text-[var(--color-cat-system-prompt)] underline-offset-2 hover:underline"
         >
           What do I change first? →
         </button>
       ) : null}
-    </Card>
+    </div>
   )
 }
 
@@ -77,7 +104,7 @@ function BudgetBars({ budget }) {
   if (rows.length === 0) return null
 
   return (
-    <div className="space-y-1.5 border-t border-[var(--color-border-subtle)] pt-2.5">
+    <Card className="space-y-1.5 px-4 py-3">
       {rows.map((/** @type {any} */ row) => (
         <div key={row.scope} className="flex items-center gap-2.5 text-xs">
           <span className="w-14 shrink-0 capitalize text-[var(--color-text-muted)]">
@@ -102,6 +129,6 @@ function BudgetBars({ budget }) {
           </span>
         </div>
       ))}
-    </div>
+    </Card>
   )
 }

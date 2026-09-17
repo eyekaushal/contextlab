@@ -16,6 +16,7 @@ import { CompositionBar, CompositionLegend } from '../src/components/composition
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { EntityMatches } from '../src/components/entity-matches.jsx'
 import { ExportMenu, exportItems } from '../src/components/export-menu.jsx'
+import { FacetRail } from '../src/components/facet-rail.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
@@ -26,7 +27,7 @@ import {
   Rendered,
 } from '../src/components/rendered-block.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
-import { Stat } from '../src/components/stat.jsx'
+import { describeDelta, Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
 import { SummaryStrip } from '../src/components/summary-strip.jsx'
 import { SystemPromptPanel } from '../src/components/system-prompt-panel.jsx'
@@ -615,6 +616,99 @@ describe('findings as a ranked table', () => {
   })
 })
 
+describe('a stat is a card with an arrow', () => {
+  it('describes a change as a direction and a percentage', () => {
+    expect(describeDelta(11, 10)).toEqual({ direction: 'up', text: '10%' })
+    expect(describeDelta(9, 10)).toEqual({ direction: 'down', text: '10%' })
+    expect(describeDelta(10, 10)).toEqual({ direction: 'flat', text: 'same' })
+  })
+
+  it('says "new" rather than dividing by zero', () => {
+    // A prior period of nothing is not an infinite increase.
+    expect(describeDelta(5, 0)).toEqual({ direction: 'up', text: 'new' })
+    expect(describeDelta(0, 0)).toEqual({ direction: 'flat', text: 'same' })
+  })
+
+  it('paints the arrow by meaning, not by direction', () => {
+    const up = renderToString(
+      <Stat
+        label="Today"
+        value="$11"
+        delta={{ current: 11, previous: 10, label: 'vs yesterday', higherIsWorse: true }}
+      />,
+    )
+    // Spend going up is bad.
+    expect(up).toContain('var(--color-status-critical)')
+    expect(up).toContain('10%')
+
+    const neutral = renderToString(
+      <Stat label="Turns" value="8" delta={{ current: 8, previous: 5, label: 'vs' }} />,
+    )
+    // More turns is not a fault: no colour either way.
+    expect(neutral).not.toContain('var(--color-status-critical)')
+    expect(neutral).not.toContain('var(--color-status-good)')
+  })
+
+  it('shows no arrow when there is nothing to compare against', () => {
+    expect(renderToString(<Stat label="All time" value="$18" />)).not.toContain(
+      'lucide-arrow',
+    )
+  })
+})
+
+describe('the facet rail', () => {
+  const groups = [
+    {
+      key: 'tool',
+      label: 'Source',
+      icon: null,
+      selected: 'claude',
+      items: [
+        { value: 'claude', label: 'claude', count: 3, costUsd: 16.57 },
+        { value: 'codex', label: 'codex', count: 1, costUsd: 0.71 },
+      ],
+    },
+    { key: 'model', label: 'Model', icon: null, selected: '', items: [] },
+  ]
+
+  it('lists every value with its count and a bar in proportion to its spend', () => {
+    const html = renderToString(
+      <FacetRail
+        groups={groups}
+        onSelect={() => {}}
+        collapsed={false}
+        onToggle={() => {}}
+      />,
+    )
+    expect(html).toContain('claude')
+    expect(html).toContain('codex')
+    expect(html).toContain('width:100%')
+    // codex is 0.71 / 16.57 of the widest bar.
+    expect(html).toMatch(/width:4\.\d+%/)
+  })
+
+  it('marks the selected value and skips an empty group', () => {
+    const html = renderToString(
+      <FacetRail
+        groups={groups}
+        onSelect={() => {}}
+        collapsed={false}
+        onToggle={() => {}}
+      />,
+    )
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).not.toContain('Model')
+  })
+
+  it('collapses to a strip that can be reopened', () => {
+    const html = renderToString(
+      <FacetRail groups={groups} onSelect={() => {}} collapsed onToggle={() => {}} />,
+    )
+    expect(html).not.toContain('claude')
+    expect(html).toContain('Show filters')
+  })
+})
+
 describe('the sessions summary strip', () => {
   const data = {
     today: 2.5,
@@ -634,6 +728,22 @@ describe('the sessions summary strip', () => {
     expect(html).toContain('$2.50')
     expect(html).toContain('$18.51')
     expect(html).toContain('26')
+  })
+
+  it('measures today against yesterday and the week against the week before', () => {
+    const html = renderToString(
+      <SummaryStrip data={{ ...data, yesterday: 2, priorWeek: 20 }} />,
+    )
+    // $2.50 vs $2.00 is up 25%; $18.51 vs $20 is down 7%.
+    expect(html).toContain('25%')
+    expect(html).toContain('7%')
+  })
+
+  it('is five cards, not five labels in a row', () => {
+    const html = renderToString(<SummaryStrip data={data} />)
+    expect(
+      (html.match(/rounded-\[var\(--radius-card\)\]/g) ?? []).length,
+    ).toBeGreaterThanOrEqual(5)
   })
 
   it('keeps recoverable and potential apart', () => {

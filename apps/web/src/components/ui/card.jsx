@@ -16,7 +16,7 @@ export function Card({ className, ...props }) {
     <div
       className={cn(
         'rounded-[var(--radius-card)] border border-[var(--color-border-subtle)]',
-        'bg-[var(--color-surface)]',
+        'bg-[var(--color-surface)] shadow-[0_1px_0_rgb(0_0_0/0.25)]',
         className,
       )}
       {...props}
@@ -24,11 +24,21 @@ export function Card({ className, ...props }) {
   )
 }
 
-/** @param {any} props */
+/**
+ * The band across the top of a panel — the reference dashboard's panel head.
+ * Raised a step from the body and separated by a hairline, so a title reads as
+ * a title and not as the first line of the content.
+ *
+ * @param {any} props
+ */
 export function CardHeader({ className, ...props }) {
   return (
     <div
-      className={cn('flex items-center justify-between gap-3 px-3 py-2', className)}
+      className={cn(
+        'flex items-center justify-between gap-3 rounded-t-[var(--radius-card)] border-b',
+        'border-[var(--color-border-subtle)] bg-[var(--color-raised)] px-3 py-2',
+        className,
+      )}
       {...props}
     />
   )
@@ -61,5 +71,5 @@ export function CardTitle({ className, icon: Icon, children, ...props }) {
 
 /** @param {any} props */
 export function CardContent({ className, ...props }) {
-  return <div className={cn('p-3', className)} {...props} />
+  return <div className={cn('p-4', className)} {...props} />
 }

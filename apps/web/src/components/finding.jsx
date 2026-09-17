@@ -165,7 +165,9 @@ export function Arithmetic({ finding }) {
       <span className="text-[var(--color-text-primary)]">{result}</span>
       {money ? null : (
         <>
-          <span> \u00b7 </span>
+          {/* A JS string, not JSX text: JSX does not process escape sequences,
+              and this once printed the six characters of the escape on screen. */}
+          <span>{' \u00b7 '}</span>
           <span className="text-[var(--color-text-primary)]">
             {usd(finding.wastedCostUsd)}
           </span>

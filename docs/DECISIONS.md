@@ -69,6 +69,8 @@ index groups them by area instead.
 - [Slate surfaces, and a palette re-validated rather than carried over](#slate-surfaces-and-a-palette-re-validated-rather-than-carried-over)
 - [A top bar instead of a sidebar](#a-top-bar-instead-of-a-sidebar)
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
+- [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
+- [A facet rail instead of three dropdowns](#a-facet-rail-instead-of-three-dropdowns)
 
 **CLI**
 
@@ -1139,6 +1141,47 @@ plain CSS with `aria-describedby`, so a screen reader hears the same sentence
 the pointer sees. The rule is symmetrical: an icon never travels without a
 sentence, and a sentence that names an action gets an icon a reader can find
 again without reading.
+
+---
+
+## A figure is a card with an arrow, everywhere
+
+The first screenshot after the top bar landed showed the problem plainly: four
+labels and four numbers floating across a 1,900px row with nothing holding
+them, reading as scattered rather than aligned. There was no design system —
+each screen composed its own row of text.
+
+`Stat` is now a card: icon, label, the number at 24px, a delta chip, a hint.
+`StatRow` is a grid with one gutter. Every screen that had a row of figures —
+Sessions, Overview, Optimize, Cost — gets tiles without being touched, which is
+the point of fixing the primitive rather than the screen. Card headers became
+a raised band with a hairline under them for the same reason: a title should
+read as a title on every panel, and the fix belongs in `CardHeader`.
+
+The delta is honest or absent. Today is measured against yesterday and the
+week against the seven days before; all-time and recoverable have no prior
+period and show no arrow rather than an invented one. A prior period of zero
+reads "new", not an infinite percentage. Colour follows meaning: spend up is
+red, but more turns is not a fault and stays grey.
+
+---
+
+## A facet rail instead of three dropdowns
+
+Three dropdowns said "you may filter by source, model and project" and told you
+nothing until you opened them. The reference dashboard's left panel lists every
+value with a count and a bar — a filter that is also a summary, and the reader
+sees where the money went before clicking anything.
+
+`/api/filters` now returns each value with its session count and its spend,
+and the rail draws the bar from spend rather than count because spend is the
+question this screen answers. Click to filter, click again to clear; the rail
+collapses to a strip so a narrow screen keeps its table width.
+
+The table rows went from 31px to 40px and 13px to 14px, with a mark per source
+and column widths set in proportion rather than left to auto — auto let the
+model column eat the middle of the screen. Density was right for a list; this
+screen is a dashboard, and its rows carry the weight.
 
 ---
 

@@ -193,9 +193,14 @@ describe('the API', () => {
 
     it('offers only filter values that will actually return something', async () => {
       const { body } = await get('/api/filters')
-      expect(body.tools).toEqual(['claude'])
-      expect(body.models).toEqual(['claude-opus-4-5-20260101'])
-      expect(body.projects[0].name).toBe('contextlab')
+      // A value, a count and its spend: a filter that is also a summary.
+      expect(body.tools).toHaveLength(1)
+      expect(body.tools[0]).toMatchObject({ value: 'claude', label: 'claude', count: 1 })
+      expect(body.tools[0].costUsd).toBeGreaterThan(0)
+      expect(body.models.map((/** @type {any} */ m) => m.value)).toEqual([
+        'claude-opus-4-5-20260101',
+      ])
+      expect(body.projects[0].label).toBe('contextlab')
     })
 
     it('does not blow up on punctuation a user would type', async () => {

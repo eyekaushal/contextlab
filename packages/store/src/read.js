@@ -291,19 +291,34 @@ export function overallSummary(db, scope = {}) {
     scope.weekStart ??
     new Date(Date.parse(`${day}T00:00:00`) - 6 * 86_400_000).toISOString().slice(0, 10)
 
+  const dayBefore = (/** @type {string} */ iso, /** @type {number} */ days) =>
+    new Date(Date.parse(`${iso}T00:00:00`) - days * 86_400_000).toISOString().slice(0, 10)
+  const yesterday = dayBefore(day, 1)
+  const priorWeekStart = dayBefore(weekStart, 7)
+
+  // The prior period sits beside the current one so a card can say "up 12%
+  // on the week before" — a number with no comparison is a number with no
+  // meaning, and the reference dashboard puts an arrow on every figure.
   const spend = /** @type {any} */ (
     prepare(
       db,
       `SELECT
          COALESCE(SUM(CASE WHEN captured_day = @day
            THEN equivalent_cost_usd END), 0)                  AS today,
+         COALESCE(SUM(CASE WHEN captured_day = @yesterday
+           THEN equivalent_cost_usd END), 0)                  AS yesterday,
          COALESCE(SUM(CASE WHEN captured_day >= @weekStart
            THEN equivalent_cost_usd END), 0)                  AS week,
+         COALESCE(SUM(CASE WHEN captured_day >= @priorWeekStart
+                         AND captured_day < @weekStart
+           THEN equivalent_cost_usd END), 0)                  AS prior_week,
+         COALESCE(SUM(CASE WHEN captured_day >= @weekStart THEN 1 ELSE 0 END), 0)
+                                                              AS week_turns,
          COALESCE(SUM(equivalent_cost_usd), 0)                AS total,
          COUNT(*)                                             AS turns,
          COUNT(DISTINCT session_id)                           AS sessions
        FROM turns`,
-    ).get({ day, weekStart })
+    ).get({ day, yesterday, weekStart, priorWeekStart })
   )
 
   const findings = /** @type {any} */ (
@@ -327,7 +342,10 @@ export function overallSummary(db, scope = {}) {
 
   return {
     today: Number(spend?.today) || 0,
+    yesterday: Number(spend?.yesterday) || 0,
     week: Number(spend?.week) || 0,
+    priorWeek: Number(spend?.prior_week) || 0,
+    weekTurns: Number(spend?.week_turns) || 0,
     total: Number(spend?.total) || 0,
     turns: Number(spend?.turns) || 0,
     sessions: Number(spend?.sessions) || 0,
@@ -657,41 +675,56 @@ export function compositionDelta(db, turnId, previousTurnId) {
 }
 
 /**
- * The distinct values worth offering as a filter.
+ * What a session can be filtered by, with how many sessions and how much
+ * spend sit behind each value.
  *
- * Read from what has actually been captured rather than from a hardcoded list,
- * so the dropdowns only ever offer choices that will return something.
+ * The counts are what turn three dropdowns into a facet rail: a value with a
+ * number beside it and a bar in proportion is a filter *and* a summary, and
+ * the reader sees where the money went before clicking anything.
  *
  * @param {Db} db
- * @returns {{ tools: string[], models: string[],
- *             projects: { path: string, name: string }[] }}
+ * @returns {{ tools: Facet[], models: Facet[], projects: Facet[] }}
  */
 export function listFilterOptions(db) {
-  const tools = prepare(
-    db,
-    "SELECT DISTINCT tool FROM sessions WHERE tool IS NOT NULL AND tool != '' ORDER BY tool",
-  ).all()
-
-  const models = prepare(
-    db,
-    "SELECT DISTINCT model FROM sessions WHERE model IS NOT NULL AND model != '' ORDER BY model",
-  ).all()
-
-  const projects = prepare(
-    db,
-    `SELECT DISTINCT project_path AS path,
-            COALESCE(project_name, project_path) AS name
-     FROM sessions
-     WHERE project_path IS NOT NULL AND project_path != ''
-     ORDER BY name`,
-  ).all()
+  /**
+   * @param {string} column
+   * @param {string} [labelColumn]
+   * @returns {Facet[]}
+   */
+  const facet = (column, labelColumn = column) =>
+    /** @type {any[]} */ (
+      prepare(
+        db,
+        `SELECT ${column} AS value,
+                COALESCE(${labelColumn}, ${column}) AS label,
+                COUNT(*) AS count,
+                COALESCE(SUM(equivalent_cost_usd), 0) AS cost_usd
+           FROM sessions
+          WHERE ${column} IS NOT NULL AND ${column} != ''
+          GROUP BY ${column}
+          ORDER BY cost_usd DESC, count DESC, label`,
+      ).all()
+    ).map((row) => ({
+      value: String(row.value),
+      label: String(row.label),
+      count: Number(row.count) || 0,
+      costUsd: Number(row.cost_usd) || 0,
+    }))
 
   return {
-    tools: tools.map((row) => String(row.tool)),
-    models: models.map((row) => String(row.model)),
-    projects: projects.map((row) => ({ path: String(row.path), name: String(row.name) })),
+    tools: facet('tool'),
+    models: facet('model'),
+    projects: facet('project_path', 'project_name'),
   }
 }
+
+/**
+ * @typedef {Object} Facet
+ * @property {string} value
+ * @property {string} label
+ * @property {number} count    sessions
+ * @property {number} costUsd  equivalent spend across them
+ */
 
 /**
  * Context size per turn, for the trend sparkline on the sessions list.
