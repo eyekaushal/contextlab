@@ -71,6 +71,7 @@ index groups them by area instead.
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
 - [A facet rail instead of three dropdowns](#a-facet-rail-instead-of-three-dropdowns)
+- [Rings for what dominates, a stacked area for when](#rings-for-what-dominates-a-stacked-area-for-when)
 
 **CLI**
 
@@ -1182,6 +1183,29 @@ The table rows went from 31px to 40px and 13px to 14px, with a mark per source
 and column widths set in proportion rather than left to auto — auto let the
 model column eat the middle of the screen. Density was right for a list; this
 screen is a dashboard, and its rows carry the weight.
+
+---
+
+## Rings for what dominates, a stacked area for when
+
+Recharts was a dependency for a year and drew nothing. The dashboard now has
+four rings — spend by tool, by project, findings by severity, what filled the
+window — and a timeline of spend by day stacked by tool. One endpoint,
+`/api/summary/charts`, returns all five from the same reconciled queries the
+strip and the table use, so the ring's finding count and the card's are one
+number.
+
+A ring is the wrong form for comparing close values and the right one for
+"what dominates", which is what each of these asks. The rules that keep them
+charts rather than decoration: the total sits in the centre; the legend always
+carries the value, so identity never rides on colour; a 2px surface gap
+separates touching segments; past six slices the tail folds into *Other*; and
+**colour follows the entity, never its rank** — slots are assigned by name
+order, so a filter that drops the biggest tool does not repaint the rest.
+Severity uses the reserved status colours because severity *is* status.
+
+The timeline refuses to draw a trend from one day. It says "a line needs two"
+and shows the figure, rather than a dot with a title.
 
 ---
 

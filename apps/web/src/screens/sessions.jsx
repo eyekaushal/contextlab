@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ChartsRow } from '../components/charts-row.jsx'
 import { EntityMatches } from '../components/entity-matches.jsx'
 import { FacetRail } from '../components/facet-rail.jsx'
 import { Severity } from '../components/health.jsx'
@@ -98,6 +99,8 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
 
   const options = useApi('/api/filters', { refreshKey: version })
   const summary = useApi('/api/summary', { refreshKey: version })
+  const charts = useApi('/api/summary/charts?days=30', { refreshKey: version })
+  const [chartsOpen, setChartsOpen] = useState(true)
   // Only asked for when there is a term. Search covers what a session is made
   // of as well as what was said inside it.
   const matches = useApi(debounced ? url('/api/search', { q: debounced }) : null, {
@@ -184,6 +187,20 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
         />
 
         <SummaryStrip data={summary.data} onOpenOptimize={() => navigate('/optimize')} />
+
+        {/* Summary, then shape, then detail — the reference dashboard's order.
+          The charts can be folded away by someone who came for the table. */}
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setChartsOpen((value) => !value)}
+            aria-expanded={chartsOpen}
+            className="text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
+          >
+            {chartsOpen ? 'Hide charts' : 'Show charts'}
+          </button>
+        </div>
+        {chartsOpen ? <ChartsRow data={charts.data} /> : null}
 
         <EntityMatches entities={matches.data?.entities ?? []} query={debounced} />
 

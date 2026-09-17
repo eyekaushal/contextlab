@@ -5,6 +5,7 @@ import { dismissFinding } from '../src/dismissals.js'
 import { MIGRATIONS, runMigrations, schemaVersion } from '../src/migrations.js'
 import {
   attributionFor,
+  chartData,
   costByDay,
   costByProject,
   escapeFtsQuery,
@@ -362,6 +363,51 @@ describe('searching what a session is made of', () => {
       searchEntities(db, 'playwright', { sessionId: 'sess-1' }).length,
     ).toBeGreaterThan(0)
     expect(searchEntities(db, 'playwright', { sessionId: 'sess-other' })).toEqual([])
+    closeDatabase(db)
+  })
+})
+
+describe('the series behind the charts', () => {
+  it('comes from the same reconciled queries as the strip', () => {
+    const db = openDatabase(':memory:')
+    ingest(db, 'cap-1', [block('a')], { costUsd: 1.5, equivalentCostUsd: 1.5 })
+    replaceFindings(db, 'sess-1', [
+      {
+        rule: 'a',
+        title: 'A',
+        severity: 'critical',
+        wastedCostUsd: 1,
+        claim: 'recoverable',
+      },
+      {
+        rule: 'b',
+        title: 'B',
+        severity: 'warning',
+        wastedCostUsd: 1,
+        claim: 'recoverable',
+      },
+    ])
+    dismissFinding(db, 'sess-1', 'b', 'B')
+
+    const data = chartData(db)
+    expect(data.spendByTool).toEqual([
+      { key: 'claude', label: 'claude', value: 1.5, count: 1 },
+    ])
+    expect(data.spendByProject[0]).toMatchObject({ label: 'contextlab', value: 1.5 })
+    // Dismissed is out here as everywhere: one critical, no warning.
+    expect(data.findingsBySeverity).toEqual([
+      { key: 'critical', label: 'critical', value: 1 },
+    ])
+    expect(data.spendByDay).toHaveLength(1)
+    expect(data.spendByDay[0].byTool.claude).toBe(1.5)
+    closeDatabase(db)
+  })
+
+  it('draws no series from nothing', () => {
+    const db = openDatabase(':memory:')
+    const data = chartData(db)
+    expect(data.spendByTool).toEqual([])
+    expect(data.spendByDay).toEqual([])
     closeDatabase(db)
   })
 })

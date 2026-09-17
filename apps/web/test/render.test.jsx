@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { App, activeNav, Route } from '../src/App.jsx'
+import {
+  colourByName,
+  Donut,
+  foldSmall,
+  SpendTimeline,
+} from '../src/components/charts.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { EntityMatches } from '../src/components/entity-matches.jsx'
@@ -653,6 +659,114 @@ describe('a stat is a card with an arrow', () => {
     expect(renderToString(<Stat label="All time" value="$18" />)).not.toContain(
       'lucide-arrow',
     )
+  })
+})
+
+describe('the rings', () => {
+  const tools = [
+    { key: 'aider', label: 'aider', value: 10.48 },
+    { key: 'claude', label: 'claude', value: 6.09 },
+    { key: 'gemini', label: 'gemini', value: 1.22 },
+    { key: 'codex', label: 'codex', value: 0.71 },
+  ]
+
+  it('gives a colour by name, so a filter never repaints the survivors', () => {
+    const all = colourByName(tools)
+    const fewer = colourByName(tools.filter((t) => t.key !== 'aider'))
+    // aider gone; claude, codex and gemini keep the slots they had.
+    expect(fewer.claude).toBe(all.claude)
+    expect(fewer.codex).toBe(all.codex)
+    expect(fewer.gemini).toBe(all.gemini)
+    // And the seven supported tools never share a colour with each other.
+    const seven = colourByName(
+      ['claude', 'codex', 'gemini', 'aider', 'cline', 'copilot', 'opencode'].map(
+        (key) => ({ key }),
+      ),
+    )
+    expect(new Set(Object.values(seven)).size).toBe(7)
+  })
+
+  it('colours a project by its name alone', () => {
+    const a = colourByName([{ key: 'api' }, { key: 'monolith' }, { key: 'website' }])
+    const b = colourByName([{ key: 'monolith' }])
+    expect(b.monolith).toBe(a.monolith)
+  })
+
+  it('folds the tail into Other rather than growing a rainbow', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({
+      key: `t${i}`,
+      label: `t${i}`,
+      value: 9 - i,
+    }))
+    const folded = foldSmall(many)
+    expect(folded).toHaveLength(6)
+    expect(folded[5]).toMatchObject({ key: 'other', value: 4 + 3 + 2 + 1 })
+    expect(foldSmall(tools)).toHaveLength(4)
+  })
+
+  it('carries the value in the legend and the total in the middle', () => {
+    const html = renderToString(
+      <Donut title="Spend by tool" series={tools} unit="usd" colour="name" />,
+    )
+    for (const t of tools) expect(html).toContain(t.label)
+    expect(html).toContain('$10.48')
+    expect(html).toContain('$18.50')
+  })
+
+  it('colours severity with the status palette', () => {
+    const html = renderToString(
+      <Donut
+        title="Findings by severity"
+        series={[
+          { key: 'critical', label: 'critical', value: 5 },
+          { key: 'warning', label: 'warning', value: 12 },
+        ]}
+        unit="count"
+        colour="severity"
+      />,
+    )
+    expect(html).toContain('var(--color-status-critical)')
+    expect(html).toContain('var(--color-status-warning)')
+    expect(html).toContain('17')
+  })
+
+  it('says so when there is nothing to draw', () => {
+    const html = renderToString(
+      <Donut
+        title="Findings"
+        series={[]}
+        unit="count"
+        colour="severity"
+        empty="Nothing to fix."
+      />,
+    )
+    expect(html).toContain('Nothing to fix.')
+    expect(html).not.toContain('<svg')
+  })
+})
+
+describe('the timeline', () => {
+  it('refuses to draw a trend from one day', () => {
+    const html = renderToString(
+      <SpendTimeline
+        days={[{ day: '2026-09-12', total: 18.51, byTool: { claude: 18.51 } }]}
+      />,
+    )
+    expect(html).toContain('A line needs two')
+    expect(html).toContain('$18.51')
+  })
+
+  it('shows a legend once there are two tools', () => {
+    const html = renderToString(
+      <SpendTimeline
+        days={[
+          { day: '2026-09-11', total: 3, byTool: { claude: 2, codex: 1 } },
+          { day: '2026-09-12', total: 5, byTool: { claude: 4, codex: 1 } },
+        ]}
+      />,
+    )
+    expect(html).toContain('claude')
+    expect(html).toContain('codex')
   })
 })
 

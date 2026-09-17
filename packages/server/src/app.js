@@ -18,6 +18,7 @@ import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import { toOtlp } from '@contextlab/format'
 import {
   attributionFor,
+  chartData,
   compositionDelta,
   contextTrends,
   costByDay,
@@ -269,6 +270,18 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
     )
 
     return c.json({ columns, categories, ...(missing.length ? { missing } : {}) })
+  })
+
+  /**
+   * The five series behind the dashboard's charts, in one request.
+   *
+   * Findings are refreshed first so the severity donut counts what the strip
+   * counts, on a database nothing has analysed yet as much as on a warm one.
+   */
+  app.get('/api/summary/charts', (c) => {
+    refreshFindings()
+    const days = clamp(Number(c.req.query('days') ?? 30), 1, 365)
+    return c.json({ days, ...chartData(db, { days }) })
   })
 
   app.get('/api/filters', (c) => c.json(listFilterOptions(db)))

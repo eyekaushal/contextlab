@@ -341,6 +341,38 @@ describe('the API', () => {
     })
   })
 
+  describe('the charts', () => {
+    it('serves five series in one request', async () => {
+      const { status, body } = await get('/api/summary/charts?days=30')
+      expect(status).toBe(200)
+      for (const key of [
+        'spendByTool',
+        'spendByProject',
+        'findingsBySeverity',
+        'windowByCategory',
+        'spendByDay',
+      ]) {
+        expect(Array.isArray(body[key]), key).toBe(true)
+      }
+      expect(body.days).toBe(30)
+    })
+
+    it('counts the same findings as the strip', async () => {
+      const charts = await get('/api/summary/charts')
+      const summary = await get('/api/summary')
+      const total = charts.body.findingsBySeverity.reduce(
+        (/** @type {number} */ sum, /** @type {any} */ s) => sum + s.value,
+        0,
+      )
+      expect(total).toBe(summary.body.findings)
+    })
+
+    it('clamps the window', async () => {
+      expect((await get('/api/summary/charts?days=0')).body.days).toBe(1)
+      expect((await get('/api/summary/charts?days=9999')).body.days).toBe(365)
+    })
+  })
+
   describe('the sessions list', () => {
     it('reports findings on a session nothing has analysed yet', async () => {
       // The cache is written by whatever last ran the rules. Reading it without

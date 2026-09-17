@@ -243,6 +243,112 @@ export function searchEntities(db, query, options = {}) {
 }
 
 /**
+ * The series behind the dashboard's charts.
+ *
+ * One call, five series, from the same reconciled queries the strip and the
+ * table use — the donut's "17 findings" and the card's "17 findings" are one
+ * number in one place. Dismissed findings are out here as everywhere.
+ *
+ * Nothing is ranked or coloured here. Display order is the screen's choice;
+ * colour follows the entity and is assigned there in a fixed order, never by
+ * rank, so a filter that changes the set does not repaint the survivors.
+ *
+ * @param {Db} db
+ * @param {{ days?: number }} [options]
+ * @returns {{
+ *   spendByTool: { key: string, label: string, value: number, count: number }[],
+ *   spendByProject: { key: string, label: string, value: number, count: number }[],
+ *   findingsBySeverity: { key: string, label: string, value: number }[],
+ *   windowByCategory: { key: string, label: string, value: number }[],
+ *   spendByDay: { day: string, total: number, byTool: Record<string, number> }[],
+ * }}
+ */
+export function chartData(db, options = {}) {
+  const facets = listFilterOptions(db)
+  const asSeries = (/** @type {Facet[]} */ items) =>
+    items.map((item) => ({
+      key: item.value,
+      label: item.label,
+      value: item.costUsd,
+      count: item.count,
+    }))
+
+  const severities = /** @type {any[]} */ (
+    prepare(
+      db,
+      `SELECT f.severity AS key, COUNT(*) AS value
+         FROM findings f
+        WHERE NOT EXISTS (
+          SELECT 1 FROM dismissals d
+           WHERE d.session_id = f.session_id AND d.rule = f.rule AND d.title = f.title
+        )
+        GROUP BY f.severity`,
+    ).all()
+  )
+
+  const categories = /** @type {any[]} */ (
+    prepare(
+      db,
+      `SELECT category AS key, SUM(tokens) AS value
+         FROM composition
+        GROUP BY category
+        ORDER BY value DESC`,
+    ).all()
+  )
+
+  const days = /** @type {any[]} */ (
+    prepare(
+      db,
+      `SELECT t.captured_day AS day, s.tool AS tool,
+              SUM(t.equivalent_cost_usd) AS value
+         FROM turns t
+         JOIN sessions s ON s.id = t.session_id
+        WHERE t.captured_day >= @since
+        GROUP BY t.captured_day, s.tool
+        ORDER BY t.captured_day`,
+    ).all({ since: sinceDay(options.days ?? 30) })
+  )
+
+  /** @type {Map<string, { day: string, total: number, byTool: Record<string, number> }>} */
+  const byDay = new Map()
+  for (const row of days) {
+    const day = String(row.day)
+    const entry = byDay.get(day) ?? { day, total: 0, byTool: {} }
+    const value = Number(row.value) || 0
+    entry.total += value
+    entry.byTool[String(row.tool ?? 'unknown')] = value
+    byDay.set(day, entry)
+  }
+
+  return {
+    spendByTool: asSeries(facets.tools),
+    spendByProject: asSeries(facets.projects),
+    findingsBySeverity: severities.map((row) => ({
+      key: String(row.key),
+      label: String(row.key),
+      value: Number(row.value) || 0,
+    })),
+    windowByCategory: categories.map((row) => ({
+      key: String(row.key),
+      label: String(row.key),
+      value: Number(row.value) || 0,
+    })),
+    spendByDay: [...byDay.values()],
+  }
+}
+
+/**
+ * @param {number} days
+ * @returns {string} the local day `days - 1` days ago, so 1 means today only
+ */
+function sinceDay(days) {
+  const today = localDayString()
+  return new Date(Date.parse(`${today}T00:00:00`) - (Math.max(1, days) - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10)
+}
+
+/**
  * Sessions whose cached findings are older than their newest turn.
  *
  * The cache is written by whatever last ran the rules. A screen that reads it
