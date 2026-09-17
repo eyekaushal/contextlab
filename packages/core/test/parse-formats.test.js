@@ -250,7 +250,7 @@ describe('openai chat completions', () => {
               { type: 'text', text: 'what is this' },
               {
                 type: 'image_url',
-                image_url: { url: 'data:image/png;base64,' + 'A'.repeat(50_000) },
+                image_url: { url: `data:image/png;base64,${'A'.repeat(50_000)}` },
               },
             ],
           },

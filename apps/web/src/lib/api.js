@@ -45,9 +45,28 @@ export async function get(path, init) {
  * @param {any} body
  * @returns {Promise<any>}
  */
-export async function post(path, body) {
+export function post(path, body) {
+  return send('POST', path, body)
+}
+
+/**
+ * @param {string} path
+ * @param {any} body
+ * @returns {Promise<any>}
+ */
+export function put(path, body) {
+  return send('PUT', path, body)
+}
+
+/**
+ * @param {'POST' | 'PUT'} method
+ * @param {string} path
+ * @param {any} body
+ * @returns {Promise<any>}
+ */
+async function send(method, path, body) {
   const response = await fetch(path, {
-    method: 'POST',
+    method,
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })

@@ -68,7 +68,12 @@ export async function startServer(options = {}) {
   const home = options.home ?? contextlabHome()
   const db = options.db ?? openDatabase(join(home, 'data.db'))
   const hub = createEventHub()
-  const { app } = createApp({ db, hub, config: options.config ?? {} })
+  const { app } = createApp({
+    db,
+    hub,
+    config: options.config ?? {},
+    configPath: join(home, 'config.toml'),
+  })
 
   const capturesDir = join(home, 'captures')
   const tracker = createSessionTracker()

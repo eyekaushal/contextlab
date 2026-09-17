@@ -4,8 +4,13 @@ import {
   detectBillingMode,
   resolveBillingMode,
 } from '../src/billing.js'
-import { budgetProgress, evaluateBudget, hasBudget } from '../src/budget.js'
-import { DEFAULT_CONFIG, loadConfig, parseToml } from '../src/config.js'
+import {
+  budgetProgress,
+  evaluateBudget,
+  hasBudget,
+  suggestBudget,
+} from '../src/budget.js'
+import { DEFAULT_CONFIG, loadConfig, parseToml, writeBudget } from '../src/config.js'
 
 describe('detecting how a turn was paid for', () => {
   it('calls an api key an api key', () => {
@@ -157,5 +162,93 @@ describe('the config file', () => {
     // A key from a newer version must survive an older binary reading the file.
     const config = loadConfig('[future]\nsomething = "new"')
     expect(config.raw?.future).toEqual({ something: 'new' })
+  })
+})
+
+describe('writing the budget back into the file', () => {
+  const file = `# contextlab settings
+# Everything here is optional.
+
+[budget]
+# Warn as spend approaches these.
+daily = 5.00
+monthly = 100.00
+
+# Warn at this fraction of a limit.
+warn_at = 0.8
+
+[billing]
+mode = "auto"
+`
+
+  it('changes only the keys it was given, and keeps every comment', () => {
+    const out = writeBudget(file, { daily: 20 })
+    expect(out).toContain('daily = 20.00')
+    expect(out).toContain('monthly = 100.00')
+    expect(out).toContain('warn_at = 0.8')
+    expect(out).toContain('# Warn as spend approaches these.')
+    expect(out).toContain('[billing]\nmode = "auto"')
+    // And the result still parses to what was written.
+    expect(loadConfig(out).budget).toMatchObject({ daily: 20, monthly: 100, warnAt: 0.8 })
+  })
+
+  it('adds a key the section did not have, inside the section', () => {
+    const out = writeBudget(file, { session: 2 })
+    const budgetAt = out.indexOf('[budget]')
+    const billingAt = out.indexOf('[billing]')
+    const sessionAt = out.indexOf('session = 2.00')
+    expect(sessionAt).toBeGreaterThan(budgetAt)
+    expect(sessionAt).toBeLessThan(billingAt)
+  })
+
+  it('removes a key set to null', () => {
+    const out = writeBudget(file, { monthly: null })
+    expect(out).not.toContain('monthly')
+    expect(loadConfig(out).budget.monthly).toBeUndefined()
+    expect(loadConfig(out).budget.daily).toBe(5)
+  })
+
+  it('appends a section when the file has none, and starts from nothing', () => {
+    const noSection = writeBudget('[billing]\nmode = "api"\n', { daily: 5 })
+    expect(noSection).toContain('[billing]\nmode = "api"')
+    expect(noSection).toContain('[budget]\ndaily = 5.00')
+    expect(loadConfig(noSection)).toMatchObject({
+      budget: { daily: 5 },
+      billing: { mode: 'api' },
+    })
+
+    const fresh = writeBudget('', { daily: 5, monthly: 50 })
+    expect(loadConfig(fresh).budget).toMatchObject({ daily: 5, monthly: 50 })
+  })
+
+  it('is what a person would have written by hand', () => {
+    // Round-tripping through the parser and back changes nothing further.
+    const once = writeBudget(file, { daily: 7 })
+    expect(writeBudget(once, { daily: 7 })).toBe(once)
+  })
+})
+
+describe('suggesting a budget from history', () => {
+  it('rounds the busiest ordinary day up to the next preset', () => {
+    // p90 of these is 10.48; the next preset above is 20.
+    const s = suggestBudget({ byDay: [0.7, 1.2, 6.1, 10.48, 0.01], last30Total: 18.51 })
+    expect(s.daily).toBe(20)
+    expect(s.busiestDay).toBe(10.48)
+    // 18.51 with a quarter's headroom is 23.14; the next preset is 50.
+    expect(s.monthly).toBe(50)
+  })
+
+  it('goes past the presets rather than pretending they were a ceiling', () => {
+    const s = suggestBudget({ byDay: [340], last30Total: 4000 })
+    expect(s.daily).toBe(400)
+    expect(s.monthly).toBe(5000)
+  })
+
+  it('suggests nothing from nothing', () => {
+    expect(suggestBudget({ byDay: [], last30Total: 0 })).toMatchObject({
+      daily: null,
+      monthly: null,
+    })
+    expect(suggestBudget({ byDay: [0, 0], last30Total: 0 }).daily).toBeNull()
   })
 })

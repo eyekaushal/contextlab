@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { App, activeNav, Route } from '../src/App.jsx'
+import { BudgetCard } from '../src/components/budget-card.jsx'
 import {
   colourByName,
   Donut,
@@ -659,6 +660,64 @@ describe('a stat is a card with an arrow', () => {
     expect(renderToString(<Stat label="All time" value="$18" />)).not.toContain(
       'lucide-arrow',
     )
+  })
+})
+
+describe('the budget card', () => {
+  const data = {
+    configured: false,
+    budget: {},
+    spend: { daily: 0, monthly: 18.51, session: 0 },
+    progress: [],
+    alerts: [],
+    billing: { mode: 'auto' },
+    suggestion: {
+      daily: 20,
+      monthly: 50,
+      busiestDay: 10.48,
+      last30Total: 18.51,
+      days: 1,
+    },
+    path: '/Users/someone/.contextlab/config.toml',
+    writable: true,
+  }
+
+  it('is a field with presets and a suggestion from history, not a slider', () => {
+    const html = renderToString(<BudgetCard data={data} />)
+    expect(html).toContain('type="number"')
+    expect(html).not.toContain('type="range"')
+    expect(html).toContain('$5')
+    expect(html).toContain('$100')
+    expect(html).toContain('suggest <!-- -->$20.00')
+    expect(html).toContain('busiest day in the last 30 was $10.48')
+  })
+
+  it('says where the file is, with the home directory shortened', () => {
+    const html = renderToString(<BudgetCard data={data} />)
+    expect(html).toContain('~/.contextlab/config.toml')
+    expect(html).not.toContain('/Users/someone')
+  })
+
+  it('says so when there is nothing to write to', () => {
+    const html = renderToString(
+      <BudgetCard data={{ ...data, path: null, writable: false }} />,
+    )
+    expect(html).toContain('no config file to write to')
+  })
+
+  it('shows the bars once a budget exists', () => {
+    const html = renderToString(
+      <BudgetCard
+        data={{
+          ...data,
+          configured: true,
+          budget: { daily: 20 },
+          progress: [{ scope: 'daily', share: 0.5, spent: 10, limit: 20, level: 'ok' }],
+        }}
+      />,
+    )
+    expect(html).toContain('Within budget')
+    expect(html).toContain('width:50%')
   })
 })
 

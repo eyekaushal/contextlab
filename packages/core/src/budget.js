@@ -130,3 +130,52 @@ export function budgetProgress(spend = {}, budget = {}) {
 function usd(value) {
   return `$${(Number(value) || 0).toFixed(2)}`
 }
+
+/** Round figures a person would actually type. */
+export const DAILY_PRESETS = [5, 20, 50, 100]
+export const MONTHLY_PRESETS = [50, 200, 500, 1000]
+
+/**
+ * A budget suggested from the reader's own history, not from a guess at the
+ * ideal — there is no ideal, only theirs.
+ *
+ * Daily: the 90th percentile of daily spend, rounded up to the next preset —
+ * "your busiest day was $10.48; $20 would have warned you once". Monthly: the
+ * last thirty days with a quarter's headroom, rounded up the same way. Past the
+ * largest preset the figure rounds to the next round hundred rather than
+ * pretending the presets were a ceiling.
+ *
+ * Returns null figures when there is nothing to go on.
+ *
+ * @param {{ byDay: number[], last30Total: number }} history
+ * @returns {{ daily: number | null, monthly: number | null,
+ *             busiestDay: number, p90Day: number }}
+ */
+export function suggestBudget({ byDay, last30Total }) {
+  const days = byDay
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b)
+  if (days.length === 0) return { daily: null, monthly: null, busiestDay: 0, p90Day: 0 }
+
+  const p90 =
+    days[Math.min(days.length - 1, Math.max(0, Math.ceil(days.length * 0.9) - 1))] ?? 0
+  const busiest = days[days.length - 1] ?? 0
+
+  return {
+    daily: roundUpTo(p90, DAILY_PRESETS),
+    monthly: roundUpTo(last30Total * 1.25, MONTHLY_PRESETS),
+    busiestDay: busiest,
+    p90Day: p90,
+  }
+}
+
+/**
+ * @param {number} value
+ * @param {number[]} presets
+ * @returns {number}
+ */
+function roundUpTo(value, presets) {
+  const preset = presets.find((candidate) => candidate >= value)
+  if (preset !== undefined) return preset
+  return Math.ceil(value / 100) * 100
+}

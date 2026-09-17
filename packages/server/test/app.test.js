@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createSessionTracker } from '@contextlab/core'
 import { closeDatabase, listSessions, openDatabase } from '@contextlab/store'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -338,6 +341,70 @@ describe('the API', () => {
     it('says a budget is absent rather than inventing one', async () => {
       const { body } = await get('/api/summary')
       expect(body.budget.configured).toBe(false)
+    })
+  })
+
+  describe('setting the budget', () => {
+    it('suggests from history and says where a change would be written', async () => {
+      const { body } = await get('/api/budget')
+      expect(body.writable).toBe(false)
+      expect(body.suggestion).toHaveProperty('daily')
+      expect(body.suggestion.last30Total).toBeGreaterThan(0)
+    })
+
+    it('refuses to write without a path, and says so', async () => {
+      const { status } = await get('/api/budget', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ daily: 5 }),
+      })
+      expect(status).toBe(501)
+    })
+
+    it('writes the file in place and reads it back through the parser', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'contextlab-budget-'))
+      const configPath = join(dir, 'config.toml')
+      const fresh = openDatabase(':memory:')
+      const { app: writable } = createApp({
+        db: fresh,
+        config: { budget: {} },
+        configPath,
+      })
+      /** @param {any} payload */
+      const put = (payload) =>
+        writable.fetch(
+          new Request('http://localhost/api/budget', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          }),
+        )
+
+      const first = /** @type {any} */ (
+        await (await put({ daily: 20, monthly: 200 })).json()
+      )
+      expect(first.configured).toBe(true)
+      expect(first.budget).toMatchObject({ daily: 20, monthly: 200 })
+      expect(readFileSync(configPath, 'utf8')).toContain('daily = 20.00')
+
+      // A second write changes one key and leaves the other as it was.
+      const second = /** @type {any} */ (await (await put({ daily: null })).json())
+      expect(second.budget.daily).toBeUndefined()
+      expect(second.budget.monthly).toBe(200)
+
+      // The next plain read agrees, without a restart.
+      const read = /** @type {any} */ (
+        await (await writable.fetch(new Request('http://localhost/api/budget'))).json()
+      )
+      expect(read.budget.monthly).toBe(200)
+      expect(read.writable).toBe(true)
+
+      // Garbage is refused before anything is written.
+      expect((await put({ daily: 'lots' })).status).toBe(400)
+      expect((await put({})).status).toBe(400)
+
+      closeDatabase(fresh)
+      rmSync(dir, { recursive: true, force: true })
     })
   })
 

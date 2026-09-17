@@ -202,6 +202,86 @@ function clampFraction(value) {
   return Math.min(1, Math.max(0, fraction))
 }
 
+/**
+ * Rewrite the `[budget]` section of a config file, leaving everything else as
+ * it was — comments, other sections, key order, blank lines.
+ *
+ * The file stays the source of truth: a person editing it by hand and the
+ * dashboard writing it must produce the same file, so this edits lines rather
+ * than regenerating the document. A key set to `null` is removed; a key not
+ * mentioned is left alone; a section that does not exist is appended.
+ *
+ * Pure. Writing the result to disk is the server's job.
+ *
+ * @param {string} text  the current file, or '' for none
+ * @param {{ daily?: number | null, monthly?: number | null, session?: number | null,
+ *           warnAt?: number | null }} budget
+ * @returns {string}
+ */
+export function writeBudget(text, budget) {
+  const lines = String(text ?? '').split(/\r?\n/)
+  // Drop a trailing empty line so appends do not stack blank lines.
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+
+  /** @type {[string, number | null | undefined][]} */
+  const wanted = [
+    ['daily', budget.daily],
+    ['monthly', budget.monthly],
+    ['session', budget.session],
+    ['warn_at', budget.warnAt],
+  ]
+
+  const isHeading = (/** @type {string} */ line) =>
+    /^\s*\[[^\]]+\]\s*$/.test(stripComment(line))
+  const start = lines.findIndex((line) => stripComment(line).trim() === '[budget]')
+
+  if (start < 0) {
+    const out = [...lines]
+    if (out.length > 0 && out[out.length - 1]?.trim() !== '') out.push('')
+    out.push('[budget]')
+    for (const [key, value] of wanted) {
+      if (value !== undefined && value !== null)
+        out.push(`${key} = ${formatValue(key, value)}`)
+    }
+    return `${out.join('\n')}\n`
+  }
+
+  let end = lines.findIndex((line, index) => index > start && isHeading(line))
+  if (end < 0) end = lines.length
+
+  const section = lines.slice(start + 1, end)
+  for (const [key, value] of wanted) {
+    if (value === undefined) continue
+    const at = section.findIndex((line) => {
+      const match = /^\s*([A-Za-z0-9_.-]+)\s*=/.exec(stripComment(line))
+      return match?.[1] === key
+    })
+    if (value === null) {
+      if (at >= 0) section.splice(at, 1)
+      continue
+    }
+    const written = `${key} = ${formatValue(key, value)}`
+    if (at >= 0) section[at] = written
+    else {
+      // Before the section's trailing blank lines, so the file keeps its shape.
+      let insertAt = section.length
+      while (insertAt > 0 && section[insertAt - 1]?.trim() === '') insertAt -= 1
+      section.splice(insertAt, 0, written)
+    }
+  }
+
+  return `${[...lines.slice(0, start + 1), ...section, ...lines.slice(end)].join('\n')}\n`
+}
+
+/**
+ * @param {string} key
+ * @param {number} value
+ * @returns {string}
+ */
+function formatValue(key, value) {
+  return key === 'warn_at' ? String(value) : Number(value).toFixed(2)
+}
+
 /** An example file, written on first run so the settings are discoverable. */
 export const EXAMPLE_CONFIG = `# contextlab settings
 # Everything here is optional.

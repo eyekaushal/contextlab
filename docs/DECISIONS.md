@@ -72,6 +72,7 @@ index groups them by area instead.
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
 - [A facet rail instead of three dropdowns](#a-facet-rail-instead-of-three-dropdowns)
 - [Rings for what dominates, a stacked area for when](#rings-for-what-dominates-a-stacked-area-for-when)
+- [The budget is set from the dashboard, and the file stays the truth](#the-budget-is-set-from-the-dashboard-and-the-file-stays-the-truth)
 
 **CLI**
 
@@ -1206,6 +1207,29 @@ Severity uses the reserved status colours because severity *is* status.
 
 The timeline refuses to draw a trend from one day. It says "a line needs two"
 and shows the figure, rather than a dot with a title.
+
+---
+
+## The budget is set from the dashboard, and the file stays the truth
+
+"No budget set. Add one to ~/.contextlab/config.toml" was a dead end with a
+homework assignment attached. A config file nobody has opened is a feature
+nobody has.
+
+`PUT /api/budget` edits the `[budget]` section of that file in place —
+comments, other sections and key order untouched — and re-reads the result
+through the same parser the CLI uses, so what the dashboard shows is what the
+file says, not what it thinks it wrote. Editing by hand still works; the two
+produce the same file. `writeBudget` is pure and lives in core, where a test
+can hold it to a file with comments and a `[billing]` section on either side.
+
+**Not a slider.** Money has no natural range. A slider needs a minimum and a
+maximum, and any pair is wrong for someone: a $5-a-day hobbyist and a
+$500-a-day team are both real users. So: a numeric field, presets a person
+would type ($5 · $20 · $50 · $100 daily), and a suggestion computed from the
+reader's own last thirty days — the 90th-percentile day rounded up to the next
+preset, the month with a quarter's headroom. There is no ideal range and the
+product does not pretend to know one; it knows yours.
 
 ---
 

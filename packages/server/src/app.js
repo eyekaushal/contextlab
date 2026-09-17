@@ -12,8 +12,16 @@
  * @module
  */
 
-import { budgetProgress, evaluateBudget, hasBudget } from '@contextlab/core/budget'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import {
+  budgetProgress,
+  evaluateBudget,
+  hasBudget,
+  suggestBudget,
+} from '@contextlab/core/budget'
 import { CATEGORIES } from '@contextlab/core/compose'
+import { loadConfig, writeBudget } from '@contextlab/core/config'
 import { runRules, totalWaste } from '@contextlab/core/prescribe'
 import { toOtlp } from '@contextlab/format'
 import {
@@ -71,10 +79,13 @@ const SSE_PING_MS = 25_000
 
 /**
  * @param {{ db: Db, hub?: EventHub,
- *           config?: { budget?: any, billing?: any } }} options
+ *           config?: { budget?: any, billing?: any },
+ *           configPath?: string }} options
+ *   `configPath` is where a budget set from the dashboard is written. Without
+ *   it the budget endpoint is read-only and says so.
  * @returns {{ app: Hono, hub: EventHub }}
  */
-export function createApp({ db, hub = createEventHub(), config = {} }) {
+export function createApp({ db, hub = createEventHub(), config = {}, configPath }) {
   const app = new Hono()
 
   // The dashboard is served from the same origin in production, but runs on
@@ -594,20 +605,99 @@ export function createApp({ db, hub = createEventHub(), config = {} }) {
    * Everything the cost screen needs: spend by day, by project, and how it
    * stands against whatever budgets the user configured.
    */
-  app.get('/api/budget', (c) => {
+  /**
+   * The budget as it stands, with a suggestion from the reader's own history.
+   */
+  const budgetState = () => {
     const budget = config.budget ?? {}
-    const spend = spendTotals(db, {
-      ...(c.req.query('session') ? { sessionId: c.req.query('session') } : {}),
-    })
+    const spend = spendTotals(db)
+    const history = /** @type {any[]} */ (costByDay(db, { days: 30 }))
+    const last30Total = history.reduce(
+      (sum, row) => sum + (Number(row.equivalent_cost_usd) || 0),
+      0,
+    )
+    const suggestion = {
+      ...suggestBudget({
+        byDay: history.map((row) => Number(row.equivalent_cost_usd) || 0),
+        last30Total,
+      }),
+      last30Total,
+      days: history.length,
+    }
 
-    return c.json({
+    return {
       configured: hasBudget(budget),
       budget,
       spend,
       progress: budgetProgress(spend, budget),
       alerts: evaluateBudget(spend, budget),
       billing: config.billing ?? { mode: 'auto' },
-    })
+      suggestion,
+      // Where a change from the dashboard lands, so the file stays the truth.
+      path: configPath ?? null,
+      writable: Boolean(configPath),
+    }
+  }
+
+  app.get('/api/budget', (c) =>
+    c.json(
+      c.req.query('session')
+        ? {
+            ...budgetState(),
+            spend: spendTotals(db, { sessionId: c.req.query('session') }),
+          }
+        : budgetState(),
+    ),
+  )
+
+  /**
+   * Set the budget from the dashboard.
+   *
+   * Edits the `[budget]` section of config.toml in place and leaves the rest
+   * of the file as the person wrote it. The in-memory config is updated too,
+   * so the next read reflects it without a restart. A key sent as null is
+   * removed; a key not sent is left alone.
+   */
+  app.put('/api/budget', async (c) => {
+    if (!configPath) return c.json({ error: 'no config path to write to' }, 501)
+
+    /** @type {any} */
+    let body
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'body must be json' }, 400)
+    }
+
+    /** @type {Record<string, number | null>} */
+    const budget = {}
+    for (const key of ['daily', 'monthly', 'session', 'warnAt']) {
+      if (!(key in (body ?? {}))) continue
+      const value = body[key]
+      if (value === null) {
+        budget[key] = null
+        continue
+      }
+      const number = Number(value)
+      if (!Number.isFinite(number) || number < 0) {
+        return c.json({ error: `${key} must be a number of dollars, or null` }, 400)
+      }
+      budget[key] = number
+    }
+    if (Object.keys(budget).length === 0) {
+      return c.json({ error: 'nothing to set' }, 400)
+    }
+
+    const current = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
+    const next = writeBudget(current, budget)
+    mkdirSync(dirname(configPath), { recursive: true })
+    writeFileSync(configPath, next, 'utf8')
+
+    // Re-read through the same parser the CLI uses, so what the dashboard
+    // shows is what the file says, not what it thinks it wrote.
+    config.budget = loadConfig(next).budget
+    hub.publish({ type: 'session', data: { budget: true } })
+    return c.json(budgetState())
   })
 
   app.get('/api/pricing', (c) => {

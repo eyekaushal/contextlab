@@ -8,12 +8,12 @@
  * @module
  */
 
-import { CalendarDays, FolderKanban, PiggyBank } from 'lucide-react'
+import { CalendarDays, FolderKanban } from 'lucide-react'
 import { useState } from 'react'
+import { BudgetCard } from '../components/budget-card.jsx'
 import { PageHeader } from '../components/page-header.jsx'
 import { Stat, StatRow } from '../components/stat.jsx'
 import { Failed, Loading } from '../components/states.jsx'
-import { Badge } from '../components/ui/badge.jsx'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.jsx'
 import { url, useApi } from '../lib/api.js'
 import { exact, percent, tokens, truncate, usd } from '../lib/format.js'
@@ -117,7 +117,7 @@ export function Cost({ version }) {
         />
       </StatRow>
 
-      {budget.data ? <BudgetPanel data={budget.data} /> : null}
+      <BudgetCard data={budget.data} onSaved={budget.reload} />
 
       <Card>
         <CardHeader>
@@ -168,75 +168,6 @@ export function Cost({ version }) {
         </Card>
       ) : null}
     </div>
-  )
-}
-
-/**
- * @param {{ data: any }} props
- */
-function BudgetPanel({ data }) {
-  if (!data.configured) {
-    return (
-      <Card className="p-4 text-xs text-[var(--color-text-muted)]">
-        No budget set. Add one to{' '}
-        <code className="font-mono">~/.contextlab/config.toml</code> and this panel tracks
-        it:
-        <pre className="mt-2 font-mono text-xs text-[var(--color-text-secondary)]">
-          {'[budget]\ndaily = 5.00\nmonthly = 100.00'}
-        </pre>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={PiggyBank}>Budget</CardTitle>
-        {data.alerts.length > 0 ? (
-          <Badge tone={data.alerts[0].level === 'exceeded' ? 'critical' : 'warning'}>
-            {data.alerts[0].title}
-          </Badge>
-        ) : (
-          <Badge tone="good">Within budget</Badge>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-2 pt-2">
-        {data.progress.map((/** @type {any} */ row) => (
-          <div key={row.scope} className="flex items-center gap-2.5 text-sm">
-            <span className="w-16 shrink-0 capitalize text-[var(--color-text-secondary)]">
-              {row.scope}
-            </span>
-            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-gridline)]">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.min(100, row.share * 100)}%`,
-                  backgroundColor:
-                    row.level === 'exceeded'
-                      ? 'var(--color-status-critical)'
-                      : row.level === 'warning'
-                        ? 'var(--color-status-warning)'
-                        : 'var(--color-status-good)',
-                }}
-              />
-            </div>
-            <span className="tnum w-28 shrink-0 text-right text-xs text-[var(--color-text-secondary)]">
-              {usd(row.spent)} / {usd(row.limit)}
-            </span>
-          </div>
-        ))}
-
-        {data.billing?.mode === 'subscription' ? (
-          <p className="pt-1 text-xs text-[var(--color-text-muted)]">
-            {/* Budgets are stated in equivalent cost so they still mean
-                something on a plan that bills nothing per turn. */}
-            You are on a subscription, so nothing here is billed to you. These are
-            equivalent API figures, useful for comparing sessions.
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
   )
 }
 
