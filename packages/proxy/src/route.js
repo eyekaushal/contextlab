@@ -70,9 +70,6 @@ export function parseUrlTag(rawUrl) {
 
   const first = decodeSegment(segments[index])
   if (first !== null && !isApiSegment(first)) {
-    // A bare provider name routes but does not identify a tool — the real tool
-    // is worked out later from headers and system-prompt text.
-    tool = BARE_PROVIDER_SEGMENTS.has(first.toLowerCase()) ? null : first
     index += 1
 
     const second = decodeSegment(segments[index])
@@ -80,6 +77,16 @@ export function parseUrlTag(rawUrl) {
       sessionTag = second
       index += 1
     }
+
+    // A bare provider name routes but does not identify a tool — the real tool
+    // is worked out later from headers and system-prompt text. Unless a session
+    // tag follows it: only `contextlab <tool>` produces that shape, and the
+    // Gemini CLI is a tool that happens to share its provider's name. Without
+    // this, every Gemini CLI session was captured with no tool at all.
+    tool =
+      BARE_PROVIDER_SEGMENTS.has(first.toLowerCase()) && sessionTag === null
+        ? null
+        : first
   }
 
   const rest = segments.slice(index)

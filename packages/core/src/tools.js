@@ -33,7 +33,10 @@ export const TOOLS = {
   aider: {
     label: 'Aider',
     command: 'aider',
-    vars: ['ANTHROPIC_BASE_URL', 'OPENAI_BASE_URL'],
+    // Aider reads OPENAI_API_BASE and hands it to litellm explicitly; the
+    // OpenAI SDK's own OPENAI_BASE_URL is only a fallback. Set both, or an
+    // OpenAI-compatible provider (OpenRouter, Groq) goes around the proxy.
+    vars: ['ANTHROPIC_BASE_URL', 'OPENAI_API_BASE', 'OPENAI_BASE_URL'],
   },
 
   copilot: {

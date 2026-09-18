@@ -70,6 +70,19 @@ describe('detectProvider', () => {
     ).toBe('anthropic')
   })
 
+  it('treats a provider name followed by a session tag as the tool of that name', () => {
+    // `contextlab gemini` produces /gemini/<tag>/...; the Gemini CLI is a tool
+    // that shares its provider's name. Every one of its sessions was being
+    // captured with tool null.
+    const tagged = parseUrlTag('/gemini/a1b2c3d4/v1internal:generateContent')
+    expect(tagged.tool).toBe('gemini')
+    expect(tagged.sessionTag).toBe('a1b2c3d4')
+    expect(tagged.path).toBe('/v1internal:generateContent')
+
+    // A bare provider prefix with no tag still identifies no tool.
+    expect(parseUrlTag('/gemini/v1beta/models/x:generateContent').tool).toBeNull()
+  })
+
   it('checks vertex before gemini', () => {
     const path =
       '/v1/projects/p/locations/us-east4/publishers/google/models/gemini-2.5-pro:generateContent'
