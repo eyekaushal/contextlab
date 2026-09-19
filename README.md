@@ -205,10 +205,11 @@ functions, no I/O, no network.
 
 ## Status
 
-Under active development, and **not yet published to npm**. The analysis
-pipeline is covered by 604 tests, but it has not yet been exercised against a
-full day of real traffic across every supported agent. Treat the numbers as
-good, not proven.
+Published — `npx contextlab@latest`. Version 0.1.x. The analysis pipeline is
+covered by the test count above, and it has been exercised against Claude
+Code, Gemini CLI and Aider on real traffic; Codex, Cline and OpenCode go
+through mitmproxy and have not yet been run end to end. Treat the numbers as
+good, not proven, and report anything that looks wrong.
 
 ## License
 

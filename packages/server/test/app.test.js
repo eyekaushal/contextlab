@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createSessionTracker } from 'contextlab-core'
@@ -987,5 +987,79 @@ describe('the dashboard server without a build', () => {
     const result = ensureDashboardBuilt()
     expect(['fresh', 'built', 'failed', 'unavailable']).toContain(result.status)
     expect(typeof result.detail).toBe('string')
+  })
+})
+
+describe('the dashboard server with a build somewhere else on disk', () => {
+  it('serves it by absolute path, whatever the working directory is', async () => {
+    // The first person to run the published package saw "The dashboard is
+    // served from /." — a root under ~/.npm resolved relative to /tmp. The
+    // build lives wherever it lives; the cwd must not matter.
+    const dir = mkdtempSync(join(tmpdir(), 'contextlab-web-'))
+    const web = join(dir, 'web')
+    mkdirSync(join(web, 'assets'), { recursive: true })
+    writeFileSync(
+      join(web, 'index.html'),
+      '<!doctype html><title>contextlab</title><div id="root"></div>',
+    )
+    writeFileSync(join(web, 'assets', 'index-abc.js'), 'console.log(1)')
+
+    const handle = await startServer({ home: dir, port: 0, watch: false, web })
+    try {
+      const { port } = /** @type {any} */ (handle.server.address())
+      const base = `http://127.0.0.1:${port}`
+
+      const page = await fetch(`${base}/`)
+      expect(page.status).toBe(200)
+      expect(page.headers.get('content-type')).toContain('text/html')
+      expect(await page.text()).toContain('id="root"')
+
+      // A client-side route gets the same page; the app routes it.
+      expect((await fetch(`${base}/optimize`)).status).toBe(200)
+
+      const asset = await fetch(`${base}/assets/index-abc.js`)
+      expect(asset.status).toBe(200)
+      expect(asset.headers.get('content-type')).toContain('javascript')
+      expect(asset.headers.get('cache-control')).toContain('immutable')
+
+      // Confined to the build: nothing outside it is readable. A plain `..`
+      // is normalised away by the client before it is sent, so the request
+      // that actually arrives is /etc/passwd — an app route, answered with the
+      // page like any other. The encoded form reaches the handler intact and
+      // must be refused.
+      const dotted = await fetch(`${base}/assets/../../etc/passwd`)
+      expect(dotted.headers.get('content-type')).toContain('text/html')
+      expect(await dotted.text()).toContain('id="root"')
+      expect((await fetch(`${base}/assets/..%2F..%2Findex.html`)).status).toBe(404)
+      expect((await fetch(`${base}/assets/%2e%2e%2f%2e%2e%2findex.html`)).status).toBe(404)
+      expect((await fetch(`${base}/assets/missing.js`)).status).toBe(404)
+
+      // And the API still answers underneath.
+      expect((await fetch(`${base}/api/health`)).status).toBe(200)
+    } finally {
+      await handle.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('a port already in use', () => {
+  it('rejects with the code, rather than crashing on an unhandled event', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'contextlab-port-'))
+    const first = await startServer({
+      home: dir,
+      port: 0,
+      watch: false,
+      web: join(dir, 'x'),
+    })
+    const { port } = /** @type {any} */ (first.server.address())
+    try {
+      await expect(
+        startServer({ home: join(dir, 'two'), port, watch: false, web: join(dir, 'x') }),
+      ).rejects.toMatchObject({ code: 'EADDRINUSE' })
+    } finally {
+      await first.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

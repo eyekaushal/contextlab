@@ -39,7 +39,28 @@ export async function dashboard(options = {}) {
     console.error(color.gray('  Using defaults for now.'))
   }
 
-  const handle = await startServer({ port, home, config })
+  /** @type {Awaited<ReturnType<typeof startServer>>} */
+  let handle
+  try {
+    handle = await startServer({ port, home, config })
+  } catch (error) {
+    const code = /** @type {any} */ (error)?.code
+    if (code === 'EADDRINUSE') {
+      console.error(
+        color.yellow(
+          `\n  Port ${port} is already in use — is another contextlab dashboard running?`,
+        ),
+      )
+      console.error(
+        color.gray(
+          `  Close it, or start this one elsewhere:  contextlab dashboard --port ${port + 1}\n`,
+        ),
+      )
+      process.exitCode = 1
+      return
+    }
+    throw error
+  }
   const address = `http://localhost:${port}`
 
   console.log(`\n  ${color.bold('contextlab')}  ${address}`)

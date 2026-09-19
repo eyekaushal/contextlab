@@ -1,6 +1,6 @@
 {
   "name": "contextlab-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hono API + SSE. Thin: calls core and store, holds no logic. Never sees an API key.",
   "license": "MIT",
   "type": "module",

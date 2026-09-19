@@ -91,6 +91,7 @@ index groups them by area instead.
 - [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
 - [:4041 is never blank](#4041-is-never-blank)
 - [The published server package carries the dashboard](#the-published-server-package-carries-the-dashboard)
+- [The dashboard is served by absolute path, not relative to wherever you stood](#the-dashboard-is-served-by-absolute-path-not-relative-to-wherever-you-stood)
 - [Unscoped package names, because the scope was not ours to publish into](#unscoped-package-names-because-the-scope-was-not-ours-to-publish-into)
 - [Inter for words, JetBrains Mono for figures, both bundled](#inter-for-words-jetbrains-mono-for-figures-both-bundled)
 - [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
@@ -1345,6 +1346,31 @@ made at pack time, never committed. The tarball is 548K with fonts and all.
 
 The other packages are unchanged. `pnpm publish -r` publishes them in
 dependency order and rewrites `workspace:*` to the real version.
+
+---
+
+## The dashboard is served by absolute path, not relative to wherever you stood
+
+The first person to run the published package — `npx contextlab@0.1.0
+dashboard` from `/tmp` — saw a black page reading *"contextlab server. The
+dashboard is served from /."* Every test had passed. Every test had run from
+the repository root.
+
+`@hono/node-server`'s `serveStatic` resolves its root against the process
+working directory. An earlier workaround rewrote the root as a path relative
+to the cwd — which only works when the root is *under* the cwd. From `/tmp`,
+with the build in `~/.npm/_npx/…/contextlab-server/web`, it looked for
+`/tmp/Users/…`, found nothing, and fell through to the API's 404 text.
+
+The static handler is now ours: read the file by absolute path, confined to
+the build folder (a request that resolves outside it is a 404, not a read),
+with a content type from the extension and a year of cache on Vite's hashed
+assets. Twenty lines, no dependency, and a test that starts the server from a
+temp directory against a build in another temp directory.
+
+The lesson recorded: a test that runs from the repo root cannot catch a bug
+that only exists outside it. The published-package check from a clean folder
+is not optional.
 
 ---
 

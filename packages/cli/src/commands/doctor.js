@@ -31,7 +31,7 @@ const MITM_CERT = join(homedir(), '.mitmproxy', 'mitmproxy-ca-cert.pem')
 function dashboardBuild() {
   const root = webRoot()
   return root
-    ? { status: 'pass', label: 'Dashboard build', detail: 'apps/web/dist present' }
+    ? { status: 'pass', label: 'Dashboard build', detail: `found at ${root}` }
     : {
         status: 'warn',
         label: 'Dashboard build',

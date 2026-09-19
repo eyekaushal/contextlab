@@ -8,12 +8,11 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
-import { serveStatic } from '@hono/node-server/serve-static'
 import { createSessionTracker } from 'contextlab-core'
 import { openDatabase } from 'contextlab-store'
 import { createApp } from './app.js'
@@ -152,8 +151,14 @@ export async function startServer(options = {}) {
   // a file and a missing build simply leaves the API working on its own.
   const root = webRoot(options.web)
   if (root) {
-    app.use('/assets/*', serveStatic({ root: relativeTo(root) }))
-    app.get('*', serveStatic({ root: relativeTo(root), path: 'index.html' }))
+    // Our own file handler rather than serveStatic. serveStatic resolves its
+    // root against the process working directory, and the earlier workaround
+    // only covered a root *inside* the cwd — run from /tmp against a package
+    // in ~/.npm, it looked for ./Users/... under /tmp, found nothing, and
+    // fell through to the API's "served from /" text. That is what the first
+    // person to run the published package saw. Absolute paths, read directly.
+    app.get('/assets/*', (c) => serveFile(root, c.req.path))
+    app.get('*', (c) => serveFile(root, '/index.html'))
   } else {
     // Never a blank page. Someone on a fresh checkout opened :4041, saw
     // nothing, and reasonably concluded the server was broken. It was not;
@@ -162,11 +167,16 @@ export async function startServer(options = {}) {
   }
 
   const port = options.port ?? DEFAULT_PORT
-  const server = await new Promise((resolve) => {
-    const handle = serve(
-      { fetch: app.fetch, port, hostname: options.host ?? '127.0.0.1' },
-      () => resolve(handle),
+  // Listen, then wait for the server to say so. The callback form referenced
+  // the handle from inside its own initializer; when listen failed
+  // synchronously that was a TDZ error on top of the real one. Events do
+  // not have that problem: a port in use rejects with EADDRINUSE, cleanly.
+  const server = await new Promise((resolve, reject) => {
+    const handle = /** @type {any} */ (
+      serve({ fetch: app.fetch, port, hostname: options.host ?? '127.0.0.1' })
     )
+    handle.once('listening', () => resolve(handle))
+    handle.once('error', reject)
   })
 
   return {
@@ -182,17 +192,52 @@ export async function startServer(options = {}) {
 }
 
 /**
- * serveStatic resolves its root against the process working directory, which
- * is wherever the user happened to run the command from.
+ * Send one file out of the dashboard build, by absolute path.
  *
- * @param {string} absolute
- * @returns {string}
+ * The path is confined to `root`: anything that resolves outside it — `..`
+ * in a request, an encoded slash — is answered 404 rather than read. Assets
+ * are content-hashed by Vite, so they may be cached for a year; index.html
+ * may not, or a new build would not reach a browser that had the old one.
+ *
+ * @param {string} root
+ * @param {string} requestPath
+ * @returns {Response}
  */
-function relativeTo(absolute) {
-  const relative = absolute.startsWith(process.cwd())
-    ? absolute.slice(process.cwd().length).replace(/^\//, '')
-    : absolute
-  return `./${relative}`
+function serveFile(root, requestPath) {
+  const absolute = resolve(root, `.${decodeURIComponent(requestPath)}`)
+  if (!absolute.startsWith(`${resolve(root)}${sep}`) && absolute !== resolve(root)) {
+    return new Response('not found', { status: 404 })
+  }
+  if (!existsSync(absolute) || !statSync(absolute).isFile()) {
+    return new Response('not found', { status: 404 })
+  }
+  const type =
+    CONTENT_TYPES[extname(absolute).toLowerCase()] ?? 'application/octet-stream'
+  const cache = requestPath.startsWith('/assets/')
+    ? 'public, max-age=31536000, immutable'
+    : 'no-cache'
+  return new Response(readFileSync(absolute), {
+    headers: { 'content-type': type, 'cache-control': cache },
+  })
+}
+
+/**
+ * What the dashboard build actually contains. Anything else is a stream.
+ * @type {Record<string, string>}
+ */
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.txt': 'text/plain; charset=utf-8',
 }
 
 /**

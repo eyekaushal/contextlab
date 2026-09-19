@@ -25,6 +25,10 @@ const VERSION = '0.1.0'
  */
 export function run(argv) {
   const program = new Command()
+  // Options after a subcommand name are that subcommand's. Without this the
+  // program-level --port (the proxy's) swallowed `dashboard --port 4049`, and
+  // the dashboard listened on 4041 while saying it did.
+  program.enablePositionalOptions()
 
   program
     .name('contextlab')

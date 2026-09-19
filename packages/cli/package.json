@@ -1,6 +1,6 @@
 {
   "name": "contextlab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "See what is actually filling your AI coding agent's context window — and what to change to fix it.",
   "license": "MIT",
   "type": "module",
