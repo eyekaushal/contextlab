@@ -38,7 +38,7 @@ export function FacetRail({ groups, onSelect, collapsed, onToggle, className }) 
   return (
     <aside
       className={cn(
-        'flex shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-surface)] transition-[width]',
+        'sticky top-0 flex max-h-screen shrink-0 flex-col self-start border-r border-[var(--color-border-subtle)] bg-[var(--color-surface)] transition-[width]',
         collapsed ? 'w-9' : 'w-56',
         className,
       )}

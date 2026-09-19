@@ -163,6 +163,16 @@ describe('density', () => {
     expect(step('lg')).toBe(16)
   })
 
+  it('paints the page colour on html as well as body', () => {
+    // With color-scheme dark, anything past the body's height is the canvas,
+    // and the canvas is black. That was the band at the bottom of every screen.
+    expect(css).toMatch(/html\s*\{[^}]*background-color:\s*var\(--color-page\)/)
+  })
+
+  it('keeps focus rings off the charts', () => {
+    expect(css).toContain('[data-chart] :focus-visible')
+  })
+
   it('tightens leading with the size', () => {
     // A smaller size on the same line height is not denser, only smaller.
     expect(css).toContain('--text-sm--line-height: 1.45')
@@ -221,6 +231,19 @@ describe('the top bar', () => {
 })
 
 describe('a tooltip', () => {
+  it('opens on hover and keyboard focus, not on the focus a click leaves behind', () => {
+    const html = renderToString(
+      <Tooltip text="Pick two or more sessions to compare">
+        <button type="button">x</button>
+      </Tooltip>,
+    )
+    // focus-within kept a clicked nav entry's tooltip open until the next
+    // click anywhere. Keyboard focus still gets it; a mouse click does not.
+    expect(html).not.toContain('focus-within')
+    expect(html).toContain('focus-visible')
+    expect(html).toContain('group-hover/tip:opacity-100')
+  })
+
   it('links its sentence to the control for a screen reader', () => {
     const html = renderToString(
       <Tooltip text="Dismiss — set aside as judged.">
@@ -953,6 +976,16 @@ describe('the sessions summary strip', () => {
 })
 
 describe('sessions screen', () => {
+  it('does not scroll itself — main is the one scroll container', () => {
+    const source = readFileSync(
+      new URL('../src/screens/sessions.jsx', import.meta.url),
+      'utf8',
+    )
+    // Two nested scroll containers were two scrollbars.
+    const body = source.slice(source.indexOf('export function Sessions'))
+    expect(body).not.toContain('overflow-y-auto px-4')
+  })
+
   it('names the question it answers', () => {
     expect(renderToString(<Sessions />)).toContain('Where did my money go?')
   })

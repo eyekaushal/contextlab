@@ -23,5 +23,12 @@ export {
   refreshPricingInBackground,
 } from './pricing.js'
 export { toCamel, toCamelAll } from './serialize.js'
-export { contextlabHome, DEFAULT_PORT, startServer, webRoot } from './server.js'
+export {
+  contextlabHome,
+  DEFAULT_PORT,
+  ensureDashboardBuilt,
+  NOT_BUILT_PAGE,
+  startServer,
+  webRoot,
+} from './server.js'
 export { buildSessionSummary } from './summary.js'

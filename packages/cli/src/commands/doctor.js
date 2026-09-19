@@ -15,11 +15,31 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { MITM_TOOLS, TOOLS } from '@contextlab/core'
 import { SNAPSHOT } from '@contextlab/core/pricing'
+import { webRoot } from '@contextlab/server'
 import { pricingFetchedAt } from '@contextlab/store'
 import { contextlabHome, open } from '../context.js'
 import { color, heading, when } from '../format.js'
 
 const MITM_CERT = join(homedir(), '.mitmproxy', 'mitmproxy-ca-cert.pem')
+
+/**
+ * Is there a dashboard to serve? A blank :4041 was the first thing a tester
+ * saw on a fresh checkout; this names the reason before they open a browser.
+ *
+ * @returns {Check}
+ */
+function dashboardBuild() {
+  const root = webRoot()
+  return root
+    ? { status: 'pass', label: 'Dashboard build', detail: 'apps/web/dist present' }
+    : {
+        status: 'warn',
+        label: 'Dashboard build',
+        detail:
+          'apps/web/dist missing — contextlab dashboard will build it, or show why not',
+        fix: 'pnpm --filter @contextlab/web build',
+      }
+}
 
 /**
  * @typedef {Object} Check
@@ -41,6 +61,7 @@ export async function doctor(options = {}) {
   checks.push(await portFree(4040, 'proxy'))
   checks.push(await portFree(4041, 'server'))
   checks.push(storage())
+  checks.push(dashboardBuild())
   checks.push(pricing())
   checks.push(...toolsOnPath())
   checks.push(mitmproxy())

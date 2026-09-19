@@ -110,6 +110,13 @@
     height: 100%;
   }
 
+  /* On html as well as body: with color-scheme dark, anything past the body's
+     100% height is the browser's canvas, and the canvas is black. That was the
+     band at the bottom of every screen. */
+  html {
+    background-color: var(--color-page);
+  }
+
   body {
     background-color: var(--color-page);
     color: var(--color-text-primary);
@@ -128,6 +135,11 @@
   :focus-visible {
     outline: 2px solid var(--color-cat-system-prompt);
     outline-offset: 2px;
+  }
+
+  [data-chart] :focus,
+  [data-chart] :focus-visible {
+    outline: none;
   }
 
   ::-webkit-scrollbar {

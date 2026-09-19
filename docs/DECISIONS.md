@@ -88,6 +88,7 @@ index groups them by area instead.
 - [SSE is a hint to refetch, not a data channel](#sse-is-a-hint-to-refetch-not-a-data-channel)
 - [The turn endpoint returns only what changed](#the-turn-endpoint-returns-only-what-changed)
 - [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
+- [:4041 is never blank](#4041-is-never-blank)
 - [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
 
 **Dashboard**
@@ -1253,6 +1254,35 @@ other three, not to style it to match.
 The rule going forward: a screen may not introduce a new way to do something
 one of the five already does. If a primitive is wrong, the primitive changes,
 and every screen moves with it.
+
+---
+
+## :4041 is never blank
+
+`contextlab dashboard` serves the built dashboard from `apps/web/dist`. That
+folder is gitignored, so on a fresh checkout it does not exist, and the
+server's behaviour was — in its own comment — "a missing build simply leaves
+the API working on its own." The first tester on a second machine opened
+:4041, saw a black page, and reasonably concluded the server was broken. It was
+not. It had chosen silence.
+
+Three things now. `contextlab dashboard` builds the dashboard itself when
+`dist` is missing or older than the source, if it is running from the repo. If
+it cannot — no pnpm, not a checkout — the server answers every page request
+with a plain HTML page in the product's colours that says the API is up, the
+dashboard is not built, and the one command that fixes it, with a 503 so a
+script can tell. And `doctor` reports the build the way it reports the
+certificate.
+
+The related confusion, recorded so it is not re-explained: `pnpm dev` inside
+`apps/web` is Vite's development server on :4042. It has no API and forwards
+every `/api` call to :4041, so it lives only while :4041 lives. That is how the
+dashboard is developed, not how it is used. A user has one terminal and one
+port.
+
+Still open for the publish step: the CLI package's `files` list does not ship
+the built dashboard. A published `npx contextlab dashboard` would show the
+not-built page to everyone. That is fixed before `npm publish`, not here.
 
 ---
 

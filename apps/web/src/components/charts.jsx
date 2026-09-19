@@ -198,7 +198,7 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
         <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
       ) : (
         <div className="flex items-center gap-3">
-          <div className="relative size-28 shrink-0">
+          <div className="relative size-28 shrink-0" data-chart>
             <ResponsiveContainer
               width="100%"
               height="100%"
@@ -313,7 +313,7 @@ export function SpendTimeline({ days, className }) {
             : `One day so far — ${usd(days[0]?.total ?? 0)} on ${days[0]?.day}. A line needs two.`}
         </p>
       ) : (
-        <div className="h-52 w-full">
+        <div className="h-52 w-full" data-chart>
           <ResponsiveContainer
             width="100%"
             height="100%"

@@ -128,7 +128,7 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
   const facets = options.data ?? { tools: [], models: [], projects: [] }
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex min-h-full items-start">
       <FacetRail
         collapsed={railCollapsed}
         onToggle={() => setRailCollapsed((value) => !value)}
@@ -158,7 +158,7 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
         ]}
       />
 
-      <div className="min-w-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div className="min-w-0 flex-1 space-y-3 px-4 py-4">
         <PageHeader
           title="Sessions"
           question="Where did my money go?"

@@ -7,7 +7,8 @@
  * @module
  */
 
-import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +22,33 @@ import { ingestDirectory } from './ingest.js'
 import { refreshPricingInBackground } from './pricing.js'
 
 export const DEFAULT_PORT = 4041
+
+/**
+ * What :4041 shows when the dashboard has not been built. Plain HTML with the
+ * page colour and the one command that fixes it — the API is up and answering,
+ * and this says so rather than looking like a crash.
+ */
+export const NOT_BUILT_PAGE = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>contextlab</title>
+<style>
+  html,body{margin:0;background:#1a222c;color:#e6edf3;font:14px/1.5 ui-sans-serif,system-ui,sans-serif}
+  main{max-width:36rem;margin:18vh auto;padding:0 1.5rem}
+  h1{font-size:1.25rem;margin:0 0 .5rem}
+  p{color:#a9b6c3;margin:.5rem 0}
+  code{display:block;margin:1rem 0;padding:.75rem 1rem;border:1px solid rgba(255,255,255,.08);
+       border-radius:.5rem;background:#222d38;font:13px ui-monospace,Menlo,monospace;color:#3987e5}
+  a{color:#3987e5}
+</style></head>
+<body><main>
+  <h1>The API is running. The dashboard is not built.</h1>
+  <p>This server serves the dashboard from <code style="display:inline;padding:.1rem .35rem;margin:0">apps/web/dist</code>,
+     and that folder does not exist on this machine yet. The API at
+     <a href="/api/health">/api/health</a> is answering.</p>
+  <p>Build it once, then restart:</p>
+  <code>pnpm --filter @contextlab/web build</code>
+  <p><small>contextlab dashboard tries to run this build for you when it can. If you are seeing this page,
+     it could not — usually because pnpm is not installed on the PATH.</small></p>
+</main></body></html>`
 
 /** How often the capture directory is checked for new files. */
 const WATCH_MS = 1000
@@ -115,6 +143,11 @@ export async function startServer(options = {}) {
   if (root) {
     app.use('/assets/*', serveStatic({ root: relativeTo(root) }))
     app.get('*', serveStatic({ root: relativeTo(root), path: 'index.html' }))
+  } else {
+    // Never a blank page. Someone on a fresh checkout opened :4041, saw
+    // nothing, and reasonably concluded the server was broken. It was not;
+    // it had chosen silence. Now it says what is missing and what to run.
+    app.get('*', (c) => c.html(NOT_BUILT_PAGE, 503))
   }
 
   const port = options.port ?? DEFAULT_PORT
@@ -149,4 +182,68 @@ function relativeTo(absolute) {
     ? absolute.slice(process.cwd().length).replace(/^\//, '')
     : absolute
   return `./${relative}`
+}
+
+/**
+ * Build the dashboard if it is missing or older than its source.
+ *
+ * Only possible from a checkout of the repo, where `apps/web` and its
+ * devDependencies exist; a published package ships the build already. Returns
+ * what happened so the caller can say so, and never throws — a failed build
+ * must not stop the API from starting.
+ *
+ * @param {{ log?: (line: string) => void }} [options]
+ * @returns {{ status: 'fresh' | 'built' | 'failed' | 'unavailable', detail: string }}
+ */
+export function ensureDashboardBuilt(options = {}) {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const repo = join(here, '..', '..', '..')
+  const web = join(repo, 'apps', 'web')
+  const index = join(web, 'dist', 'index.html')
+
+  if (!existsSync(join(web, 'package.json'))) {
+    return { status: 'unavailable', detail: 'not running from the repository' }
+  }
+
+  if (
+    existsSync(index) &&
+    statSync(index).mtimeMs >= newestSourceMtime(join(web, 'src'))
+  ) {
+    return { status: 'fresh', detail: 'apps/web/dist is up to date' }
+  }
+
+  options.log?.(
+    'building the dashboard (apps/web/dist is missing or older than its source)…',
+  )
+  try {
+    execFileSync('pnpm', ['--filter', '@contextlab/web', 'build'], {
+      cwd: repo,
+      stdio: 'pipe',
+      timeout: 120_000,
+    })
+    return existsSync(index)
+      ? { status: 'built', detail: 'built apps/web/dist' }
+      : { status: 'failed', detail: 'build ran but produced no dist/index.html' }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { status: 'failed', detail: message.split('\n')[0] ?? message }
+  }
+}
+
+/**
+ * The newest modification time under a directory, so a stale build is rebuilt
+ * and a fresh one is left alone.
+ *
+ * @param {string} dir
+ * @returns {number}
+ */
+function newestSourceMtime(dir) {
+  let newest = 0
+  if (!existsSync(dir)) return newest
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) newest = Math.max(newest, newestSourceMtime(path))
+    else newest = Math.max(newest, statSync(path).mtimeMs)
+  }
+  return newest
 }

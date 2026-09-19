@@ -9,7 +9,7 @@
  */
 
 import { execFile } from 'node:child_process'
-import { startServer, webRoot } from '@contextlab/server'
+import { ensureDashboardBuilt, startServer, webRoot } from '@contextlab/server'
 import { readConfig } from '../config.js'
 import { contextlabHome } from '../context.js'
 import { color } from '../format.js'
@@ -21,6 +21,16 @@ import { color } from '../format.js'
 export async function dashboard(options = {}) {
   const port = Number(options.port ?? 4041)
   const home = contextlabHome()
+
+  // :4041 is the product. It builds the dashboard itself rather than asking
+  // someone on a fresh checkout to know a pnpm incantation — and if it cannot,
+  // the server shows a page saying so instead of nothing.
+  const build = ensureDashboardBuilt({
+    log: (line) => console.log(color.gray(`  ${line}`)),
+  })
+  if (build.status === 'built') console.log(color.gray(`  ${build.detail}`))
+  if (build.status === 'failed')
+    console.log(color.yellow(`  dashboard build failed: ${build.detail}`))
   const built = webRoot()
 
   const config = readConfig(home)
@@ -39,14 +49,16 @@ export async function dashboard(options = {}) {
     // Honest about it rather than serving a blank page and letting someone
     // wonder whether the server is broken.
     console.log(
-      color.yellow('\n  The dashboard has not been built, so only the API is served.'),
+      color.yellow(`\n  The dashboard is not built. ${address} explains what to run.`),
     )
     console.log(color.cyan('    pnpm --filter @contextlab/web build'))
   }
 
   console.log(color.gray('\n  Captures are folded in as they arrive. Ctrl-C to stop.\n'))
 
-  if (options.open !== false && built) openInBrowser(address)
+  // Opened either way: a page that says "not built, run this" is more useful
+  // in a browser than a terminal line nobody reads.
+  if (options.open !== false) openInBrowser(address)
 
   // Stay up until interrupted.
   await new Promise((resolve) => {

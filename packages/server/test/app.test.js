@@ -6,6 +6,7 @@ import { closeDatabase, listSessions, openDatabase } from '@contextlab/store'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { ingestCapture } from '../src/ingest.js'
+import { ensureDashboardBuilt, NOT_BUILT_PAGE, startServer } from '../src/server.js'
 
 const npmLog = 'npm WARN deprecated thing@1.0.0 please upgrade\n'.repeat(400)
 
@@ -947,5 +948,44 @@ describe('what a block counts as, versus what it was billed', () => {
     expect(overview.total.count).toBe(optimize.total.count)
     expect(overview.total.critical).toBe(optimize.total.critical)
     expect(overview.total.recoverableUsd).toBeCloseTo(optimize.total.recoverableUsd)
+  })
+})
+
+describe('the dashboard server without a build', () => {
+  it('shows a page that says what is missing, never a blank one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'contextlab-nobuild-'))
+    const handle = await startServer({
+      home: dir,
+      port: 0,
+      watch: false,
+      // A web root that does not exist — a fresh checkout, in effect.
+      web: join(dir, 'no-such-dist'),
+    })
+    try {
+      const address = /** @type {any} */ (handle.server.address())
+      const response = await fetch(`http://127.0.0.1:${address.port}/`)
+      expect(response.status).toBe(503)
+      const html = await response.text()
+      expect(html).toContain('The dashboard is not built')
+      expect(html).toContain('pnpm --filter @contextlab/web build')
+      // The API is still there behind it.
+      const health = await fetch(`http://127.0.0.1:${address.port}/api/health`)
+      expect(health.status).toBe(200)
+    } finally {
+      await handle.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('carries the page colour, so it is not a white flash either', () => {
+    expect(NOT_BUILT_PAGE).toContain('#1a222c')
+  })
+
+  it('reports rather than throws when it cannot build', () => {
+    // From the repo this is either fresh or a real build; both are fine. What
+    // must not happen is an exception that stops the API from starting.
+    const result = ensureDashboardBuilt()
+    expect(['fresh', 'built', 'failed', 'unavailable']).toContain(result.status)
+    expect(typeof result.detail).toBe('string')
   })
 })
