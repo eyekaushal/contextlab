@@ -70,7 +70,7 @@ index groups them by area instead.
 - [A top bar instead of a sidebar](#a-top-bar-instead-of-a-sidebar)
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
-- [A facet rail instead of three dropdowns](#a-facet-rail-instead-of-three-dropdowns)
+- [The filters sit above the table they filter](#the-filters-sit-above-the-table-they-filter)
 - [Rings for what dominates, a stacked area for when](#rings-for-what-dominates-a-stacked-area-for-when)
 - [The budget is set from the dashboard, and the file stays the truth](#the-budget-is-set-from-the-dashboard-and-the-file-stays-the-truth)
 - [Five primitives, and every screen is made of them](#five-primitives-and-every-screen-is-made-of-them)
@@ -1171,22 +1171,20 @@ red, but more turns is not a fault and stays grey.
 
 ---
 
-## A facet rail instead of three dropdowns
+## The filters sit above the table they filter
 
-Three dropdowns said "you may filter by source, model and project" and told you
-nothing until you opened them. The reference dashboard's left panel lists every
-value with a count and a bar — a filter that is also a summary, and the reader
-sees where the money went before clicking anything.
+A facet rail — every value with a count and a bar — was tried and removed. It
+took 224px of every screen, and it changed a table the reader could not see
+from the top of the page: filter something, watch nothing happen, scroll down,
+find it had. The cards and charts show the whole dataset on purpose; the rail
+sat beside them and looked like it should apply to them.
 
-`/api/filters` now returns each value with its session count and its spend,
-and the rail draws the bar from spend rather than count because spend is the
-question this screen answers. Click to filter, click again to clear; the rail
-collapses to a strip so a narrow screen keeps its table width.
-
-The table rows went from 31px to 40px and 13px to 14px, with a mark per source
-and column widths set in proportion rather than left to auto — auto let the
-model column eat the middle of the screen. Density was right for a list; this
-screen is a dashboard, and its rows carry the weight.
+So the filters are a row of dropdowns directly above the sessions table, the
+same row the optimize screen uses. A control belongs next to the one thing it
+affects. What survived from the rail is the part that was information rather
+than furniture: every option carries its session count and its spend —
+`claude (2 · $6.09)` — so the dropdown says something before it is opened.
+`/api/filters` still returns count and spend per value for that reason.
 
 ---
 

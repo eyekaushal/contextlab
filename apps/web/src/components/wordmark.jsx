@@ -64,9 +64,18 @@ export function Mark({ className }) {
 export function Wordmark({ className, compact = false }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <Mark className="size-5" />
+      <Mark className={compact ? 'size-7' : 'size-5'} />
       <div className="min-w-0 leading-none">
-        <div className="text-sm font-semibold tracking-tight">contextlab</div>
+        <div
+          className={cn(
+            'font-semibold tracking-tight',
+            // In the top bar it is the product's name and carries the bar;
+            // elsewhere it sits beside its tagline at text size.
+            compact ? 'text-base' : 'text-sm',
+          )}
+        >
+          contextlab
+        </div>
         {compact ? null : (
           <div className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
             what is filling the window

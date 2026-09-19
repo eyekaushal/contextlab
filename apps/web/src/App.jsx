@@ -115,11 +115,11 @@ function TopBar({ route, connected }) {
 
   return (
     <div className="flex h-12 shrink-0 items-stretch border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)]">
-      <div className="flex items-center px-3">
+      <div className="flex items-center px-4">
         <Wordmark compact />
       </div>
 
-      <nav className="flex items-stretch" aria-label="Screens">
+      <nav className="ml-2 flex items-stretch gap-2" aria-label="Screens">
         {NAV.map(({ path: to, label, Icon, hint }) => (
           <Tooltip key={to} text={hint} side="bottom">
             <button
@@ -127,7 +127,7 @@ function TopBar({ route, connected }) {
               onClick={() => navigate(to)}
               aria-current={active === to ? 'page' : undefined}
               className={cn(
-                'flex h-full w-16 flex-col items-center justify-center gap-0.5 border-b-2 text-xs transition-colors',
+                'flex h-full w-20 flex-col items-center justify-center gap-0.5 border-b-2 text-xs font-semibold transition-colors',
                 active === to
                   ? 'border-[var(--color-cat-system-prompt)] text-[var(--color-text-primary)]'
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',

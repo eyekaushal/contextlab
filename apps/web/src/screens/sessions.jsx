@@ -14,7 +14,6 @@
 import {
   ArrowDown,
   Bot,
-  FolderKanban,
   Gem,
   GitCompare,
   Sparkles,
@@ -24,9 +23,9 @@ import {
 import { useEffect, useState } from 'react'
 import { ChartsRow } from '../components/charts-row.jsx'
 import { EntityMatches } from '../components/entity-matches.jsx'
-import { FacetRail } from '../components/facet-rail.jsx'
 import { Severity } from '../components/health.jsx'
 import { PageHeader } from '../components/page-header.jsx'
+import { SessionFilters } from '../components/session-filters.jsx'
 import { Sparkline } from '../components/sparkline.jsx'
 import { Empty, Failed, Loading } from '../components/states.jsx'
 import { SummaryStrip } from '../components/summary-strip.jsx'
@@ -85,7 +84,6 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
   const [filters, setFilters] = useState({ tool: '', model: '', project: '' })
   const [sort, setSort] = useState('recent')
   const [selected, setSelected] = useState(/** @type {string[]} */ ([]))
-  const [railCollapsed, setRailCollapsed] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), DEBOUNCE_MS)
@@ -128,188 +126,160 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
   const facets = options.data ?? { tools: [], models: [], projects: [] }
 
   return (
-    <div className="flex min-h-full items-start">
-      <FacetRail
-        collapsed={railCollapsed}
-        onToggle={() => setRailCollapsed((value) => !value)}
-        onSelect={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
-        groups={[
-          {
-            key: 'tool',
-            label: 'Source',
-            icon: Bot,
-            items: facets.tools,
-            selected: filters.tool,
-          },
-          {
-            key: 'model',
-            label: 'Model',
-            icon: Sparkles,
-            items: facets.models,
-            selected: filters.model,
-          },
-          {
-            key: 'project',
-            label: 'Project',
-            icon: FolderKanban,
-            items: facets.projects,
-            selected: filters.project,
-          },
-        ]}
+    <div className="space-y-3 px-4 py-4">
+      <PageHeader
+        title="Sessions"
+        question="Where did my money go?"
+        note={
+          selecting
+            ? 'Tick two or more sessions, then press Compare.'
+            : query
+              ? `Showing sessions matching “${query}”`
+              : undefined
+        }
+        actions={
+          query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('')
+                navigate('/')
+              }}
+              className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+            >
+              <X className="size-3" />
+              Clear search
+            </button>
+          ) : null
+        }
       />
 
-      <div className="min-w-0 flex-1 space-y-3 px-4 py-4">
-        <PageHeader
-          title="Sessions"
-          question="Where did my money go?"
-          note={
-            selecting
-              ? 'Tick two or more sessions, then press Compare.'
-              : query
-                ? `Showing sessions matching “${query}”`
-                : undefined
-          }
-          actions={
-            query ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('')
-                  navigate('/')
-                }}
-                className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              >
-                <X className="size-3" />
-                Clear search
-              </button>
-            ) : null
-          }
-        />
+      <SummaryStrip data={summary.data} onOpenOptimize={() => navigate('/optimize')} />
 
-        <SummaryStrip data={summary.data} onOpenOptimize={() => navigate('/optimize')} />
-
-        {/* Summary, then shape, then detail — the reference dashboard's order.
+      {/* Summary, then shape, then detail — the reference dashboard's order.
           The charts can be folded away by someone who came for the table. */}
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            onClick={() => setChartsOpen((value) => !value)}
-            aria-expanded={chartsOpen}
-            className="text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
-          >
-            {chartsOpen ? 'Hide charts' : 'Show charts'}
-          </button>
-        </div>
-        {chartsOpen ? <ChartsRow data={charts.data} /> : null}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setChartsOpen((value) => !value)}
+          aria-expanded={chartsOpen}
+          className="text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
+        >
+          {chartsOpen ? 'Hide charts' : 'Show charts'}
+        </button>
+      </div>
+      {chartsOpen ? <ChartsRow data={charts.data} /> : null}
 
-        <EntityMatches entities={matches.data?.entities ?? []} query={debounced} />
+      <EntityMatches entities={matches.data?.entities ?? []} query={debounced} />
 
-        {error ? <Failed message={error} /> : null}
-        {loading && !data ? <Loading /> : null}
+      {error ? <Failed message={error} /> : null}
+      {loading && !data ? <Loading /> : null}
 
-        {!error && !loading && sessions.length === 0 ? (
-          filtered ? (
-            <Empty
-              title={
-                debounced
-                  ? (matches.data?.entities ?? []).length > 0
-                    ? `No session message matches “${debounced}”.`
-                    : `Nothing matches “${debounced}”.`
-                  : 'Nothing matches those filters.'
-              }
-              hint={
-                (matches.data?.entities ?? []).length > 0
-                  ? 'It does match findings and entities — those are listed above.'
-                  : 'Search covers every message, tool call and result, plus findings, tools, MCP servers and files.'
-              }
-            />
-          ) : (
-            <Empty
-              title="No sessions captured yet."
-              hint="Run an agent through the proxy and this fills in as it goes."
-              command="contextlab claude"
-            />
-          )
-        ) : null}
+      {!error && !loading && sessions.length === 0 ? (
+        filtered ? (
+          <Empty
+            title={
+              debounced
+                ? (matches.data?.entities ?? []).length > 0
+                  ? `No session message matches “${debounced}”.`
+                  : `Nothing matches “${debounced}”.`
+                : 'Nothing matches those filters.'
+            }
+            hint={
+              (matches.data?.entities ?? []).length > 0
+                ? 'It does match findings and entities — those are listed above.'
+                : 'Search covers every message, tool call and result, plus findings, tools, MCP servers and files.'
+            }
+          />
+        ) : (
+          <Empty
+            title="No sessions captured yet."
+            hint="Run an agent through the proxy and this fills in as it goes."
+            command="contextlab claude"
+          />
+        )
+      ) : null}
 
-        {sessions.length > 0 ? (
-          <>
-            <Card className="overflow-x-auto">
-              <table className="w-full min-w-[960px] table-fixed text-base">
-                {/* Widths in proportion, not auto: auto let the model column eat
+      {sessions.length > 0 || filtered ? (
+        <SessionFilters
+          facets={facets}
+          value={filters}
+          onChange={setFilters}
+          showing={sessions.length}
+          total={summary.data?.sessions}
+        />
+      ) : null}
+
+      {sessions.length > 0 ? (
+        <>
+          <Card className="overflow-x-auto">
+            <table className="w-full min-w-[960px] table-fixed text-base">
+              {/* Widths in proportion, not auto: auto let the model column eat
                   the middle of the screen and squeezed the numbers to the edge. */}
-                <colgroup>
-                  <col className="w-[3%]" />
-                  <col className="w-[11%]" />
-                  <col className="w-[20%]" />
-                  <col className="w-[13%]" />
-                  <col className="w-[6%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[8%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[6%]" />
-                  <col className="w-[6%]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                    <th
-                      className={cn(
-                        'px-3 py-2',
-                        selecting &&
-                          'bg-[color-mix(in_oklab,var(--color-cat-system-prompt)_18%,transparent)]',
-                      )}
-                    >
-                      <span className="sr-only">Select for comparison</span>
-                    </th>
-                    {COLUMNS.map((column) => (
-                      <Column
-                        key={column.key}
-                        column={column}
-                        sort={sort}
-                        onSort={setSort}
-                      />
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.map((/** @type {any} */ session) => (
-                    <SessionRow
-                      key={session.id}
-                      session={session}
-                      query={debounced}
-                      selected={selected.includes(String(session.id))}
-                      selecting={selecting}
-                      atLimit={selected.length >= MAX_COMPARE}
-                      onToggle={() => toggle(String(session.id))}
+              <colgroup>
+                <col className="w-[3%]" />
+                <col className="w-[11%]" />
+                <col className="w-[20%]" />
+                <col className="w-[13%]" />
+                <col className="w-[6%]" />
+                <col className="w-[12%]" />
+                <col className="w-[8%]" />
+                <col className="w-[15%]" />
+                <col className="w-[6%]" />
+                <col className="w-[6%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <th
+                    className={cn(
+                      'px-3 py-2',
+                      selecting &&
+                        'bg-[color-mix(in_oklab,var(--color-cat-system-prompt)_18%,transparent)]',
+                    )}
+                  >
+                    <span className="sr-only">Select for comparison</span>
+                  </th>
+                  {COLUMNS.map((column) => (
+                    <Column
+                      key={column.key}
+                      column={column}
+                      sort={sort}
+                      onSort={setSort}
                     />
                   ))}
-                </tbody>
-              </table>
-            </Card>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((/** @type {any} */ session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    query={debounced}
+                    selected={selected.includes(String(session.id))}
+                    selecting={selecting}
+                    atLimit={selected.length >= MAX_COMPARE}
+                    onToggle={() => toggle(String(session.id))}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </Card>
 
-            <CompareBar
-              selected={selected}
-              onClear={() => setSelected([])}
-              onCompare={() => navigate(compareHref(selected))}
-            />
+          <CompareBar
+            selected={selected}
+            onClear={() => setSelected([])}
+            onCompare={() => navigate(compareHref(selected))}
+          />
 
+          {debounced || sort !== 'recent' ? (
             <p className="text-xs text-[var(--color-text-muted)]">
-              {sessions.length} session{sessions.length === 1 ? '' : 's'}
-              {debounced ? ` matching “${debounced}”` : ''}
-              {sort !== 'recent' ? `, by ${SORT_LABEL[sort] ?? sort}` : ''}
-              {filtered && !debounced ? (
-                <button
-                  type="button"
-                  onClick={() => setFilters({ tool: '', model: '', project: '' })}
-                  className="ml-2 underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline"
-                >
-                  clear filters
-                </button>
-              ) : null}
+              {debounced ? `Matching “${debounced}”` : ''}
+              {debounced && sort !== 'recent' ? ' · ' : ''}
+              {sort !== 'recent' ? `sorted by ${SORT_LABEL[sort] ?? sort}` : ''}
             </p>
-          </>
-        ) : null}
-      </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   )
 }

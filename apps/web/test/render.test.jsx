@@ -23,7 +23,6 @@ import { CompositionBar, CompositionLegend } from '../src/components/composition
 import { ContextDiff } from '../src/components/context-diff.jsx'
 import { EntityMatches } from '../src/components/entity-matches.jsx'
 import { ExportMenu, exportItems } from '../src/components/export-menu.jsx'
-import { FacetRail } from '../src/components/facet-rail.jsx'
 import { Finding } from '../src/components/finding.jsx'
 import { FindingsTable, scopeOf } from '../src/components/findings-table.jsx'
 import { Health, healthOf } from '../src/components/health.jsx'
@@ -33,6 +32,7 @@ import {
   parseMarkdown,
   Rendered,
 } from '../src/components/rendered-block.jsx'
+import { optionLabel, SessionFilters } from '../src/components/session-filters.jsx'
 import { Sparkline } from '../src/components/sparkline.jsx'
 import { describeDelta, Stat } from '../src/components/stat.jsx'
 import { Empty } from '../src/components/states.jsx'
@@ -882,56 +882,58 @@ describe('the timeline', () => {
   })
 })
 
-describe('the facet rail', () => {
-  const groups = [
-    {
-      key: 'tool',
-      label: 'Source',
-      icon: null,
-      selected: 'claude',
-      items: [
-        { value: 'claude', label: 'claude', count: 3, costUsd: 16.57 },
-        { value: 'codex', label: 'codex', count: 1, costUsd: 0.71 },
-      ],
-    },
-    { key: 'model', label: 'Model', icon: null, selected: '', items: [] },
-  ]
+describe('the filters above the table', () => {
+  const facets = {
+    tools: [
+      { value: 'claude', label: 'claude', count: 2, costUsd: 6.09 },
+      { value: 'codex', label: 'codex', count: 1, costUsd: 0.71 },
+    ],
+    models: [{ value: 'only-one', label: 'only-one', count: 3, costUsd: 6.8 }],
+    projects: [],
+  }
+  const none = { tool: '', model: '', project: '' }
 
-  it('lists every value with its count and a bar in proportion to its spend', () => {
-    const html = renderToString(
-      <FacetRail
-        groups={groups}
-        onSelect={() => {}}
-        collapsed={false}
-        onToggle={() => {}}
-      />,
-    )
-    expect(html).toContain('claude')
-    expect(html).toContain('codex')
-    expect(html).toContain('width:100%')
-    // codex is 0.71 / 16.57 of the widest bar.
-    expect(html).toMatch(/width:4\.\d+%/)
+  it('says the count and the spend in the option itself', () => {
+    expect(
+      optionLabel({ value: 'claude', label: 'claude', count: 2, costUsd: 6.09 }),
+    ).toBe('claude (2 · $6.09)')
   })
 
-  it('marks the selected value and skips an empty group', () => {
+  it('offers a dropdown only where there is a choice', () => {
     const html = renderToString(
-      <FacetRail
-        groups={groups}
-        onSelect={() => {}}
-        collapsed={false}
-        onToggle={() => {}}
-      />,
+      <SessionFilters facets={facets} value={none} onChange={() => {}} showing={3} />,
     )
-    expect(html).toContain('aria-pressed="true"')
-    expect(html).not.toContain('Model')
+    expect(html).toContain('Filter by source')
+    // One model is a label with extra steps, not a filter.
+    expect(html).not.toContain('Filter by model')
+    expect(html).not.toContain('Filter by project')
   })
 
-  it('collapses to a strip that can be reopened', () => {
+  it('says what it is hiding, and offers a way back', () => {
     const html = renderToString(
-      <FacetRail groups={groups} onSelect={() => {}} collapsed onToggle={() => {}} />,
+      <SessionFilters
+        facets={facets}
+        value={{ ...none, tool: 'claude' }}
+        onChange={() => {}}
+        showing={2}
+        total={3}
+      />,
     )
-    expect(html).not.toContain('claude')
-    expect(html).toContain('Show filters')
+    expect(html).toContain('Showing 2 of 3')
+    expect(html).toContain('Clear')
+  })
+
+  it('renders nothing when there is nothing to filter by', () => {
+    expect(
+      renderToString(
+        <SessionFilters
+          facets={{ tools: [], models: [], projects: [] }}
+          value={none}
+          onChange={() => {}}
+          showing={0}
+        />,
+      ),
+    ).toBe('')
   })
 })
 
