@@ -35,6 +35,7 @@ export function ChartsRow({ data }) {
             series={data.spendByProject}
             unit="usd"
             colour="name"
+            empty="Nothing yet — sessions group by the folder they ran in."
           />
           <Donut
             title="Findings by severity"

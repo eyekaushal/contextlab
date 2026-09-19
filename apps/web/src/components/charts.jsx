@@ -49,6 +49,16 @@ export const SAND = [
 /** Past this many slices the ring is a rainbow; the rest fold into Other. */
 const MAX_SLICES = 6
 
+/**
+ * The ring's geometry, in one place so a test can hold it.
+ *
+ * The first cut was thin (inner radius 0.58) with a wide pad (1.5°) and a 2px
+ * border — it read as a loop of wire with notches. The reference ring is a
+ * band roughly half the radius wide with the arcs nearly touching. So: a
+ * thick band, a hairline gap, a 1px border in the surface colour.
+ */
+export const RING = { innerRadius: 0.45, padAngle: 0.4, cornerRadius: 2, borderWidth: 1 }
+
 /** Status is reserved and never used for a category, but severity *is* status. */
 const SEVERITY_COLOR = {
   critical: 'var(--color-status-critical)',
@@ -227,12 +237,9 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
     // The snippet, sized to a shared card: the ring, the pad between arcs,
     // the rounded ends, the hovered arc growing.
     margin: { top: 8, right: 8, bottom: 8, left: 8 },
-    innerRadius: 0.58,
-    padAngle: 1.5,
-    cornerRadius: 2,
+    ...RING,
     activeOuterRadiusOffset: 6,
     colors: { datum: 'data.color' },
-    borderWidth: 2,
     borderColor: 'var(--color-surface)',
     enableArcLabels: false,
     enableArcLinkLabels: false,
@@ -272,7 +279,20 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
       </figcaption>
 
       {slices.length === 0 ? (
-        <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
+        <div className="flex items-center gap-3">
+          <div className="relative size-32 shrink-0" data-chart>
+            {/* An empty ring rather than a line of text: one full arc in the
+                gridline colour, a dash in the middle. It looks like its three
+                neighbours, so a dashboard with nothing in it still looks like
+                a dashboard waiting for data rather than one missing a part. */}
+            {size ? (
+              <Pie {...emptyRing()} width={size} height={size} />
+            ) : (
+              <ResponsivePie {...emptyRing()} />
+            )}
+          </div>
+          <p className="min-w-0 flex-1 text-xs text-[var(--color-text-muted)]">{empty}</p>
+        </div>
       ) : (
         <div className="flex items-center gap-3">
           <div className="relative size-32 shrink-0" data-chart>
@@ -305,6 +325,43 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
       )}
     </figure>
   )
+}
+
+/**
+ * The ring with nothing in it.
+ *
+ * @returns {any}
+ */
+function emptyRing() {
+  return {
+    data: [
+      { id: 'empty', label: 'Nothing yet', value: 1, color: 'var(--color-gridline)' },
+    ],
+    margin: { top: 8, right: 8, bottom: 8, left: 8 },
+    ...RING,
+    padAngle: 0,
+    borderWidth: 0,
+    colors: { datum: 'data.color' },
+    enableArcLabels: false,
+    enableArcLinkLabels: false,
+    isInteractive: false,
+    animate: false,
+    theme: THEME,
+    layers: [
+      'arcs',
+      (/** @type {any} */ { centerX, centerY }) => (
+        <text
+          x={centerX}
+          y={centerY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={{ fill: 'var(--color-text-muted)', fontSize: 14, fontWeight: 600 }}
+        >
+          {'\u2014'}
+        </text>
+      ),
+    ],
+  }
 }
 
 /**

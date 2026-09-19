@@ -17,6 +17,7 @@ import {
   colourByName,
   Donut,
   foldSmall,
+  RING,
   SAND,
   SpendTimeline,
 } from '../src/components/charts.jsx'
@@ -859,7 +860,13 @@ describe('the rings', () => {
     expect(html).toContain('Tool results')
   })
 
-  it('says so when there is nothing to draw', () => {
+  it('is a band, not a wire: thick ring, hairline gap, 1px border', () => {
+    expect(RING.innerRadius).toBeLessThanOrEqual(0.5)
+    expect(RING.padAngle).toBeLessThan(0.5)
+    expect(RING.borderWidth).toBe(1)
+  })
+
+  it('draws an empty ring with a dash when there is nothing, and says so beside it', () => {
     const html = renderToString(
       <Donut
         title="Findings"
@@ -867,10 +874,14 @@ describe('the rings', () => {
         unit="count"
         colour="severity"
         empty="Nothing to fix."
+        size={128}
       />,
     )
+    // A ring like its neighbours, not a line of text where a ring should be.
+    expect(html).toContain('<svg')
+    expect(html).toContain('var(--color-gridline)')
+    expect(html).toContain('\u2014')
     expect(html).toContain('Nothing to fix.')
-    expect(html).not.toContain('<svg')
   })
 })
 
