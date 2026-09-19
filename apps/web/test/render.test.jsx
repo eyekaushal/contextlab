@@ -169,6 +169,36 @@ describe('density', () => {
     expect(css).toMatch(/html\s*\{[^}]*background-color:\s*var\(--color-page\)/)
   })
 
+  it('sets the two faces once, in the theme, and nowhere else', () => {
+    expect(css).toContain('"Inter Variable"')
+    expect(css).toContain('"JetBrains Mono Variable"')
+    // A font-family in a component bypasses the tokens the same way a
+    // hardcoded pixel size bypasses the scale.
+    const root = new URL('../src/', import.meta.url)
+    /** @param {URL} dir @returns {string[]} */
+    const walk = (dir) =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(new URL(`${entry.name}/`, dir))
+          : entry.name.endsWith('.jsx')
+            ? [fileURLToPath(new URL(entry.name, dir))]
+            : [],
+      )
+    const offenders = walk(root).filter((file) =>
+      /fontFamily|font-family/.test(readFileSync(file, 'utf8')),
+    )
+    expect(offenders).toEqual([])
+  })
+
+  it('never fetches a font from the network', () => {
+    // Self-hosted from @fontsource: a Google Fonts link would send every
+    // visitor's IP to Google on every load.
+    expect(css).not.toMatch(/fonts\.googleapis|fonts\.gstatic|https?:\/\//)
+    const entry = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8')
+    expect(entry).toContain('@fontsource-variable/inter')
+    expect(entry).toContain('@fontsource-variable/jetbrains-mono')
+  })
+
   it('keeps focus rings off the charts', () => {
     expect(css).toContain('[data-chart] :focus-visible')
   })

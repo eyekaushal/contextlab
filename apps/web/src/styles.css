@@ -73,11 +73,19 @@
   --text-xl: 1.25rem; /* 20px — the screen title */
   --text-xl--line-height: 1.3;
 
+  /*
+   * Inter for UI and prose, JetBrains Mono for figures and code. Both are
+   * bundled from @fontsource-variable — nothing is fetched from Google at
+   * runtime, because a font request would send every visitor's IP to Google
+   * on every load and the README says nothing leaves the machine. The system
+   * stacks stay behind them for the instant before the file arrives.
+   */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
   --font-mono:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    "JetBrains Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
   --radius-card: 0.5rem;
 }
@@ -121,6 +129,7 @@
     background-color: var(--color-page);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "calt";
     /* The base, so anything unstyled lands on the ramp rather than at the
        browser's 16px. */
     font-size: var(--text-sm);
@@ -160,10 +169,14 @@
 
 @layer utilities {
   /*
-   * Only in columns that must align. Proportional figures read better
-   * everywhere else, so this is opt-in rather than global.
+   * A figure wears the mono. Every number a reader compares against another
+   * — a column of costs, a KPI, a token count — is set in JetBrains Mono with
+   * tabular digits, so digits line up and a 7 is never mistaken for a 1.
+   * Prose stays in the sans; a sentence set in monospace reads slower.
    */
   .tnum {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+    font-size: 0.95em;
   }
 }

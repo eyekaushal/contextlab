@@ -89,6 +89,7 @@ index groups them by area instead.
 - [The turn endpoint returns only what changed](#the-turn-endpoint-returns-only-what-changed)
 - [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
 - [:4041 is never blank](#4041-is-never-blank)
+- [Inter for words, JetBrains Mono for figures, both bundled](#inter-for-words-jetbrains-mono-for-figures-both-bundled)
 - [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
 
 **Dashboard**
@@ -1283,6 +1284,31 @@ port.
 Still open for the publish step: the CLI package's `files` list does not ship
 the built dashboard. A published `npx contextlab dashboard` would show the
 not-built page to everyone. That is fixed before `npm publish`, not here.
+
+---
+
+## Inter for words, JetBrains Mono for figures, both bundled
+
+The system font stack looked, in the user's words, too basic for a developer.
+The instinct behind the request — JetBrains Mono — is right for a tool whose
+content is numbers and code. Setting *everything* in it would have been
+wrong: monospace is about a fifth wider than a sans, which undoes the density
+work, and a sentence set in monospace reads slower. So two faces with two jobs.
+Inter for UI and prose; JetBrains Mono for every `tnum` figure, every
+`font-mono` path, model ID and arithmetic line. It is what Gotham, Grafana and
+Linear do.
+
+Both come from `@fontsource-variable` (OFL-1.1) and are bundled into the
+dashboard. **Not Google Fonts.** A `fonts.googleapis.com` link would send every
+visitor's IP address to Google on every page load, and the README promises
+nothing leaves the machine — a promise a stylesheet can break as easily as a
+fetch call. The browser downloads only the Latin subset it needs, from this
+server: 48K and 40K.
+
+Two tests hold this. The two faces are declared once, in the theme, and a
+`font-family` anywhere in a component fails the suite — the same rule as a
+hardcoded pixel size. And the built stylesheet may contain no `http` URL at
+all.
 
 ---
 
