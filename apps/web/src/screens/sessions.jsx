@@ -213,7 +213,7 @@ export function Sessions({ version, initialQuery = '', selecting = false }) {
       {sessions.length > 0 ? (
         <>
           <Card className="overflow-x-auto">
-            <table className="w-full min-w-[960px] table-fixed text-base">
+            <table className="w-full min-w-[640px] table-fixed text-base">
               {/* Widths in proportion, not auto: auto let the model column eat
                   the middle of the screen and squeezed the numbers to the edge. */}
               <colgroup>

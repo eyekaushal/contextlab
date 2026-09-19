@@ -53,7 +53,7 @@ export function Messages({ sessionId, version }) {
   const current = turnId ?? String(data.turn?.id ?? '')
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-[calc(100vh-3rem)] min-h-0 flex-col">
       <div className="space-y-2 border-b border-[var(--color-border-subtle)] px-5 py-4">
         <PageHeader
           title="Messages"

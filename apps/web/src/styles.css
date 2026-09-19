@@ -112,10 +112,13 @@
 }
 
 @layer base {
+  /* min-height, not height: pinning the chain to 100% made <main> the scroll
+     container, and a page that scrolls inside a div has two scrollbars — the
+     div's and the browser's. The document scrolls now, like a document. */
   html,
   body,
   #root {
-    height: 100%;
+    min-height: 100%;
   }
 
   /* On html as well as body: with color-scheme dark, anything past the body's

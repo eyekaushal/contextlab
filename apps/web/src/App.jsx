@@ -54,9 +54,9 @@ export function App() {
   const { version, connected } = useServerEvents()
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-screen flex-col">
       <TopBar route={route} connected={connected} />
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1">
         <Route route={route} version={version} />
       </main>
     </div>
@@ -114,7 +114,7 @@ function TopBar({ route, connected }) {
   const active = activeNav(route)
 
   return (
-    <div className="flex h-12 shrink-0 items-stretch border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)]">
+    <div className="sticky top-0 z-40 flex h-12 min-w-0 shrink-0 items-stretch border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)]">
       <div className="flex items-center px-4">
         <Wordmark compact />
       </div>
@@ -140,7 +140,7 @@ function TopBar({ route, connected }) {
         ))}
       </nav>
 
-      <div className="ml-auto flex items-center gap-2 px-3">
+      <div className="ml-auto flex min-w-0 items-center gap-2 px-3">
         <GlobalSearch />
         <ExportMenu />
         <Tooltip
@@ -180,7 +180,7 @@ function GlobalSearch() {
 
   return (
     <form
-      className="relative"
+      className="relative min-w-0 flex-1"
       onSubmit={(event) => {
         event.preventDefault()
         const term = value.trim()
@@ -196,7 +196,7 @@ function GlobalSearch() {
         onChange={(event) => setValue(event.target.value)}
         placeholder="Search messages, findings, files…"
         aria-label="Search everything"
-        className="h-8 w-64 rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] pl-7 pr-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-cat-system-prompt)] focus:outline-none"
+        className="h-8 w-full min-w-28 max-w-64 rounded border border-[var(--color-border-subtle)] bg-[var(--color-page)] pl-7 pr-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-cat-system-prompt)] focus:outline-none"
       />
     </form>
   )

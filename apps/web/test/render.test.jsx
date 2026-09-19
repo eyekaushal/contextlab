@@ -1041,14 +1041,33 @@ describe('the sessions summary strip', () => {
 })
 
 describe('sessions screen', () => {
-  it('does not scroll itself — main is the one scroll container', () => {
+  it('does not scroll itself — the document is the one scroll container', () => {
     const source = readFileSync(
       new URL('../src/screens/sessions.jsx', import.meta.url),
       'utf8',
     )
-    // Two nested scroll containers were two scrollbars.
     const body = source.slice(source.indexOf('export function Sessions'))
     expect(body).not.toContain('overflow-y-auto px-4')
+
+    // And nothing above it scrolls either: the root chain is min-height, the
+    // shell has no overflow rule, so the browser's own scrollbar is the only one.
+    const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
+    // `\bheight` would match inside `min-height`; assert the line itself.
+    expect(css).toMatch(/#root \{\s*min-height: 100%/)
+    expect(css).not.toMatch(/\n\s+height: 100%/)
+    const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+    expect(app).not.toContain('overflow-y-auto')
+    expect(app).toContain('min-h-screen')
+  })
+
+  it('lets the table compress before it scrolls sideways', () => {
+    const source = readFileSync(
+      new URL('../src/screens/sessions.jsx', import.meta.url),
+      'utf8',
+    )
+    // 960px forced a horizontal bar on every laptop; the columns are
+    // proportional and can take a narrower table.
+    expect(source).not.toContain('min-w-[960px]')
   })
 
   it('names the question it answers', () => {
