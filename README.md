@@ -29,7 +29,7 @@ If it came from a command, redirect it to a file and read the part you need:
 npx contextlab claude
 ```
 
-That starts a local proxy, runs Claude Code through it, and captures every API
+Needs Node 22 or newer (`node --version`; `nvm install 22` if not). That starts a local proxy, runs Claude Code through it, and captures every API
 call. Work as normal. When you are done:
 
 ```bash

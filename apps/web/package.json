@@ -1,6 +1,6 @@
 {
   "name": "@contextlab/web",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "React dashboard. Talks to the server over HTTP + SSE.",
   "license": "MIT",

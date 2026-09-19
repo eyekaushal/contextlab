@@ -15,7 +15,7 @@ index groups them by area instead.
 - [A format that is a profile of OpenTelemetry GenAI, not a new format](#a-format-that-is-a-profile-of-opentelemetry-genai-not-a-new-format)
 - [All coding tools supported from day one](#all-coding-tools-supported-from-day-one)
 - [npm as the distribution, no Docker](#npm-as-the-distribution-no-docker)
-- [`engines` floor is Node 20.9, not Node 22](#engines-floor-is-node-209-not-node-22)
+- [`engines` floor is Node 22 — reversed from 20.9 on the first install](#engines-floor-is-node-22--reversed-from-209-on-the-first-install)
 
 **Capture and the proxy**
 
@@ -228,18 +228,24 @@ orchestration for a localhost CLI would be complexity without a matching need.
 
 ---
 
-## `engines` floor is Node 20.9, not Node 22
+## `engines` floor is Node 22 — reversed from 20.9 on the first install
 
-We target Node 22 and develop on it. The published `engines` floor is `>=20.9.0`
-anyway, because nothing we use requires 22 — `node:sqlite`, the one built-in that
-would have forced it, is not in play since we ship `better-sqlite3` for FTS5.
+The floor was `>=20.9.0`, on the argument that nothing we use needs 22 and an
+unnecessary floor on a CLI is a support ticket. That argument was right about
+our code and wrong about our dependency. `better-sqlite3` 12.x ships prebuilt
+binaries for Node 22, 24, 25 and 26 — not 20. On Node 20 every install
+compiles it from source with node-gyp, which needs a C++ toolchain and a
+Python, and fails on any machine without both. The first `npm install
+contextlab` on a Node 20 machine did exactly that: `gyp ERR! not ok`.
 
-An unnecessary engine floor on a CLI is a support ticket: it turns "your tool
-doesn't work" into a version argument on an LTS release that a lot of people are
-still on.
+So the floor is 22, stated in every package's `engines` and in `doctor`. npm
+now warns a Node 20 user up front instead of failing them mid-compile. Node 20
+has been end-of-life since April 2026, which makes this the honest floor
+rather than a convenient one.
 
-**Consequence:** no Node-22-only syntax or built-ins anywhere. If we ever want one,
-the floor moves deliberately and this entry gets rewritten.
+The development machine still runs 20.9 with a binary it compiled long ago;
+`doctor` fails on it, which is correct, and the fix it prints is
+`nvm install 22`.
 
 ---
 

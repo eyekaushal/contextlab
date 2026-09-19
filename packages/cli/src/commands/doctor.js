@@ -106,12 +106,16 @@ export async function doctor(options = {}) {
 /** @returns {Check} */
 function nodeVersion() {
   const major = Number(process.versions.node.split('.')[0])
-  const minor = Number(process.versions.node.split('.')[1])
-  const ok = major > 20 || (major === 20 && minor >= 9)
+  // 22, not 20: better-sqlite3 ships prebuilt binaries for Node 22 and up
+  // only. On Node 20 every install compiles it from source, which needs a C++
+  // toolchain and fails on a machine without one — the first npm install of
+  // this package did exactly that. Node 20 has also been end-of-life since
+  // April 2026.
+  const ok = major >= 22
   return {
     status: ok ? 'pass' : 'fail',
     label: `Node ${process.versions.node}`,
-    ...(ok ? {} : { detail: 'need 20.9 or newer', fix: 'nvm install 22' }),
+    ...(ok ? {} : { detail: 'need 22 or newer', fix: 'nvm install 22' }),
   }
 }
 
