@@ -17,6 +17,7 @@ import {
   colourByName,
   Donut,
   foldSmall,
+  SAND,
   SpendTimeline,
 } from '../src/components/charts.jsx'
 import { CompositionBar, CompositionLegend } from '../src/components/composition-bar.jsx'
@@ -785,17 +786,15 @@ describe('the rings', () => {
   it('gives a colour by name, so a filter never repaints the survivors', () => {
     const all = colourByName(tools)
     const fewer = colourByName(tools.filter((t) => t.key !== 'aider'))
-    // aider gone; claude, codex and gemini keep the slots they had.
     expect(fewer.claude).toBe(all.claude)
     expect(fewer.codex).toBe(all.codex)
     expect(fewer.gemini).toBe(all.gemini)
-    // And the seven supported tools never share a colour with each other.
-    const seven = colourByName(
-      ['claude', 'codex', 'gemini', 'aider', 'cline', 'copilot', 'opencode'].map(
-        (key) => ({ key }),
-      ),
+    // Five sands, five tools on screen at once — no two alike.
+    const five = colourByName(
+      ['claude', 'codex', 'gemini', 'aider', 'cline'].map((key) => ({ key })),
     )
-    expect(new Set(Object.values(seven)).size).toBe(7)
+    expect(new Set(Object.values(five)).size).toBe(5)
+    for (const colour of Object.values(five)) expect(SAND).toContain(colour)
   })
 
   it('colours a project by its name alone', () => {
@@ -816,16 +815,18 @@ describe('the rings', () => {
     expect(foldSmall(tools)).toHaveLength(4)
   })
 
-  it('carries the value in the legend and the total in the middle', () => {
+  it('draws the ring in warm sand with the total in the middle and the value in the legend', () => {
     const html = renderToString(
-      <Donut title="Spend by tool" series={tools} unit="usd" colour="name" />,
+      <Donut title="Spend by tool" series={tools} unit="usd" colour="name" size={128} />,
     )
+    expect(html).toContain('<svg')
     for (const t of tools) expect(html).toContain(t.label)
     expect(html).toContain('$10.48')
     expect(html).toContain('$18.50')
+    expect(html).toContain('hsl(27, 42%, 55%)')
   })
 
-  it('colours severity with the status palette', () => {
+  it('keeps severity on the status colours, not on sand', () => {
     const html = renderToString(
       <Donut
         title="Findings by severity"
@@ -835,11 +836,27 @@ describe('the rings', () => {
         ]}
         unit="count"
         colour="severity"
+        size={128}
       />,
     )
     expect(html).toContain('var(--color-status-critical)')
     expect(html).toContain('var(--color-status-warning)')
+    expect(html).not.toContain('hsl(27')
     expect(html).toContain('17')
+  })
+
+  it('keeps categories on the category palette, so the ring agrees with every bar', () => {
+    const html = renderToString(
+      <Donut
+        title="What filled the window"
+        series={[{ key: 'tool_results', label: 'tool_results', value: 900 }]}
+        unit="tokens"
+        colour="category"
+        size={128}
+      />,
+    )
+    expect(html).toContain('var(--cat-tool_results')
+    expect(html).toContain('Tool results')
   })
 
   it('says so when there is nothing to draw', () => {
@@ -866,17 +883,22 @@ describe('the timeline', () => {
     )
     expect(html).toContain('A line needs two')
     expect(html).toContain('$18.51')
+    expect(html).not.toContain('<svg')
   })
 
-  it('shows a legend once there are two tools', () => {
+  it('draws stacked areas with a legend once there are two days', () => {
     const html = renderToString(
       <SpendTimeline
+        width={600}
+        height={200}
         days={[
           { day: '2026-09-11', total: 3, byTool: { claude: 2, codex: 1 } },
           { day: '2026-09-12', total: 5, byTool: { claude: 4, codex: 1 } },
         ]}
       />,
     )
+    expect(html).toContain('<svg')
+    expect(html).toContain('<path')
     expect(html).toContain('claude')
     expect(html).toContain('codex')
   })

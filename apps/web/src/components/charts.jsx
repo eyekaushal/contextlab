@@ -1,55 +1,49 @@
 /**
- * The charts: four rings and a timeline.
+ * The charts: four rings and a timeline, on nivo.
  *
  * The reference dashboard puts a row of rings under its KPI strip and a
  * stacked timeline under those. Ours answer four "what dominates" questions —
  * which tool, which project, which severity, which category — and one
  * "when": spend by day, stacked by tool.
  *
- * Rules kept from the data-viz method, because they are what separate a chart
- * from a decoration:
+ * nivo replaced Recharts for both, on request, and because two chart
+ * libraries in one bundle was a megabyte. The ring is the nivo look the user
+ * pointed at: the hovered arc growing, a chip tooltip — with the total in the
+ * centre and a legend that carries the value, because a legend that only
+ * carries colour asks the reader to match hues.
  *
- * - colour follows the entity, never its rank — a tool keeps its colour when
- *   a filter drops the tool above it, so slots are assigned by name order
- * - a legend is always present for two or more series, and carries the value,
- *   so identity never depends on telling two colours apart
- * - a 2px gap in the surface colour between touching segments
+ * Rules kept from the data-viz method:
+ *
+ * - colour follows the entity, never its rank — the supported tools hold
+ *   fixed slots and a project is coloured by its name alone
+ * - a legend is always present for two or more series, and carries the value
+ * - a gap in the surface colour between touching segments
  * - text wears text tokens, never the series colour
- * - the total sits in the ring's centre, because the ring is about the whole
- *
- * Recharts is in the stack for exactly this and was unused until now.
  *
  * @module
  */
 
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Cell,
-  Tooltip as ChartTip,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Line, ResponsiveLine } from '@nivo/line'
+import { Pie, ResponsivePie } from '@nivo/pie'
 import { categoryColor, categoryLabel, exact, tokens, usd } from '../lib/format.js'
 import { cn } from '../lib/utils.js'
 
 /**
- * The categorical slots, in the fixed order every chart assigns them.
- * These are the eight validated hues from docs/DESIGN.md, in that order.
+ * Warm sand — the palette chosen for the tool and project rings, as given.
+ *
+ * Recorded honestly: run through the validator against the card surface it
+ * fails the chroma floor (all five read as brown-grey to the check), the
+ * normal-vision floor between the two darkest (ΔE 11, floor 15), and two sit
+ * under 3:1 contrast. It was chosen for its look and kept for that reason;
+ * the legend beside every ring carries the name and the value, so identity
+ * never rides on colour, and the arcs are separated by a surface gap.
  */
-const SLOTS = [
-  'var(--color-cat-system-prompt)',
-  'var(--color-cat-tool-definitions)',
-  'var(--color-cat-tool-results)',
-  'var(--color-cat-tool-calls)',
-  'var(--color-cat-user-text)',
-  'var(--color-cat-assistant-text)',
-  'var(--color-cat-thinking)',
-  'var(--color-cat-images)',
+export const SAND = [
+  'hsl(27, 42%, 55%)',
+  'hsl(14, 38%, 47%)',
+  'hsl(35, 55%, 63%)',
+  'hsl(16, 35%, 57%)',
+  'hsl(13, 34%, 39%)',
 ]
 
 /** Past this many slices the ring is a rainbow; the rest fold into Other. */
@@ -66,8 +60,10 @@ const SEVERITY_COLOR = {
  * The seven supported tools, each with a slot for life.
  *
  * The product knows its tools (CLAUDE.md, non-negotiable 2), so their colours
- * are a table rather than a computation: claude is blue on every screen in
- * every session, whatever else is present.
+ * are a table rather than a computation: claude is the first sand on every
+ * screen in every session, whatever else is present. Five sands for seven
+ * tools, so the last two share with the first two; they are rarely on one
+ * screen together, and the legend names every slice regardless.
  *
  * @type {Record<string, number>}
  */
@@ -77,63 +73,58 @@ const TOOL_SLOT = {
   gemini: 2,
   aider: 3,
   cline: 4,
-  copilot: 5,
-  opencode: 6,
+  copilot: 0,
+  opencode: 1,
 }
 
 /**
  * A colour per entity that does not depend on which other entities are there.
  *
- * The first version assigned slots by position in the sorted set, which meant
- * filtering out the alphabetically-first tool repainted every other one — the
- * exact thing "colour follows the entity, never its rank" forbids, and the
- * test for it caught the mistake.
- *
  * Known tools come from the table. Anything else — a project name — is hashed
  * to a slot, so its colour is a function of its name alone. Two names can hash
- * to one slot; when they are both on screen the later one in name order walks
- * to the next free slot, so a collision moves at most the colliding entity and
- * only while the other is present. The legend always carries the name and the
- * value, so identity never rides on colour in any case.
+ * to one slot; when both are on screen the later one in name order walks to
+ * the next free slot. The legend always carries the name and the value, so
+ * identity never rides on colour in any case.
  *
  * @param {{ key: string }[]} series
+ * @param {string[]} [palette]
  * @returns {Record<string, string>}
  */
-export function colourByName(series) {
+export function colourByName(series, palette = SAND) {
   const names = [...new Set(series.map((item) => item.key))].sort()
   /** @type {Record<string, string>} */
   const out = {}
   const taken = new Set()
 
-  // Fixed slots first, so a project can never displace a tool.
   for (const name of names) {
     const fixed = TOOL_SLOT[name.toLowerCase()]
     if (fixed !== undefined) {
-      out[name] = SLOTS[fixed % SLOTS.length] ?? SLOTS[0]
-      taken.add(fixed % SLOTS.length)
+      out[name] = palette[fixed % palette.length] ?? palette[0] ?? ''
+      taken.add(fixed % palette.length)
     }
   }
 
   for (const name of names) {
     if (out[name]) continue
-    let slot = hashSlot(name)
-    for (let step = 0; step < SLOTS.length && taken.has(slot); step += 1) {
-      slot = (slot + 1) % SLOTS.length
+    let slot = hashSlot(name, palette.length)
+    for (let step = 0; step < palette.length && taken.has(slot); step += 1) {
+      slot = (slot + 1) % palette.length
     }
     taken.add(slot)
-    out[name] = SLOTS[slot] ?? SLOTS[0]
+    out[name] = palette[slot] ?? palette[0] ?? ''
   }
   return out
 }
 
 /**
  * @param {string} name
- * @returns {number} a slot index derived from the name alone
+ * @param {number} slots
+ * @returns {number}
  */
-function hashSlot(name) {
+function hashSlot(name, slots) {
   let hash = 0
   for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return hash % SLOTS.length
+  return hash % slots
 }
 
 /**
@@ -153,19 +144,52 @@ export function foldSmall(series, max = MAX_SLICES) {
   return [...kept, { key: 'other', label: 'Other', value: rest }]
 }
 
+/** nivo's theme, in the product's tokens. */
+const THEME = {
+  text: { fill: 'var(--color-text-secondary)', fontSize: 11 },
+  grid: { line: { stroke: 'var(--color-gridline)', strokeWidth: 1 } },
+  axis: {
+    ticks: {
+      text: { fill: 'var(--color-text-muted)', fontSize: 11 },
+      line: { stroke: 'none' },
+    },
+    domain: { line: { stroke: 'var(--color-baseline)' } },
+  },
+  crosshair: { line: { stroke: 'var(--color-baseline)', strokeWidth: 1 } },
+}
+
+/**
+ * The chip that follows the pointer.
+ *
+ * @param {{ colour: string, children: any }} props
+ */
+function Chip({ colour, children }) {
+  return (
+    <div className="flex items-center gap-1.5 rounded border border-[var(--color-border-subtle)] bg-[var(--color-raised)] px-2 py-1 text-xs text-[var(--color-text-primary)] shadow-lg">
+      <span
+        aria-hidden="true"
+        className="size-2 shrink-0 rounded-[2px]"
+        style={{ backgroundColor: colour }}
+      />
+      {children}
+    </div>
+  )
+}
+
 /**
  * @typedef {Object} DonutProps
  * @property {string} title
  * @property {{ key: string, label: string, value: number }[]} series
  * @property {'usd' | 'count' | 'tokens'} unit
  * @property {'name' | 'category' | 'severity'} colour   how a slice gets its colour
- * @property {string} [empty]  what to say when there is nothing to draw
+ * @property {string} [empty]   what to say when there is nothing to draw
+ * @property {number} [size]    a fixed size renders without measuring — for tests
  */
 
 /**
  * @param {DonutProps} props
  */
-export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
+export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', size }) {
   const slices = foldSmall(series)
   const total = slices.reduce((sum, item) => sum + item.value, 0)
   const byName = colourByName(slices)
@@ -175,9 +199,11 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
     if (slice.key === 'other') return 'var(--color-cat-other)'
     if (colour === 'category') return categoryColor(slice.key)
     if (colour === 'severity') {
-      return SEVERITY_COLOR[/** @type {keyof SEVERITY_COLOR} */ (slice.key)] ?? SLOTS[0]
+      return (
+        SEVERITY_COLOR[/** @type {keyof SEVERITY_COLOR} */ (slice.key)] ?? SAND[0] ?? ''
+      )
     }
-    return byName[slice.key] ?? SLOTS[0]
+    return byName[slice.key] ?? SAND[0] ?? ''
   }
   /** @param {number} value */
   const show = (value) =>
@@ -187,6 +213,57 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
     colour === 'category' && slice.key !== 'other'
       ? categoryLabel(slice.key)
       : slice.label
+
+  const data = slices.map((slice) => ({
+    id: slice.key,
+    label: name(slice),
+    value: slice.value,
+    color: fill(slice),
+  }))
+
+  /** @type {any} */
+  const pieProps = {
+    data,
+    // The snippet, sized to a shared card: the ring, the pad between arcs,
+    // the rounded ends, the hovered arc growing.
+    margin: { top: 8, right: 8, bottom: 8, left: 8 },
+    innerRadius: 0.58,
+    padAngle: 1.5,
+    cornerRadius: 2,
+    activeOuterRadiusOffset: 6,
+    colors: { datum: 'data.color' },
+    borderWidth: 2,
+    borderColor: 'var(--color-surface)',
+    enableArcLabels: false,
+    enableArcLinkLabels: false,
+    animate: true,
+    motionConfig: 'gentle',
+    theme: THEME,
+    tooltip: (/** @type {any} */ { datum }) => (
+      <Chip colour={String(datum.color)}>
+        {datum.label}: <span className="tnum">{show(Number(datum.value))}</span>
+        <span className="text-[var(--color-text-muted)]">
+          · {Math.round((Number(datum.value) / Math.max(total, 1e-9)) * 100)}%
+        </span>
+      </Chip>
+    ),
+    layers: [
+      'arcs',
+      // The whole, in the middle of the ring that divides it.
+      (/** @type {any} */ { centerX, centerY }) => (
+        <text
+          x={centerX}
+          y={centerY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="tnum"
+          style={{ fill: 'var(--color-text-primary)', fontSize: 13, fontWeight: 600 }}
+        >
+          {show(total)}
+        </text>
+      ),
+    ],
+  }
 
   return (
     <figure className="flex min-w-0 flex-col gap-2">
@@ -198,61 +275,25 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
         <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
       ) : (
         <div className="flex items-center gap-3">
-          <div className="relative size-28 shrink-0" data-chart>
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              initialDimension={{ width: 112, height: 112 }}
-            >
-              <PieChart>
-                <Pie
-                  data={slices}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius="68%"
-                  outerRadius="100%"
-                  // The 2px surface gap between touching segments.
-                  stroke="var(--color-surface)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                >
-                  {slices.map((slice) => (
-                    <Cell key={slice.key} fill={fill(slice)} />
-                  ))}
-                </Pie>
-                <ChartTip
-                  content={({ payload }) => {
-                    const item = payload?.[0]?.payload
-                    if (!item) return null
-                    return (
-                      <TipBox>
-                        {name(item)} · {show(item.value)} ·{' '}
-                        {Math.round((item.value / Math.max(total, 1e-9)) * 100)}%
-                      </TipBox>
-                    )
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* The whole, in the middle of the ring that divides it. */}
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span className="tnum text-sm font-semibold leading-none">
-                {show(total)}
-              </span>
-            </div>
+          <div className="relative size-32 shrink-0" data-chart>
+            {size ? (
+              <Pie {...pieProps} width={size} height={size} />
+            ) : (
+              <ResponsivePie {...pieProps} />
+            )}
           </div>
 
           {/* The legend carries the value, so identity never rides on colour. */}
           <ul className="min-w-0 flex-1 space-y-1">
-            {slices.map((slice) => (
-              <li key={slice.key} className="flex items-center gap-1.5 text-xs">
+            {data.map((slice) => (
+              <li key={slice.id} className="flex items-center gap-1.5 text-xs">
                 <span
                   aria-hidden="true"
                   className="size-2 shrink-0 rounded-[2px]"
-                  style={{ backgroundColor: fill(slice) }}
+                  style={{ backgroundColor: slice.color }}
                 />
                 <span className="min-w-0 flex-1 truncate text-[var(--color-text-secondary)]">
-                  {name(slice)}
+                  {slice.label}
                 </span>
                 <span className="tnum shrink-0 text-[var(--color-text-muted)]">
                   {show(slice.value)}
@@ -274,15 +315,68 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.' }) {
  * calling it a trend.
  *
  * @param {{ days: { day: string, total: number, byTool: Record<string, number> }[],
- *           className?: string }} props
+ *           className?: string, width?: number, height?: number }} props
  */
-export function SpendTimeline({ days, className }) {
+export function SpendTimeline({ days, className, width, height }) {
   const toolsSet = new Set()
   for (const day of days) for (const tool of Object.keys(day.byTool)) toolsSet.add(tool)
   const toolNames = [...toolsSet].sort()
   const byName = colourByName(toolNames.map((key) => ({ key })))
 
-  const rows = days.map((day) => ({ day: day.day, total: day.total, ...day.byTool }))
+  const series = toolNames.map((tool) => ({
+    id: tool,
+    color: byName[tool],
+    data: days.map((day) => ({ x: day.day, y: day.byTool[tool] ?? 0 })),
+  }))
+
+  /** @type {any} */
+  const lineProps = {
+    data: series,
+    margin: { top: 10, right: 12, bottom: 28, left: 52 },
+    xScale: { type: 'point' },
+    yScale: { type: 'linear', min: 0, max: 'auto', stacked: true },
+    curve: 'monotoneX',
+    colors: { datum: 'color' },
+    lineWidth: 2,
+    enablePoints: false,
+    enableArea: true,
+    areaOpacity: 0.35,
+    enableGridX: false,
+    enableGridY: true,
+    axisBottom: { format: (/** @type {string} */ value) => String(value).slice(5) },
+    axisLeft: { format: (/** @type {number} */ value) => usd(value), tickValues: 4 },
+    enableSlices: 'x',
+    theme: THEME,
+    animate: true,
+    motionConfig: 'gentle',
+    sliceTooltip: (/** @type {any} */ { slice }) => {
+      const total = slice.points.reduce(
+        (/** @type {number} */ sum, /** @type {any} */ point) =>
+          sum + Number(point.data.y),
+        0,
+      )
+      return (
+        <div className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-raised)] px-2 py-1 text-xs text-[var(--color-text-primary)] shadow-lg">
+          <div className="mb-1 font-medium">
+            {String(slice.points[0]?.data.x)} · <span className="tnum">{usd(total)}</span>
+          </div>
+          {[...slice.points].reverse().map((/** @type {any} */ point) => (
+            <div key={point.id} className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-[2px]"
+                  style={{ backgroundColor: String(point.seriesColor ?? point.color) }}
+                />
+                {String(point.seriesId ?? point.serieId)}
+              </span>
+              <span className="tnum">{usd(Number(point.data.y))}</span>
+            </div>
+          ))}
+        </div>
+      )
+    },
+  }
 
   return (
     <figure className={cn('flex min-w-0 flex-col gap-2', className)}>
@@ -314,81 +408,13 @@ export function SpendTimeline({ days, className }) {
         </p>
       ) : (
         <div className="h-52 w-full" data-chart>
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-            initialDimension={{ width: 800, height: 208 }}
-          >
-            <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid vertical={false} stroke="var(--color-gridline)" />
-              <XAxis
-                dataKey="day"
-                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                tickLine={false}
-                axisLine={{ stroke: 'var(--color-baseline)' }}
-                tickFormatter={(/** @type {string} */ value) => value.slice(5)}
-              />
-              <YAxis
-                width={44}
-                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(/** @type {number} */ value) => usd(value)}
-              />
-              <ChartTip
-                cursor={{ stroke: 'var(--color-baseline)' }}
-                content={({ label, payload }) => {
-                  if (!payload || payload.length === 0) return null
-                  const total = payload.reduce(
-                    (sum, p) => sum + (Number(p.value) || 0),
-                    0,
-                  )
-                  return (
-                    <TipBox>
-                      <div className="mb-1 font-medium">
-                        {label} · {usd(total)}
-                      </div>
-                      {[...payload].reverse().map((p) => (
-                        <div
-                          key={String(p.dataKey)}
-                          className="flex justify-between gap-4"
-                        >
-                          <span>{String(p.dataKey)}</span>
-                          <span className="tnum">{usd(Number(p.value) || 0)}</span>
-                        </div>
-                      ))}
-                    </TipBox>
-                  )
-                }}
-              />
-              {toolNames.map((tool) => (
-                <Area
-                  key={tool}
-                  type="monotone"
-                  dataKey={tool}
-                  stackId="spend"
-                  stroke={byName[tool]}
-                  strokeWidth={2}
-                  fill={byName[tool]}
-                  fillOpacity={0.35}
-                  isAnimationActive={false}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+          {width && height ? (
+            <Line {...lineProps} width={width} height={height} />
+          ) : (
+            <ResponsiveLine {...lineProps} />
+          )}
         </div>
       )}
     </figure>
-  )
-}
-
-/**
- * @param {{ children: any }} props
- */
-function TipBox({ children }) {
-  return (
-    <div className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-raised)] px-2 py-1 text-xs text-[var(--color-text-primary)] shadow-lg">
-      {children}
-    </div>
   )
 }

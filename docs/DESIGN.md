@@ -27,6 +27,10 @@ Do not substitute colors by eye. If you change one, re-validate the set —
 `scripts/validate_palette.js` from the dataviz skill, `--mode dark --surface
 #222d38`, and again against `#1a222c`.
 
+**Chart rings (tool, project):** warm sand, five colours chosen by the
+product owner — see DECISIONS "Rings … on nivo" for the validator run and why
+it is kept despite failing it. Severity and category rings do not use it.
+
 ### Surfaces and ink
 
 ```css

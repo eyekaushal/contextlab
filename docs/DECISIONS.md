@@ -71,7 +71,7 @@ index groups them by area instead.
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
 - [The filters sit above the table they filter](#the-filters-sit-above-the-table-they-filter)
-- [Rings for what dominates, a stacked area for when](#rings-for-what-dominates-a-stacked-area-for-when)
+- [Rings for what dominates, a stacked area for when — on nivo](#rings-for-what-dominates-a-stacked-area-for-when--on-nivo)
 - [The budget is set from the dashboard, and the file stays the truth](#the-budget-is-set-from-the-dashboard-and-the-file-stays-the-truth)
 - [Five primitives, and every screen is made of them](#five-primitives-and-every-screen-is-made-of-them)
 
@@ -1188,23 +1188,41 @@ than furniture: every option carries its session count and its spend —
 
 ---
 
-## Rings for what dominates, a stacked area for when
+## Rings for what dominates, a stacked area for when — on nivo
 
-Recharts was a dependency for a year and drew nothing. The dashboard now has
-four rings — spend by tool, by project, findings by severity, what filled the
-window — and a timeline of spend by day stacked by tool. One endpoint,
-`/api/summary/charts`, returns all five from the same reconciled queries the
-strip and the table use, so the ring's finding count and the card's are one
-number.
+The dashboard has four rings — spend by tool, by project, findings by
+severity, what filled the window — and a timeline of spend by day stacked by
+tool. One endpoint, `/api/summary/charts`, returns all five from the same
+reconciled queries the strip and the table use, so the ring's finding count
+and the card's are one number.
 
-A ring is the wrong form for comparing close values and the right one for
-"what dominates", which is what each of these asks. The rules that keep them
-charts rather than decoration: the total sits in the centre; the legend always
-carries the value, so identity never rides on colour; a 2px surface gap
-separates touching segments; past six slices the tail folds into *Other*; and
-**colour follows the entity, never its rank** — slots are assigned by name
-order, so a filter that drops the biggest tool does not repaint the rest.
-Severity uses the reserved status colours because severity *is* status.
+They were built on Recharts first. nivo replaced it, on request for its look —
+leader lines to the arcs, the hovered arc growing, a chip tooltip — and then
+for the timeline too, because two chart libraries in one bundle was a
+megabyte. Recharts is gone. `@nivo/pie` and `@nivo/line`, MIT.
+
+The rules that keep them charts rather than decoration: the total sits in the
+centre; the legend always carries the value, so identity never rides on
+colour; a surface-coloured border separates touching arcs; past six slices the
+tail folds into *Other*; and **colour follows the entity, never its rank** —
+the supported tools hold fixed slots and a project is coloured by its name
+alone, so a filter that drops the biggest tool does not repaint the rest.
+
+**Warm sand.** The tool and project rings use the five-colour palette the user
+chose — `hsl(27 42% 55%)`, `hsl(14 38% 47%)`, `hsl(35 55% 63%)`,
+`hsl(16 35% 57%)`, `hsl(13 34% 39%)`. Run through the validator against the
+card surface it fails: all five sit under the chroma floor (the check reads
+them as brown-grey), the two darkest are 11 ΔE apart for normal vision against
+a floor of 15, and two are under 3:1 contrast. It was chosen for its look and
+is kept for that reason, with the mitigations the method allows: the legend
+beside every ring names each slice with its value, arcs are separated by a
+gap, and the tooltip names what is under the pointer. Identity never rides on
+colour.
+
+Two rings do not take sand. Severity keeps the status colours — critical is
+red on every screen, and a sand-coloured "critical" would say nothing. The
+window ring keeps the category palette — tool results are green on every
+composition bar, and the ring must agree with them.
 
 The timeline refuses to draw a trend from one day. It says "a line needs two"
 and shows the figure, rather than a dot with a title.
