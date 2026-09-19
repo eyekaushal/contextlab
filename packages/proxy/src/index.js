@@ -1,5 +1,5 @@
 /**
- * @contextlab/proxy — forward + capture.
+ * contextlab-proxy — forward + capture.
  *
  * Zero external dependencies. Node built-ins only. See README.md for why.
  *

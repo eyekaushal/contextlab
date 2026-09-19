@@ -206,7 +206,7 @@ overstates a well-cached session roughly tenfold.
 ## OTLP conversion
 
 ```js
-import { toOtlp, fromOtlp } from '@contextlab/format'
+import { toOtlp, fromOtlp } from 'contextlab-format'
 
 const traces = toOtlp(document)      // OTLP/JSON, ready to POST
 const back = fromOtlp(traces)        // and back again
@@ -229,7 +229,7 @@ does not become a contextlab document by accident.
 ## Validating
 
 ```js
-import { validate, assertValid, SCHEMA } from '@contextlab/format'
+import { validate, assertValid, SCHEMA } from 'contextlab-format'
 
 const { valid, errors } = validate(document)
 // errors: [{ path: '/sessions/0/turns/0/attributes/...', message: '...' }]
@@ -238,7 +238,7 @@ assertValid(document)   // throws, listing everything wrong
 ```
 
 The package ships the JSON Schema at
-`@contextlab/format/schema` for anyone who would rather use their own validator.
+`contextlab-format/schema` for anyone who would rather use their own validator.
 The built-in one exists so that this package can stay dependency-free — a format
 package has no business making a validation-library decision on its consumer's
 behalf.

@@ -15,11 +15,11 @@
  * @module
  */
 
-import { fromModelsDev, newerOf, SNAPSHOT } from '@contextlab/core/pricing'
-import { loadPriceTable, pricingFetchedAt, savePriceTable } from '@contextlab/store'
+import { fromModelsDev, newerOf, SNAPSHOT } from 'contextlab-core/pricing'
+import { loadPriceTable, pricingFetchedAt, savePriceTable } from 'contextlab-store'
 
 /** @typedef {import('better-sqlite3').Database} Db */
-/** @typedef {import('@contextlab/core/pricing').PriceTable} PriceTable */
+/** @typedef {import('contextlab-core/pricing').PriceTable} PriceTable */
 
 export const MODELS_DEV_URL = 'https://models.dev/api.json'
 

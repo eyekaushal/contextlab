@@ -1,5 +1,5 @@
 /**
- * @contextlab/server — the brain, on :4041.
+ * contextlab-server — the brain, on :4041.
  *
  * Reads capture files, runs them through core, writes to store, and serves the
  * dashboard over HTTP and SSE. Holds no analysis of its own and never handles

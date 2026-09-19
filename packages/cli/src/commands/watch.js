@@ -9,8 +9,8 @@
  */
 
 import { join } from 'node:path'
-import { ingestDirectory } from '@contextlab/server'
-import { getComposition, listSessions, listTurns, openDatabase } from '@contextlab/store'
+import { ingestDirectory } from 'contextlab-server'
+import { getComposition, listSessions, listTurns, openDatabase } from 'contextlab-store'
 import { Box, render, Text, useApp, useInput, useStdin } from 'ink'
 import { createElement as h, useEffect, useState } from 'react'
 import { contextlabHome } from '../context.js'

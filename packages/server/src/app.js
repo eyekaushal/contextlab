@@ -19,11 +19,11 @@ import {
   evaluateBudget,
   hasBudget,
   suggestBudget,
-} from '@contextlab/core/budget'
-import { CATEGORIES } from '@contextlab/core/compose'
-import { loadConfig, writeBudget } from '@contextlab/core/config'
-import { runRules, totalWaste } from '@contextlab/core/prescribe'
-import { toOtlp } from '@contextlab/format'
+} from 'contextlab-core/budget'
+import { CATEGORIES } from 'contextlab-core/compose'
+import { loadConfig, writeBudget } from 'contextlab-core/config'
+import { runRules, totalWaste } from 'contextlab-core/prescribe'
+import { toOtlp } from 'contextlab-format'
 import {
   attributionFor,
   chartData,
@@ -51,7 +51,7 @@ import {
   spendTotals,
   staleFindingSessions,
   systemSegments,
-} from '@contextlab/store'
+} from 'contextlab-store'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'

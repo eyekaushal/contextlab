@@ -1,5 +1,5 @@
 {
-  "name": "@contextlab/core",
+  "name": "contextlab-core",
   "version": "0.1.0",
   "description": "Pure functions: parse, tokenize, compose, attribute, prescribe.",
   "license": "MIT",

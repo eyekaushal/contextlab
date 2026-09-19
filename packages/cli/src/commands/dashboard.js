@@ -9,7 +9,7 @@
  */
 
 import { execFile } from 'node:child_process'
-import { ensureDashboardBuilt, startServer, webRoot } from '@contextlab/server'
+import { ensureDashboardBuilt, startServer, webRoot } from 'contextlab-server'
 import { readConfig } from '../config.js'
 import { contextlabHome } from '../context.js'
 import { color } from '../format.js'

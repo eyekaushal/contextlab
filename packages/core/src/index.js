@@ -1,5 +1,5 @@
 /**
- * @contextlab/core — the test surface.
+ * contextlab-core — the test surface.
  *
  * Pure functions only: no file I/O, no network, no clock, no randomness.
  * Same input, same output, forever.

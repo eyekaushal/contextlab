@@ -7,8 +7,8 @@
  * @module
  */
 
-import { TOOLS } from '@contextlab/core'
 import { Command } from 'commander'
+import { TOOLS } from 'contextlab-core'
 import { cost } from './commands/cost.js'
 import { dashboard } from './commands/dashboard.js'
 import { doctor } from './commands/doctor.js'

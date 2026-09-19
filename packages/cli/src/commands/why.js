@@ -15,7 +15,7 @@ import {
   getSession,
   listSessions,
   listTurns,
-} from '@contextlab/store'
+} from 'contextlab-store'
 import { open } from '../context.js'
 import {
   bar,

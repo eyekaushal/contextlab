@@ -7,8 +7,8 @@
 
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { ingestDirectory } from '@contextlab/server'
-import { openDatabase } from '@contextlab/store'
+import { ingestDirectory } from 'contextlab-server'
+import { openDatabase } from 'contextlab-store'
 
 /**
  * @param {Record<string, string | undefined>} [env]

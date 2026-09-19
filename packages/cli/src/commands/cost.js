@@ -4,8 +4,8 @@
  * @module
  */
 
-import { budgetProgress, evaluateBudget, hasBudget } from '@contextlab/core/budget'
-import { costByDay, costByProject, spendTotals } from '@contextlab/store'
+import { budgetProgress, evaluateBudget, hasBudget } from 'contextlab-core/budget'
+import { costByDay, costByProject, spendTotals } from 'contextlab-store'
 import { readConfig } from '../config.js'
 import { open } from '../context.js'
 import { color, heading, pad, tokens, truncate, usd } from '../format.js'

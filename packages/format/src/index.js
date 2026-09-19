@@ -1,5 +1,5 @@
 /**
- * @contextlab/format — the contextlab capture format.
+ * contextlab-format — the contextlab capture format.
  *
  * A conformant profile of the OpenTelemetry GenAI semantic conventions, plus
  * what OTel does not model: how a context window was composed, what each part

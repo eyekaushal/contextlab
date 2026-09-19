@@ -7,8 +7,8 @@
  * @module
  */
 
-import { runRules } from '@contextlab/core/prescribe'
-import { buildDocument, session as shapeSession } from '@contextlab/format'
+import { runRules } from 'contextlab-core/prescribe'
+import { buildDocument, session as shapeSession } from 'contextlab-format'
 import {
   attributionFor,
   getComposition,
@@ -18,7 +18,7 @@ import {
   listSessions,
   listTurns,
   systemSegments,
-} from '@contextlab/store'
+} from 'contextlab-store'
 import { currentPriceTable } from './pricing.js'
 import { toCamel, toCamelAll } from './serialize.js'
 import { buildSessionSummary } from './summary.js'

@@ -28,9 +28,9 @@ import {
   rescaleToActual,
   resolveBillingMode,
   segmentSystemPrompt,
-} from '@contextlab/core'
-import { hashText, stableStringify } from '@contextlab/core/prescribe'
-import { localDay, recordTurn } from '@contextlab/store'
+} from 'contextlab-core'
+import { hashText, stableStringify } from 'contextlab-core/prescribe'
+import { localDay, recordTurn } from 'contextlab-store'
 import { currentPriceTable } from './pricing.js'
 
 /** @typedef {import('better-sqlite3').Database} Db */
@@ -50,7 +50,7 @@ import { currentPriceTable } from './pricing.js'
  * @param {Db} db
  * @param {Record<string, unknown>} capture
  * @param {{ tracker?: ReturnType<typeof createSessionTracker>,
- *           table?: import('@contextlab/core/pricing').PriceTable,
+ *           table?: import('contextlab-core/pricing').PriceTable,
  *           billingMode?: string }} [options]
  * @returns {IngestResult}
  */
@@ -187,7 +187,7 @@ export function ingestCapture(db, capture, options = {}) {
 }
 
 /**
- * @param {import('@contextlab/core').Composition} composition
+ * @param {import('contextlab-core').Composition} composition
  * @returns {any[]}
  */
 function blocksFor(composition) {
@@ -248,7 +248,7 @@ function blocksFor(composition) {
 }
 
 /**
- * @param {import('@contextlab/core').Composition} composition
+ * @param {import('contextlab-core').Composition} composition
  * @returns {any[]}
  */
 function systemSegmentsFor(composition) {
@@ -272,7 +272,7 @@ function systemSegmentsFor(composition) {
 }
 
 /**
- * @param {import('@contextlab/core').ParsedRequest} parsed
+ * @param {import('contextlab-core').ParsedRequest} parsed
  * @returns {string}
  */
 function systemTextOf(parsed) {

@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createSessionTracker } from '@contextlab/core'
+import { createSessionTracker } from 'contextlab-core'
 import {
   attributionFor,
   closeDatabase,
@@ -12,7 +12,7 @@ import {
   listTurns,
   openDatabase,
   searchBlocks,
-} from '@contextlab/store'
+} from 'contextlab-store'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ingestCapture, ingestDirectory } from '../src/ingest.js'
 

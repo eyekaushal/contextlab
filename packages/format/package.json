@@ -1,5 +1,5 @@
 {
-  "name": "@contextlab/format",
+  "name": "contextlab-format",
   "version": "0.1.0",
   "description": "The contextlab capture format: a profile of OpenTelemetry GenAI, with JSON Schema, a validator and OTLP converters.",
   "license": "MIT",

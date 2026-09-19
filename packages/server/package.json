@@ -1,5 +1,5 @@
 {
-  "name": "@contextlab/server",
+  "name": "contextlab-server",
   "version": "0.1.0",
   "description": "Hono API + SSE. Thin: calls core and store, holds no logic. Never sees an API key.",
   "license": "MIT",
@@ -16,9 +16,9 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@contextlab/core": "workspace:*",
-    "@contextlab/format": "workspace:*",
-    "@contextlab/store": "workspace:*",
+    "contextlab-core": "workspace:*",
+    "contextlab-format": "workspace:*",
+    "contextlab-store": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "hono": "^4.7.0"
   },

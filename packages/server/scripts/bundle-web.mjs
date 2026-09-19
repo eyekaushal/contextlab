@@ -3,7 +3,7 @@
  *
  * `pnpm pack` and `pnpm publish` run `prepack`, which runs this. It builds the
  * dashboard and copies `apps/web/dist` to `packages/server/web`, so the
- * published @contextlab/server carries the page it serves. The folder is
+ * published contextlab-server carries the page it serves. The folder is
  * gitignored — a build artefact, not source.
  */
 import { execFileSync } from 'node:child_process'

@@ -1,5 +1,5 @@
-import { SNAPSHOT } from '@contextlab/core/pricing'
-import { closeDatabase, openDatabase, savePriceTable } from '@contextlab/store'
+import { SNAPSHOT } from 'contextlab-core/pricing'
+import { closeDatabase, openDatabase, savePriceTable } from 'contextlab-store'
 import { describe, expect, it } from 'vitest'
 import {
   currentPriceTable,

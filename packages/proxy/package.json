@@ -1,5 +1,5 @@
 {
-  "name": "@contextlab/proxy",
+  "name": "contextlab-proxy",
   "version": "0.1.0",
   "description": "Zero-dependency local proxy: forwards LLM API calls and captures them.",
   "license": "MIT",

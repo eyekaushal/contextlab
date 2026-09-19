@@ -1,4 +1,4 @@
-# @contextlab/proxy
+# contextlab-proxy
 
 The only part of contextlab that ever sees an API key.
 

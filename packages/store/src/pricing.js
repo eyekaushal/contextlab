@@ -10,7 +10,7 @@
  */
 
 /** @typedef {import('better-sqlite3').Database} Db */
-/** @typedef {import('@contextlab/core/pricing').PriceTable} PriceTable */
+/** @typedef {import('contextlab-core/pricing').PriceTable} PriceTable */
 
 /**
  * Replace the stored price table.

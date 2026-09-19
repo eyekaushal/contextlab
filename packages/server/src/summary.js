@@ -16,10 +16,10 @@ import {
   getComposition,
   getSession,
   listTurns,
-} from '@contextlab/store'
+} from 'contextlab-store'
 
 /** @typedef {import('better-sqlite3').Database} Db */
-/** @typedef {import('@contextlab/core/prescribe').SessionSummary} SessionSummary */
+/** @typedef {import('contextlab-core/prescribe').SessionSummary} SessionSummary */
 
 /**
  * @param {Db} db

@@ -1,4 +1,4 @@
-# @contextlab/format
+# contextlab-format
 
 A portable record of agent sessions: what filled the context window, what it
 cost, and what was wasted.
@@ -9,11 +9,11 @@ cost, and what was wasted.
 them, so a document converts to OTLP traces with no mapping layer.
 
 ```bash
-npm install @contextlab/format
+npm install contextlab-format
 ```
 
 ```js
-import { buildDocument, validate, toOtlp } from '@contextlab/format'
+import { buildDocument, validate, toOtlp } from 'contextlab-format'
 
 const document = buildDocument(sessions)
 const { valid, errors } = validate(document)
@@ -34,7 +34,7 @@ const traces = toOtlp(document)          // OTLP/JSON, ready to POST
 
 ## Zero dependencies
 
-The JSON Schema ships at `@contextlab/format/schema` for anyone who already has
+The JSON Schema ships at `contextlab-format/schema` for anyone who already has
 a validator. The built-in one exists so this package takes no dependency — a
 format package has no business making a validation-library decision on its
 consumer's behalf.

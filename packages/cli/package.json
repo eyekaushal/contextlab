@@ -37,10 +37,10 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@contextlab/core": "workspace:*",
-    "@contextlab/proxy": "workspace:*",
-    "@contextlab/server": "workspace:*",
-    "@contextlab/store": "workspace:*",
+    "contextlab-core": "workspace:*",
+    "contextlab-proxy": "workspace:*",
+    "contextlab-server": "workspace:*",
+    "contextlab-store": "workspace:*",
     "commander": "^14.0.0",
     "ink": "^6.0.0",
     "react": "^19.1.0"

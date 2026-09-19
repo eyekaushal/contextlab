@@ -32,7 +32,7 @@ Three separate mechanisms, and no single environment variable covers them:
   the CA has to be trusted at the OS level or it fails with
   `stream disconnected before headers`.
 
-`buildMitmEnv()` in `@contextlab/core` sets all of the variable-based ones. For
+`buildMitmEnv()` in `contextlab-core` sets all of the variable-based ones. For
 the Keychain, check and fix with:
 
 ```bash

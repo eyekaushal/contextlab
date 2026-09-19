@@ -1,5 +1,5 @@
 /**
- * @contextlab/store — everything in one SQLite file at ~/.contextlab/data.db.
+ * contextlab-store — everything in one SQLite file at ~/.contextlab/data.db.
  *
  * The only package that touches the database.
  *

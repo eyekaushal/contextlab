@@ -10,7 +10,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_CONFIG, EXAMPLE_CONFIG, loadConfig } from '@contextlab/core'
+import { DEFAULT_CONFIG, EXAMPLE_CONFIG, loadConfig } from 'contextlab-core'
 import { contextlabHome } from './context.js'
 
 /**
@@ -23,7 +23,7 @@ export function configPath(home = contextlabHome()) {
 
 /**
  * @param {string} [home]
- * @returns {import('@contextlab/core/config').Config & { path: string, exists: boolean,
+ * @returns {import('contextlab-core/config').Config & { path: string, exists: boolean,
  *           error?: string }}
  */
 export function readConfig(home = contextlabHome()) {

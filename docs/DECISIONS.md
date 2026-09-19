@@ -91,6 +91,7 @@ index groups them by area instead.
 - [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
 - [:4041 is never blank](#4041-is-never-blank)
 - [The published server package carries the dashboard](#the-published-server-package-carries-the-dashboard)
+- [Unscoped package names, because the scope was not ours to publish into](#unscoped-package-names-because-the-scope-was-not-ours-to-publish-into)
 - [Inter for words, JetBrains Mono for figures, both bundled](#inter-for-words-jetbrains-mono-for-figures-both-bundled)
 - [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
 
@@ -1337,13 +1338,33 @@ all inside `node_modules` — so the first `npx contextlab dashboard` after
 publishing would have shown every user the not-built page. Caught by
 `pnpm pack` before it was caught by a user.
 
-`@contextlab/server` now has a `prepack` step that builds the dashboard and
+`contextlab-server` now has a `prepack` step that builds the dashboard and
 copies it into the package's own `web/` folder, listed in `files`, and
 `webRoot()` looks there first. The folder is gitignored: a build artefact,
 made at pack time, never committed. The tarball is 548K with fonts and all.
 
 The other packages are unchanged. `pnpm publish -r` publishes them in
 dependency order and rewrites `workspace:*` to the real version.
+
+---
+
+## Unscoped package names, because the scope was not ours to publish into
+
+The internal packages were `@contextlab/core`, `@contextlab/store` and so on.
+A scoped name can only be published by an npm org or user of that name, and
+the first publish attempt answered `404 PUT @contextlab/core` — npm's way of
+saying the scope is not yours, without saying whose it is. Creating the org
+was tried and the form would not take the name.
+
+So the five internal packages are unscoped: `contextlab-core`,
+`contextlab-store`, `contextlab-server`, `contextlab-proxy`,
+`contextlab-format`. All five were free. The CLI stays plain `contextlab`,
+which is the only name a user types. `@contextlab/web` keeps its name because
+it is private and never published.
+
+A personal scope (`@kaushal_shahare/*`) was the other option and was
+rejected: the packages belong to the project, not to whoever happened to be
+logged in on publish day.
 
 ---
 
@@ -1386,13 +1407,13 @@ not merely unexamined.
 
 ## The format package ships its own validator rather than taking a dependency
 
-`@contextlab/format` is meant to be published on its own, so that someone
+`contextlab-format` is meant to be published on its own, so that someone
 writing a different tool can produce or read the format without installing
 contextlab.
 
 A format package that drags in ajv makes a validation-library decision on its
 consumer's behalf — in a package whose entire purpose is to be easy to adopt.
-So the schema is ordinary JSON Schema, shipped at `@contextlab/format/schema`
+So the schema is ordinary JSON Schema, shipped at `contextlab-format/schema`
 for anyone who already has a validator, and the built-in one is roughly 150
 lines covering the subset our schema actually uses.
 

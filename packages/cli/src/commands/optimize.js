@@ -7,14 +7,14 @@
  * @module
  */
 
-import { describeWorking, runRules, totalWaste } from '@contextlab/core/prescribe'
-import { buildSessionSummary } from '@contextlab/server'
+import { describeWorking, runRules, totalWaste } from 'contextlab-core/prescribe'
+import { buildSessionSummary } from 'contextlab-server'
 import {
   listDismissals,
   listSessions,
   markDismissed,
   replaceFindings,
-} from '@contextlab/store'
+} from 'contextlab-store'
 import { open } from '../context.js'
 import { color, heading, tokens, usd, when } from '../format.js'
 

@@ -81,21 +81,21 @@ importers:
 
   packages/cli:
     dependencies:
-      '@contextlab/core':
-        specifier: workspace:*
-        version: link:../core
-      '@contextlab/proxy':
-        specifier: workspace:*
-        version: link:../proxy
-      '@contextlab/server':
-        specifier: workspace:*
-        version: link:../server
-      '@contextlab/store':
-        specifier: workspace:*
-        version: link:../store
       commander:
         specifier: ^14.0.0
         version: 14.0.3
+      contextlab-core:
+        specifier: workspace:*
+        version: link:../core
+      contextlab-proxy:
+        specifier: workspace:*
+        version: link:../proxy
+      contextlab-server:
+        specifier: workspace:*
+        version: link:../server
+      contextlab-store:
+        specifier: workspace:*
+        version: link:../store
       ink:
         specifier: ^6.0.0
         version: 6.8.0(@types/react@19.3.0)(react@19.2.8)
@@ -122,18 +122,18 @@ importers:
 
   packages/server:
     dependencies:
-      '@contextlab/core':
-        specifier: workspace:*
-        version: link:../core
-      '@contextlab/format':
-        specifier: workspace:*
-        version: link:../format
-      '@contextlab/store':
-        specifier: workspace:*
-        version: link:../store
       '@hono/node-server':
         specifier: ^1.14.0
         version: 1.19.17(hono@4.13.7)
+      contextlab-core:
+        specifier: workspace:*
+        version: link:../core
+      contextlab-format:
+        specifier: workspace:*
+        version: link:../format
+      contextlab-store:
+        specifier: workspace:*
+        version: link:../store
       hono:
         specifier: ^4.7.0
         version: 4.13.7
@@ -144,12 +144,12 @@ importers:
 
   packages/store:
     dependencies:
-      '@contextlab/core':
-        specifier: workspace:*
-        version: link:../core
       better-sqlite3:
         specifier: ^12.2.0
         version: 12.11.1
+      contextlab-core:
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.12
