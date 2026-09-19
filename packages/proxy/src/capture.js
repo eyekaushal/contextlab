@@ -121,10 +121,14 @@ function decompress(buffer, encoding) {
  * @param {Buffer} input.responseBody
  * @param {boolean} input.responseTruncated
  * @param {{ startedAt: number, firstByteMs: number, completedMs: number }} input.timing
+ * @param {{ tool?: string, workingDirectory?: string }} [input.launch]
+ *   What `contextlab <tool>` knew when it started: which tool, and the folder
+ *   it was started in. Facts, where the route and the prompt can only guess.
  * @returns {Record<string, unknown>}
  */
 export function buildCapture(input) {
   const { route, timing } = input
+  const launch = input.launch ?? {}
   const requestType = headerOf(input.requestHeaders, 'content-type')
   const responseType = headerOf(input.responseHeaders, 'content-type')
 
@@ -133,7 +137,11 @@ export function buildCapture(input) {
     id: captureId(),
     capturedAt: new Date(timing.startedAt).toISOString(),
     transport: 'reverse-proxy',
-    tool: route.tool,
+    // The route names the tool when the URL carried a prefix; the launcher
+    // always knows. Either way it is the same tool, so the route wins when it
+    // has one and the launcher fills the gap.
+    tool: route.tool ?? launch.tool ?? null,
+    ...(launch.workingDirectory ? { workingDirectory: launch.workingDirectory } : {}),
     sessionTag: route.sessionTag,
     provider: route.provider,
     apiFormat: route.apiFormat,

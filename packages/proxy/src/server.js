@@ -147,6 +147,12 @@ async function handle(req, res, ctx) {
           responseBody: result.body,
           responseTruncated: result.truncated,
           timing: result.timing,
+          launch: {
+            ...(ctx.env.CONTEXTLAB_TOOL ? { tool: ctx.env.CONTEXTLAB_TOOL } : {}),
+            ...(ctx.env.CONTEXTLAB_PROJECT
+              ? { workingDirectory: ctx.env.CONTEXTLAB_PROJECT }
+              : {}),
+          },
         })
         writeCapture(capture, ctx.dir)
         ctx.emit({ type: 'capture', route, status: result.status })

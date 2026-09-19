@@ -7,6 +7,7 @@ import {
   closeDatabase,
   findRepeatedBlocks,
   getComposition,
+  getSession,
   listSessions,
   listTurns,
   openDatabase,
@@ -257,5 +258,35 @@ describe('ingesting a directory', () => {
 
   it('does nothing, quietly, when there is no capture directory', () => {
     expect(ingestDirectory(db, join(dir, 'missing')).stored).toBe(0)
+  })
+})
+
+describe('the folder a session belongs to', () => {
+  it('comes from the capture when the launcher recorded it', () => {
+    const db = openDatabase(':memory:')
+    const result = ingestCapture(db, capture(0, { workingDirectory: '/repo/gemini-app' }))
+    expect(result.status).toBe('stored')
+    const session = /** @type {any} */ (getSession(db, String(result.sessionId)))
+    expect(session.project_path).toBe('/repo/gemini-app')
+    expect(session.project_name).toBe('gemini-app')
+    closeDatabase(db)
+  })
+
+  it('beats the prompt when both say something', () => {
+    // The prompt is a guess at the folder; the launcher stood in it.
+    const db = openDatabase(':memory:')
+    const result = ingestCapture(db, capture(0, { workingDirectory: '/repo/real' }))
+    const session = /** @type {any} */ (getSession(db, String(result.sessionId)))
+    expect(session.project_path).toBe('/repo/real')
+    closeDatabase(db)
+  })
+
+  it('still falls back to the prompt for a capture that carries none', () => {
+    const db = openDatabase(':memory:')
+    const result = ingestCapture(db, capture(0))
+    const session = /** @type {any} */ (getSession(db, String(result.sessionId)))
+    // The fixture's prompt names /repo/contextlab, Claude Code style.
+    expect(session.project_path).toBe('/repo/contextlab')
+    closeDatabase(db)
   })
 })

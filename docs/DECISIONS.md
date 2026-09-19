@@ -22,6 +22,7 @@ index groups them by area instead.
 - [The capture is a copy, never the thing being forwarded](#the-capture-is-a-copy-never-the-thing-being-forwarded)
 - [Utility endpoints are forwarded but not captured](#utility-endpoints-are-forwarded-but-not-captured)
 - [Billing mode is read from header names, which survive redaction](#billing-mode-is-read-from-header-names-which-survive-redaction)
+- [The launcher's facts ride in the capture](#the-launchers-facts-ride-in-the-capture)
 
 **Storage**
 
@@ -270,6 +271,30 @@ recording them would invent sessions that never happened and skew every average.
 
 The list lives in `IGNORED_PATH_MARKERS`, next to the routing table, and is applied
 in `shouldCapture` — one place, easy to audit when a provider adds another one.
+
+---
+
+## The launcher's facts ride in the capture
+
+Two columns were being guessed. The session's folder was read out of the
+system prompt — Claude Code writes `Primary working directory: …` and a regex
+finds it — so Gemini CLI and Aider, which write no such line, showed
+"unknown" for every session. The tool was read from the user-agent, and the
+Gemini rows showed "—" because the guess failed.
+
+`contextlab gemini` knows both. It knows which tool it launched, and it knows
+the folder it was launched in. So the launcher passes them to the proxy as
+`CONTEXTLAB_TOOL` and `CONTEXTLAB_PROJECT`, the proxy writes them into every
+capture (`tool`, `workingDirectory`), and ingest prefers the capture over the
+prompt. A fact beats a guess; the prompt remains the fallback for a capture
+that arrived some other way. `--project <path>` covers a session started
+from somewhere other than its project.
+
+The simple way, which is the only way: `cd` into the project, then
+`contextlab <tool>`. Sessions captured before this carry no folder in their
+files and stay "unknown" — inventing one now would be a lie in a column.
+
+The proxy gained no dependency and eight lines.
 
 ---
 

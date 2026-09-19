@@ -3,6 +3,7 @@ import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { buildCapture } from '../src/capture.js'
 import { startProxy } from '../src/server.js'
 
 /**
@@ -255,4 +256,71 @@ describe('proxy end to end', () => {
     expect(res.status).toBe(502)
     expect(res.chunks.map((c) => c.text).join('')).toContain('contextlab_unroutable')
   })
+})
+
+describe('what the launcher knew rides in the capture', () => {
+  const route = /** @type {any} */ ({
+    tool: null,
+    sessionTag: 'a1b2c3d4',
+    provider: 'gemini',
+    apiFormat: 'gemini',
+    upstreamBase: 'https://cloudcode-pa.googleapis.com',
+    upstreamPath: '/v1internal:generateContent',
+    capture: true,
+  })
+  const timing = { startedAt: Date.now(), firstByteMs: 10, completedMs: 20 }
+  /** @param {any} launch */
+  const build = (launch) =>
+    buildCapture({
+      route,
+      method: 'POST',
+      originalUrl: '/gemini/a1b2c3d4/v1internal:generateContent',
+      requestHeaders: {},
+      requestBody: Buffer.from('{}'),
+      requestTruncated: false,
+      status: 200,
+      responseHeaders: {},
+      responseBody: Buffer.from('{}'),
+      responseTruncated: false,
+      timing,
+      launch,
+    })
+
+  it('records the tool and the folder the command ran in', () => {
+    const capture = build({ tool: 'gemini', workingDirectory: '/repo/app' })
+    // Only Claude Code writes its directory into the prompt. The launcher
+    // always knows, so every tool gets a directory.
+    expect(capture.tool).toBe('gemini')
+    expect(capture.workingDirectory).toBe('/repo/app')
+  })
+
+  it('lets a tool named in the URL win over the launcher, and fills the gap otherwise', () => {
+    expect(build({ tool: 'gemini' }).tool).toBe('gemini')
+    expect(
+      buildCapture({
+        ...baseInput(),
+        route: { ...route, tool: 'aider' },
+        launch: { tool: 'x' },
+      }).tool,
+    ).toBe('aider')
+    expect(build(undefined).tool).toBeNull()
+    expect(build(undefined)).not.toHaveProperty('workingDirectory')
+  })
+
+  /** @returns {any} */
+  function baseInput() {
+    return {
+      route,
+      method: 'POST',
+      originalUrl: '/x',
+      requestHeaders: {},
+      requestBody: Buffer.from('{}'),
+      requestTruncated: false,
+      status: 200,
+      responseHeaders: {},
+      responseBody: Buffer.from('{}'),
+      responseTruncated: false,
+      timing,
+    }
+  }
 })

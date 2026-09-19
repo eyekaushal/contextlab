@@ -10,7 +10,7 @@
 
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { buildToolEnv, resolveTool } from '@contextlab/core'
 import { DEFAULT_PORT, startProxy } from '@contextlab/proxy'
 import { ingestDirectory } from '@contextlab/server'
@@ -21,13 +21,19 @@ import { color, tokens, usd } from '../format.js'
 /**
  * @param {string} name
  * @param {string[]} args
- * @param {{ port?: string }} [options]
+ * @param {{ port?: string, project?: string }} [options]
  * @returns {Promise<number>}
  */
 export async function launch(name, args, options = {}) {
   const port = Number(options.port ?? DEFAULT_PORT)
   const home = contextlabHome()
   const capturesDir = join(home, 'captures')
+
+  // The folder this session belongs to is the folder the command ran in.
+  // Only Claude Code writes its working directory into the prompt; Gemini CLI
+  // and Aider do not, and every one of their sessions showed "unknown". The
+  // launcher knows, so the launcher says.
+  const project = resolve(options.project ?? process.cwd())
 
   // A per-run tag so two agents running at once stay in separate sessions.
   const sessionTag = randomBytes(4).toString('hex')
@@ -51,7 +57,12 @@ export async function launch(name, args, options = {}) {
   const proxy = await startProxy({
     port,
     dir: capturesDir,
-    env: { ...process.env, ...launchConfig.serverEnv },
+    env: {
+      ...process.env,
+      ...launchConfig.serverEnv,
+      CONTEXTLAB_TOOL: launchConfig.tool,
+      CONTEXTLAB_PROJECT: project,
+    },
     onEvent: (event) => {
       if (event.type === 'capture') captured += 1
       if (event.type === 'error') console.error(color.gray(`  proxy: ${event.message}`))
@@ -61,7 +72,7 @@ export async function launch(name, args, options = {}) {
   const command = config.command || name
   console.error(
     color.gray(
-      `contextlab  proxy on :${port}  capturing ${launchConfig.label}  (${Object.keys(launchConfig.env).join(', ')})\n`,
+      `contextlab  proxy on :${port}  capturing ${launchConfig.label} in ${project}  (${Object.keys(launchConfig.env).join(', ')})\n`,
     ),
   )
 

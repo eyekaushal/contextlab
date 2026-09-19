@@ -96,6 +96,10 @@ export function run(argv) {
     .argument('[tool]', 'coding agent to run through the proxy')
     .argument('[args...]', 'arguments passed straight to the tool')
     .option('--port <n>', 'proxy port', '4040')
+    .option(
+      '--project <path>',
+      'the project folder this session belongs to (default: the current directory)',
+    )
     .action(async (tool, args, options) => {
       if (!tool) {
         program.help()

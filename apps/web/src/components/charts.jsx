@@ -280,7 +280,7 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
 
       {slices.length === 0 ? (
         <div className="flex items-center gap-3">
-          <div className="relative size-32 shrink-0" data-chart>
+          <div className="relative size-[9.6rem] shrink-0" data-chart>
             {/* An empty ring rather than a line of text: one full arc in the
                 gridline colour, a dash in the middle. It looks like its three
                 neighbours, so a dashboard with nothing in it still looks like
@@ -295,7 +295,7 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
         </div>
       ) : (
         <div className="flex items-center gap-3">
-          <div className="relative size-32 shrink-0" data-chart>
+          <div className="relative size-[9.6rem] shrink-0" data-chart>
             {size ? (
               <Pie {...pieProps} width={size} height={size} />
             ) : (

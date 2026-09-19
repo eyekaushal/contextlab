@@ -108,7 +108,12 @@ export function ingestCapture(db, capture, options = {}) {
   })
 
   const capturedAt = parsed.capturedAt || Date.now()
-  const workingDirectory = identity.workingDirectory ?? null
+  // The capture carries the folder the launcher ran in; the prompt is only
+  // ever a guess at it, and for most tools not even that.
+  const workingDirectory =
+    (typeof capture.workingDirectory === 'string' && capture.workingDirectory) ||
+    identity.workingDirectory ||
+    null
 
   return recordTurn(db, {
     session: {

@@ -57,6 +57,10 @@ leaves your machine.
 Anything that is not a known command is treated as a tool to launch, so
 `contextlab -- python my_agent.py` works too.
 
+Run it **inside the project's folder**. The session is filed under that
+folder — that is how the dashboard groups by project — and it is where the
+agent will work anyway. `--project <path>` overrides it.
+
 ---
 
 ## Supported agents
@@ -202,7 +206,7 @@ functions, no I/O, no network.
 ## Status
 
 Under active development, and **not yet published to npm**. The analysis
-pipeline is covered by 599 tests, but it has not yet been exercised against a
+pipeline is covered by 604 tests, but it has not yet been exercised against a
 full day of real traffic across every supported agent. Treat the numbers as
 good, not proven.
 
