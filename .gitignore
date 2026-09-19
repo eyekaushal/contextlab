@@ -29,3 +29,6 @@ data/
 # Test output
 coverage/
 *.lcov
+
+# The dashboard copied into the server package at pack time
+packages/server/web/

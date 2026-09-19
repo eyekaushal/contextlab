@@ -74,8 +74,19 @@ export function contextlabHome(env = process.env) {
 export function webRoot(override) {
   if (override) return existsSync(override) ? override : null
   const here = dirname(fileURLToPath(import.meta.url))
-  const built = join(here, '..', '..', '..', 'apps', 'web', 'dist')
-  return existsSync(join(built, 'index.html')) ? built : null
+
+  // Two places the dashboard can live. In a published package it is copied
+  // into this package's own `web/` at pack time, because `apps/web/dist` does
+  // not exist inside node_modules — a first publish that looked only there
+  // would have shown every user the not-built page. In a checkout it is the
+  // Vite output, one level up.
+  for (const candidate of [
+    join(here, '..', 'web'),
+    join(here, '..', '..', '..', 'apps', 'web', 'dist'),
+  ]) {
+    if (existsSync(join(candidate, 'index.html'))) return candidate
+  }
+  return null
 }
 
 /**

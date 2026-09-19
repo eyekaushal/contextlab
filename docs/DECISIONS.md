@@ -90,6 +90,7 @@ index groups them by area instead.
 - [The turn endpoint returns only what changed](#the-turn-endpoint-returns-only-what-changed)
 - [One process serves the API and the dashboard](#one-process-serves-the-api-and-the-dashboard)
 - [:4041 is never blank](#4041-is-never-blank)
+- [The published server package carries the dashboard](#the-published-server-package-carries-the-dashboard)
 - [Inter for words, JetBrains Mono for figures, both bundled](#inter-for-words-jetbrains-mono-for-figures-both-bundled)
 - [Block text is fetched one at a time, never in the list](#block-text-is-fetched-one-at-a-time-never-in-the-list)
 
@@ -1325,6 +1326,24 @@ port.
 Still open for the publish step: the CLI package's `files` list does not ship
 the built dashboard. A published `npx contextlab dashboard` would show the
 not-built page to everyone. That is fixed before `npm publish`, not here.
+
+---
+
+## The published server package carries the dashboard
+
+`webRoot()` looked for the dashboard at `apps/web/dist`, three levels above
+the server package. That is where Vite puts it in a checkout, and nowhere at
+all inside `node_modules` — so the first `npx contextlab dashboard` after
+publishing would have shown every user the not-built page. Caught by
+`pnpm pack` before it was caught by a user.
+
+`@contextlab/server` now has a `prepack` step that builds the dashboard and
+copies it into the package's own `web/` folder, listed in `files`, and
+`webRoot()` looks there first. The folder is gitignored: a build artefact,
+made at pack time, never committed. The tarball is 548K with fonts and all.
+
+The other packages are unchanged. `pnpm publish -r` publishes them in
+dependency order and rewrites `workspace:*` to the real version.
 
 ---
 

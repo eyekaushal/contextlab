@@ -27,5 +27,8 @@
     "context-window",
     "format",
     "json-schema"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }
