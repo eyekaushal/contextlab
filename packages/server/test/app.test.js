@@ -1031,7 +1031,9 @@ describe('the dashboard server with a build somewhere else on disk', () => {
       expect(dotted.headers.get('content-type')).toContain('text/html')
       expect(await dotted.text()).toContain('id="root"')
       expect((await fetch(`${base}/assets/..%2F..%2Findex.html`)).status).toBe(404)
-      expect((await fetch(`${base}/assets/%2e%2e%2f%2e%2e%2findex.html`)).status).toBe(404)
+      expect((await fetch(`${base}/assets/%2e%2e%2f%2e%2e%2findex.html`)).status).toBe(
+        404,
+      )
       expect((await fetch(`${base}/assets/missing.js`)).status).toBe(404)
 
       // And the API still answers underneath.
