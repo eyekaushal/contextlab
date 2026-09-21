@@ -14,6 +14,7 @@ import { createSessionTracker } from 'contextlab-core'
 import { closeDatabase, listSessions, openDatabase } from 'contextlab-store'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
+import { PACKAGE_VERSION } from '../src/export.js'
 import { ingestCapture } from '../src/ingest.js'
 import {
   ensureDashboardBuilt,
@@ -962,6 +963,19 @@ describe('what a block counts as, versus what it was billed', () => {
     expect(overview.total.count).toBe(optimize.total.count)
     expect(overview.total.critical).toBe(optimize.total.critical)
     expect(overview.total.recoverableUsd).toBeCloseTo(optimize.total.recoverableUsd)
+  })
+})
+
+describe('the version', () => {
+  it('is read from package.json, never typed', () => {
+    // `contextlab --version` said 0.1.0 on a 0.1.3 install: the string was
+    // typed once and bumped never. Both places that state a version read it.
+    const here = dirname(fileURLToPath(import.meta.url))
+    const server = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'))
+    expect(PACKAGE_VERSION).toBe(server.version)
+    const cli = readFileSync(join(here, '..', '..', 'cli', 'src', 'index.js'), 'utf8')
+    expect(cli).not.toMatch(/VERSION = '\d/)
+    expect(cli).toContain("new URL('../package.json', import.meta.url)")
   })
 })
 

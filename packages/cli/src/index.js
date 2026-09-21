@@ -7,6 +7,7 @@
  * @module
  */
 
+import { readFileSync } from 'node:fs'
 import { Command } from 'commander'
 import { TOOLS } from 'contextlab-core'
 import { cost } from './commands/cost.js'
@@ -17,7 +18,12 @@ import { optimize } from './commands/optimize.js'
 import { watch } from './commands/watch.js'
 import { why } from './commands/why.js'
 
-const VERSION = '0.1.0'
+// Read from package.json rather than typed here. The string was '0.1.0'
+// through three releases, so `contextlab --version` told every user they had
+// the first build whatever they had installed.
+const VERSION = /** @type {{ version: string }} */ (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+).version
 
 /**
  * @param {string[]} argv

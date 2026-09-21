@@ -7,6 +7,7 @@
  * @module
  */
 
+import { readFileSync } from 'node:fs'
 import { runRules } from 'contextlab-core/prescribe'
 import { buildDocument, session as shapeSession } from 'contextlab-format'
 import {
@@ -24,6 +25,11 @@ import { toCamel, toCamelAll } from './serialize.js'
 import { buildSessionSummary } from './summary.js'
 
 /** @typedef {import('better-sqlite3').Database} Db */
+
+/** This package's version, for the producer field — never a typed string. */
+export const PACKAGE_VERSION = /** @type {{ version: string }} */ (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+).version
 
 /**
  * @param {Db} db
@@ -89,7 +95,7 @@ export function buildExport(db, options = {}) {
 
   return buildDocument(sessions, {
     content: /** @type {any} */ (options.content),
-    producer: { name: 'contextlab', version: options.version ?? '0.1.0' },
+    producer: { name: 'contextlab', version: options.version ?? PACKAGE_VERSION },
     pricing: { source: table.source, updatedAt: table.updatedAt },
   })
 }
