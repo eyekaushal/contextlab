@@ -33,8 +33,8 @@ import { Card } from './ui/card.jsx'
 export function Stat({ label, value, hint, tone, icon: Icon, delta, className }) {
   return (
     <Card className={cn('flex min-w-0 flex-col gap-1.5 px-4 py-3', className)}>
-      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-        {Icon ? <Icon aria-hidden="true" className="size-3.5" /> : null}
+      <div className="flex items-center gap-1.5 text-sm uppercase tracking-wide text-[var(--color-text-muted)]">
+        {Icon ? <Icon aria-hidden="true" className="size-4" /> : null}
         <span className="truncate">{label}</span>
       </div>
 
@@ -49,7 +49,7 @@ export function Stat({ label, value, hint, tone, icon: Icon, delta, className })
       </div>
 
       {hint ? (
-        <div className="truncate text-xs text-[var(--color-text-secondary)]">{hint}</div>
+        <div className="truncate text-sm text-[var(--color-text-secondary)]">{hint}</div>
       ) : null}
     </Card>
   )
@@ -82,7 +82,7 @@ export function DeltaChip({ delta }) {
   return (
     <span
       className={cn(
-        'tnum inline-flex items-center gap-0.5 text-xs',
+        'tnum inline-flex items-center gap-0.5 text-sm',
         worse === null
           ? 'text-[var(--color-text-muted)]'
           : worse
@@ -91,7 +91,7 @@ export function DeltaChip({ delta }) {
       )}
       title={`${shape.text} ${label}`}
     >
-      <Icon aria-hidden="true" className="size-3" />
+      <Icon aria-hidden="true" className="size-3.5" />
       {shape.text}
       <span className="sr-only"> {label}</span>
     </span>

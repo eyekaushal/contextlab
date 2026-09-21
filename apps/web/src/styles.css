@@ -10,19 +10,19 @@
  * trusted from the previous set. Two moved; the rest held. The run is recorded
  * in docs/DESIGN.md.
  *
- * Do not substitute a colour by eye. If you change one, re-validate the set.
+ * Do not substitute a colour by eye. If you change one, re-check the set.
  */
 
 @theme {
   /* Surfaces and ink */
-  --color-page: #1a222c; /* the window behind everything */
-  --color-surface: #222d38; /* cards, table bodies */
-  --color-raised: #2a3744; /* card headers, hover rows, the top bar */
-  --color-text-primary: #e6edf3;
-  --color-text-secondary: #a9b6c3;
-  --color-text-muted: #7d8b99;
-  --color-gridline: #34424f;
-  --color-baseline: #41515f;
+  --color-page: #171412; /* the window behind everything */
+  --color-surface: #1f1b18; /* cards, table bodies */
+  --color-raised: #2a2521; /* card headers, hover rows, the top bar */
+  --color-text-primary: #ede8e2;
+  --color-text-secondary: #b4aca4;
+  --color-text-muted: #877d74;
+  --color-gridline: #332d29;
+  --color-baseline: #443c36;
   --color-border-subtle: rgb(255 255 255 / 0.08);
 
   /*
@@ -35,7 +35,7 @@
   --color-cat-tool-results: #199e70;
   --color-cat-tool-calls: #c98500;
   --color-cat-user-text: #d55181;
-  --color-cat-assistant-text: #0d880b; /* was #008300 — 2.83:1 on slate */
+  --color-cat-assistant-text: #0d880b; /* lifted from #008300 for slate; 3.7:1 on charcoal */
   --color-cat-thinking: #9085e9;
   --color-cat-images: #e66767;
   --color-cat-other: #6e7681;
@@ -48,7 +48,7 @@
   --color-status-good: #0ca30c;
   --color-status-warning: #fab219;
   --color-status-serious: #ec835a;
-  --color-status-critical: #d43f3e; /* was #d03b3b — 2.91:1 on slate */
+  --color-status-critical: #d43f3e; /* lifted from #d03b3b for slate; 3.7:1 on charcoal */
 
   /*
    * Density is respect.
@@ -72,6 +72,8 @@
   --text-lg--line-height: 1.4;
   --text-xl: 1.25rem; /* 20px — the screen title */
   --text-xl--line-height: 1.3;
+  --text-2xl: 1.75rem; /* 28px — the KPI figure, up from 24 in the sixth revision */
+  --text-2xl--line-height: 1.1;
 
   /*
    * Inter for UI and prose, JetBrains Mono for figures and code. Both are

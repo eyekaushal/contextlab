@@ -156,7 +156,7 @@ export function foldSmall(series, max = MAX_SLICES) {
 
 /** nivo's theme, in the product's tokens. */
 const THEME = {
-  text: { fill: 'var(--color-text-secondary)', fontSize: 11 },
+  text: { fill: 'var(--color-text-secondary)', fontSize: 12 },
   grid: { line: { stroke: 'var(--color-gridline)', strokeWidth: 1 } },
   axis: {
     ticks: {
@@ -264,7 +264,7 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
           textAnchor="middle"
           dominantBaseline="central"
           className="tnum"
-          style={{ fill: 'var(--color-text-primary)', fontSize: 13, fontWeight: 600 }}
+          style={{ fill: 'var(--color-text-primary)', fontSize: 15, fontWeight: 600 }}
         >
           {show(total)}
         </text>
@@ -291,7 +291,7 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
               <ResponsivePie {...emptyRing()} />
             )}
           </div>
-          <p className="min-w-0 flex-1 text-xs text-[var(--color-text-muted)]">{empty}</p>
+          <p className="min-w-0 flex-1 text-sm text-[var(--color-text-muted)]">{empty}</p>
         </div>
       ) : (
         <div className="flex items-center gap-3">
@@ -306,10 +306,10 @@ export function Donut({ title, series, unit, colour, empty = 'Nothing yet.', siz
           {/* The legend carries the value, so identity never rides on colour. */}
           <ul className="min-w-0 flex-1 space-y-1">
             {data.map((slice) => (
-              <li key={slice.id} className="flex items-center gap-1.5 text-xs">
+              <li key={slice.id} className="flex items-center gap-2 text-sm">
                 <span
                   aria-hidden="true"
-                  className="size-2 shrink-0 rounded-[2px]"
+                  className="size-2.5 shrink-0 rounded-[2px]"
                   style={{ backgroundColor: slice.color }}
                 />
                 <span className="min-w-0 flex-1 truncate text-[var(--color-text-secondary)]">

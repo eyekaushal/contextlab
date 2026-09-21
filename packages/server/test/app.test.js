@@ -1,12 +1,26 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createSessionTracker } from 'contextlab-core'
 import { closeDatabase, listSessions, openDatabase } from 'contextlab-store'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { ingestCapture } from '../src/ingest.js'
-import { ensureDashboardBuilt, NOT_BUILT_PAGE, startServer } from '../src/server.js'
+import {
+  ensureDashboardBuilt,
+  NOT_BUILT_PAGE,
+  startServer,
+  webRoot,
+} from '../src/server.js'
 
 const npmLog = 'npm WARN deprecated thing@1.0.0 please upgrade\n'.repeat(400)
 
@@ -951,6 +965,21 @@ describe('what a block counts as, versus what it was billed', () => {
   })
 })
 
+describe('webRoot', () => {
+  it('serves the newer of the two builds, not the first one it finds', () => {
+    // A checkout that has been packed has both: the copy bundled into the
+    // package for npm and the live Vite output. The pack copy is a day old
+    // and used to win by position, so a fresh build never reached the
+    // browser. Whichever index.html is newer is the one the developer meant.
+    const here = dirname(fileURLToPath(import.meta.url))
+    const packed = join(here, '..', 'web', 'index.html')
+    const dist = join(here, '..', '..', '..', 'apps', 'web', 'dist', 'index.html')
+    if (!existsSync(packed) || !existsSync(dist)) return
+    const newer = statSync(packed).mtimeMs > statSync(dist).mtimeMs ? packed : dist
+    expect(join(webRoot() ?? '', 'index.html')).toBe(newer)
+  })
+})
+
 describe('the dashboard server without a build', () => {
   it('shows a page that says what is missing, never a blank one', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'contextlab-nobuild-'))
@@ -1003,6 +1032,7 @@ describe('the dashboard server with a build somewhere else on disk', () => {
       '<!doctype html><title>contextlab</title><div id="root"></div>',
     )
     writeFileSync(join(web, 'assets', 'index-abc.js'), 'console.log(1)')
+    writeFileSync(join(web, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
 
     const handle = await startServer({ home: dir, port: 0, watch: false, web })
     try {
@@ -1016,6 +1046,20 @@ describe('the dashboard server with a build somewhere else on disk', () => {
 
       // A client-side route gets the same page; the app routes it.
       expect((await fetch(`${base}/optimize`)).status).toBe(200)
+
+      // The favicon is a file at the root of the build and is sent as one —
+      // the browser was being handed index.html for it. A route that merely
+      // contains a dot is still the page, and a missing root file is too.
+      const icon = await fetch(`${base}/favicon.svg`)
+      expect(icon.status).toBe(200)
+      expect(icon.headers.get('content-type')).toContain('image/svg+xml')
+      expect(await icon.text()).toContain('<svg')
+      expect(
+        (await fetch(`${base}/s/tag.with.dots`)).headers.get('content-type'),
+      ).toContain('text/html')
+      expect((await fetch(`${base}/robots.txt`)).headers.get('content-type')).toContain(
+        'text/html',
+      )
 
       const asset = await fetch(`${base}/assets/index-abc.js`)
       expect(asset.status).toBe(200)

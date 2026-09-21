@@ -163,6 +163,28 @@ describe('density', () => {
     expect(step('xs')).toBe(11)
     expect(step('sm')).toBe(13)
     expect(step('lg')).toBe(16)
+    // The KPI figure. Revision six asked for the five cards, the ring
+    // legends and the compare table a size up; the figure is the one step
+    // the theme did not own before.
+    expect(step('2xl')).toBe(28)
+  })
+
+  it('sits on warm charcoal, not slate and not pure black', () => {
+    // Revision six: near-black with the warm cast of the sand rings. Every
+    // category and status colour clears 3:1 on all three surfaces here —
+    // three had fallen under on the raised slate. Recorded in DESIGN.md.
+    expect(css).toContain('--color-page: #171412')
+    expect(css).toContain('--color-surface: #1f1b18')
+    expect(css).toContain('--color-raised: #2a2521')
+    expect(css).not.toMatch(/--color-page:\s*#000000/)
+  })
+
+  it('ships a favicon, drawn from the same mark', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
+    expect(html).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />')
+    const icon = readFileSync(new URL('../public/favicon.svg', import.meta.url), 'utf8')
+    // The three category colours the wordmark uses, in the same order.
+    for (const hex of ['#199e70', '#3987e5', '#d95926']) expect(icon).toContain(hex)
   })
 
   it('paints the page colour on html as well as body', () => {

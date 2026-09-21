@@ -4,46 +4,65 @@ Dark-first. Muted, not neon. Numbers are the content; chrome recedes.
 
 ## Palette
 
-Slate, not black, since the second UI revision aligned the surfaces with the
-Gotham reference. Because contrast is a ratio against what sits behind a mark,
-changing the surface voids every earlier check — so the category and status
-sets were re-run through the validator against these exact surfaces, not
-carried over.
+Warm charcoal since the sixth UI revision: near-black with the warm cast of
+the sand rings, in place of the blue-grey slate the second revision took from
+the Gotham reference. Not pure black — the page sits at `#171412` and cards a
+step above it — so the surfaces still read as surfaces and a card still has an
+edge.
 
-**Categories (eight hues):** all checks pass on both surfaces — lightness band,
-chroma floor, CVD separation (worst adjacent pair ΔE 8.4 protan), normal-vision
-floor (worst 19.3), and 3:1 contrast. One colour moved: assistant-text green
-`#008300` fell to 2.83:1 on the card surface and was lifted along its own hue
-to `#0d880b` (3.03:1). The grey for *other* is a deliberate neutral and is
-excluded from the hue checks; it is not a category colour.
+Because contrast is a ratio against what sits behind a mark, changing the
+surface voids every earlier check, so the sets were re-checked against these
+exact surfaces. Darker surfaces help: every category and status colour now
+clears 3:1 on all three surfaces, page, card and raised. On slate three had
+fallen under on the raised surface (assistant-text 2.63:1, other 2.64:1,
+critical 2.65:1), which is the surface behind every card header and hover row.
+
+**Categories (eight hues):** hue separation is unchanged by a surface move —
+CVD separation (worst adjacent pair ΔE 8.4 protan) and the normal-vision floor
+(worst 19.3) hold from the slate run. Contrast on the card surface now runs
+from 3.7:1 (assistant-text green, the weakest) to 5.6:1 (tool calls). The two
+colours lifted for slate, assistant-text `#0d880b` and critical `#d43f3e`,
+are kept: they pass here by a wider margin, and moving them back would repaint
+every existing screenshot for no gain. The grey for *other* is a deliberate
+neutral and is excluded from the hue checks; it is not a category colour.
 
 **Status (four):** never colour alone — always an icon and a word — so only the
-contrast check binds. All four clear 3:1 on the card surface. One moved:
-critical `#d03b3b` (2.91:1) to `#d43f3e` (3.05:1). Warning and serious sit
-13.6 ΔE apart for normal vision, under the 15 floor for a *categorical* set;
-they are not categorical, ship with distinct icons, and were left as they are.
+contrast check binds. All four clear 3:1 on every surface; the weakest is
+critical at 3.7:1 on the card. Warning and serious sit 13.6 ΔE apart for
+normal vision, under the 15 floor for a *categorical* set; they are not
+categorical, ship with distinct icons, and were left as they are.
 
-Do not substitute colors by eye. If you change one, re-validate the set —
-`scripts/validate_palette.js` from the dataviz skill, `--mode dark --surface
-#222d38`, and again against `#1a222c`.
+**Ink:** primary text 14:1 on the card, secondary 7.6:1, muted 4.3:1 — muted
+is for labels and units beside a figure, never for a sentence.
+
+Do not substitute colors by eye. If you change one, re-check the set against
+`#1f1b18` and again against `#171412` and `#2a2521`.
 
 **Chart rings (tool, project):** warm sand, five colours chosen by the
 product owner — see DECISIONS "Rings … on nivo" for the validator run and why
-it is kept despite failing it. Severity and category rings do not use it.
+it is kept despite failing it. The charcoal surfaces are tinted toward the
+same hue, which is why they were chosen over a neutral grey. On charcoal four
+of the five clear 3:1 on the card (the second, `hsl(14 38% 47%)`, was under on
+slate); the darkest, `hsl(13 34% 39%)`, stays under at 2.6:1 and is carried
+by the legend beside every ring. Severity and category rings do not use sand.
 
 ### Surfaces and ink
 
 ```css
---page           #1a222c   /* the window behind everything */
---surface        #222d38   /* cards, table bodies; the chart surface */
---raised         #2a3744   /* card headers, hover rows, the top bar */
---text-primary   #e6edf3
---text-secondary #a9b6c3
---text-muted     #7d8b99   /* axis, labels */
---gridline       #34424f
---baseline       #41515f
+--page           #171412   /* the window behind everything */
+--surface        #1f1b18   /* cards, table bodies; the chart surface */
+--raised         #2a2521   /* card headers, hover rows, the top bar */
+--text-primary   #ede8e2
+--text-secondary #b4aca4
+--text-muted     #877d74   /* axis, labels */
+--gridline       #332d29
+--baseline       #443c36
 --border         rgba(255,255,255,0.08)
 ```
+
+The favicon at `apps/web/public/favicon.svg` is the wordmark's mark with
+these values written in — a tab cannot read the page's custom properties. It
+is the one file copy of the palette; if a token moves, it moves with it.
 
 ### Composition categories (assign in this fixed order — never cycle)
 
@@ -53,7 +72,7 @@ it is kept despite failing it. Severity and category rings do not use it.
 --cat-tool-results       #199e70   /* aqua    */
 --cat-tool-calls         #c98500   /* yellow  */
 --cat-user-text          #d55181   /* magenta */
---cat-assistant-text     #0d880b   /* green   — lifted from #008300 for slate */
+--cat-assistant-text     #0d880b   /* green   — lifted from #008300 for slate; kept */
 --cat-thinking           #9085e9   /* violet  */
 --cat-images             #e66767   /* red     */
 --cat-other              #6e7681   /* grey    */
@@ -65,7 +84,7 @@ it is kept despite failing it. Severity and category rings do not use it.
 --status-good      #0ca30c
 --status-warning   #fab219
 --status-serious   #ec835a
---status-critical  #d43f3e   /* lifted from #d03b3b for slate */
+--status-critical  #d43f3e   /* lifted from #d03b3b for slate; kept */
 ```
 
 A status color always ships with an icon + label. Never color alone.

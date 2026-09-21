@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <title>contextlab</title>
+  <!--
+    The mark from src/components/wordmark.jsx, as a file, because a browser tab
+    cannot read the page's custom properties. The colours are the category
+    tokens from src/styles.css, written out once here: tool results, system
+    prompt, tool definitions, on the card surface. The outline is lifted above
+    the baseline token so it survives a light tab strip. If a token moves,
+    this file moves with it.
+  -->
+  <rect x="0.75" y="5.75" width="22.5" height="12.5" rx="2.25" fill="#1f1b18" stroke="#6b5f56" stroke-width="1.5"/>
+  <rect x="2.5" y="9" width="9" height="6" rx="1" fill="#199e70"/>
+  <rect x="12.5" y="9" width="5" height="6" rx="1" fill="#3987e5"/>
+  <rect x="18.5" y="9" width="3" height="6" rx="1" fill="#d95926"/>
+</svg>

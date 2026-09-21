@@ -179,7 +179,7 @@ export function CompareTable({ columns, categories, baseline, onBaseline, onRemo
           red is worse, green is better, grey has no better
         </span>
       </CardHeader>
-      <table className="w-full border-collapse text-xs">
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-raised)]">
             <th className="w-40 px-3 py-1.5 text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -270,7 +270,7 @@ function ColumnHead({ column, isBaseline, onBaseline, onRemove }) {
         <button
           type="button"
           onClick={() => navigate(`/s/${encodeURIComponent(session.id)}`)}
-          className="text-left text-sm font-medium hover:text-[var(--color-cat-system-prompt)]"
+          className="text-left text-base font-medium hover:text-[var(--color-cat-system-prompt)]"
         >
           {truncate(String(label), 22)}
         </button>
@@ -382,7 +382,7 @@ function Cell({ cell }) {
  */
 function Delta({ cell }) {
   if (cell.delta === 0) {
-    return <span className="ml-1.5 text-xs text-[var(--color-text-muted)]">same</span>
+    return <span className="ml-1.5 text-sm text-[var(--color-text-muted)]">same</span>
   }
 
   const worse = cell.higherIsWorse ? cell.delta > 0 : null
@@ -392,7 +392,7 @@ function Delta({ cell }) {
   return (
     <span
       className={cn(
-        'tnum ml-1.5 text-xs',
+        'tnum ml-1.5 text-sm',
         worse === null
           ? 'text-[var(--color-text-muted)]'
           : worse

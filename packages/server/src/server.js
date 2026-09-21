@@ -79,13 +79,18 @@ export function webRoot(override) {
   // not exist inside node_modules — a first publish that looked only there
   // would have shown every user the not-built page. In a checkout it is the
   // Vite output, one level up.
-  for (const candidate of [
+  //
+  // When both exist — a checkout that has been packed — the newer one wins.
+  // A fixed order served the day-old pack copy over a fresh build, and a
+  // theme change that every test had passed was invisible in the browser.
+  const candidates = [
     join(here, '..', 'web'),
     join(here, '..', '..', '..', 'apps', 'web', 'dist'),
-  ]) {
-    if (existsSync(join(candidate, 'index.html'))) return candidate
-  }
-  return null
+  ]
+    .map((dir) => ({ dir, index: join(dir, 'index.html') }))
+    .filter(({ index }) => existsSync(index))
+    .sort((a, b) => statSync(b.index).mtimeMs - statSync(a.index).mtimeMs)
+  return candidates[0]?.dir ?? null
 }
 
 /**
@@ -158,7 +163,15 @@ export async function startServer(options = {}) {
     // fell through to the API's "served from /" text. That is what the first
     // person to run the published package saw. Absolute paths, read directly.
     app.get('/assets/*', (c) => serveFile(root, c.req.path))
-    app.get('*', (c) => serveFile(root, '/index.html'))
+    // A root-level file that exists in the build — the favicon — is sent as
+    // itself. Anything else is an app route and gets the page, which the app
+    // then routes; a session id with a dot in it must not become a 404.
+    // Before this the browser asked for /favicon.svg and was handed
+    // index.html under the wrong content type.
+    app.get('*', (c) => {
+      const direct = extname(c.req.path) ? serveFile(root, c.req.path) : null
+      return direct?.status === 200 ? direct : serveFile(root, '/index.html')
+    })
   } else {
     // Never a blank page. Someone on a fresh checkout opened :4041, saw
     // nothing, and reasonably concluded the server was broken. It was not;

@@ -68,6 +68,9 @@ index groups them by area instead.
 - [The type scale is redefined in one place, not rewritten in three hundred](#the-type-scale-is-redefined-in-one-place-not-rewritten-in-three-hundred)
 - [The mark is a context window](#the-mark-is-a-context-window)
 - [Slate surfaces, and a palette re-validated rather than carried over](#slate-surfaces-and-a-palette-re-validated-rather-than-carried-over)
+- [Warm charcoal, and the palette checked a third time](#warm-charcoal-and-the-palette-checked-a-third-time)
+- [The favicon is the one file copy of the palette](#the-favicon-is-the-one-file-copy-of-the-palette)
+- [The newer build wins](#the-newer-build-wins)
 - [A top bar instead of a sidebar](#a-top-bar-instead-of-a-sidebar)
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
@@ -1149,6 +1152,61 @@ hue checks rather than quietly included. And warning-vs-serious sits under the
 categorical normal-vision floor; it was left alone, because the two never
 appear without different icons and different words, and lifting a colour to
 satisfy a check that does not apply is churn.
+
+---
+
+## Warm charcoal, and the palette checked a third time
+
+The sixth UI revision moved the surfaces off slate. The product owner no
+longer wanted the Gotham blue-grey; the brief was *blackish, not too black,
+matching the rings*. The rings are warm sand (hue 13°–35°), so the surfaces
+are near-black tinted toward the same hue — `#171412` page, `#1f1b18` card,
+`#2a2521` raised — rather than a neutral grey, which would have sat cold under
+warm arcs. Not pure black: at `#000` a card has no edge and every colour
+glows, and the reference the owner liked had depth between its layers.
+
+A surface move voids the contrast checks, so the sets were re-run against the
+new values. Darker surfaces raise every ratio. All eight category hues and all
+four status colours now clear 3:1 on all three surfaces; on slate three had
+been under on the raised surface, which is behind every card header and hover
+row, and that failure had been accepted because the raised surface carries
+only text. The two colours lifted for slate stay lifted — they pass here with
+more margin, and reverting them would repaint every existing screenshot. Of
+the sand five, one more passes on charcoal than on slate; the darkest stays
+under, as recorded when sand was adopted.
+
+The ink went warm with the surfaces: a blue-white on a warm black reads as a
+mismatch. The tokens were changed in `styles.css` and nowhere else, which is
+what tokens are for; no component was touched for the theme.
+
+---
+
+## The favicon is the one file copy of the palette
+
+The wordmark is inline SVG so the palette is never written down in an image.
+A tab cannot read the page's custom properties, so the favicon has to be a
+file with hex values in it. It is the same mark — three slices in the fixed
+category order on the card surface — with a comment saying which tokens the
+values came from, and a test that checks the three category hexes are present.
+One copy, documented, beats no icon.
+
+The server had to learn the difference between a file and a route for it. A
+root-level path that exists in the build is sent as itself; anything else,
+including a session id with a dot in it, still gets the page. `/assets/*`
+keeps its 404 for a missing hashed asset.
+
+---
+
+## The newer build wins
+
+The server looks for the dashboard in two places: the copy bundled into the
+package at pack time, and the Vite output in the checkout. The bundled copy
+was checked first, because in a published package it is the only one. In a
+checkout that has been packed it is also the stale one — a day old after the
+0.1.2 publish — and it served the old theme over a fresh build while every
+test passed. The picker now takes whichever index.html is newer. In a
+published package nothing changes; in a checkout the build you just ran is
+the one you see.
 
 ---
 
