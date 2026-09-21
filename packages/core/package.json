@@ -1,6 +1,6 @@
 {
   "name": "contextlab-core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pure functions: parse, tokenize, compose, attribute, prescribe.",
   "license": "MIT",
   "type": "module",

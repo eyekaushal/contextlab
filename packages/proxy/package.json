@@ -1,6 +1,6 @@
 {
   "name": "contextlab-proxy",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Zero-dependency local proxy: forwards LLM API calls and captures them.",
   "license": "MIT",
   "type": "module",
