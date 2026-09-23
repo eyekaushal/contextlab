@@ -1,12 +1,51 @@
 # contextlab
 
-**See what is actually filling your AI coding agent's context window - and what
-to change to fix it.**
+**contextlab shows you where your tokens go when you use an AI coding agent, and what to change so you spend less.**
 
-Your agent tells you "142,000 tokens, $3.20." It does not tell you that 105,000
-of those are one `npm install` log stuck in the history since turn 3, being
-re-uploaded on every turn since.
+You run your agent through it. That is the whole setup:
 
+```bash
+npm install -g contextlab
+cd your-project
+contextlab claude        # or codex, gemini, aider, cline, copilot, opencode
+```
+
+Work as you normally would. When you are done, run `contextlab optimize` or
+open the dashboard, and you get answers to three questions:
+
+1. **What is filling the context window?** Not a total. A breakdown: system
+   prompt, tool definitions, tool results, your messages, the model's replies,
+   thinking, images. Then traced to the actual thing: which tool, which file,
+   which MCP server.
+2. **What did it cost?** Per turn, per session, per project, per day. If you
+   are on a subscription plan it shows the equivalent API price instead of
+   pretending you were charged.
+3. **What should I change?** A ranked list of waste, and next to every item
+   the exact fix: a line in a config file, a shell redirect, a model switch.
+   Each one shows its own arithmetic so you can check it.
+
+## Why this exists
+
+Coding agents resend the whole conversation to the model on every turn. So
+when a 100,000-token `npm install` log lands in the history on turn 3, you
+pay for it again on turn 4, and 5, and every turn after that until the
+session ends. Your agent reports "142,000 tokens, $3.20". It does not tell
+you that most of that is one log file it keeps re-uploading.
+
+contextlab sits between the agent and the API, keeps a copy of each request,
+and does the arithmetic. It is a proxy and a database, nothing more.
+
+## What it is not
+
+- Not a cloud service. It runs on your machine, and nothing leaves it. No
+  account, no telemetry.
+- Not an AI tool analysing your AI tool. No model is called anywhere. Every
+  number is counted and every recommendation is a fixed rule, so the same
+  session gives the same answer twice, offline.
+- Not a change to your agent. No plugin, no SDK, no config edits. The agent
+  is pointed at a local address and does not know the difference.
+
+Free and open source, MIT licensed.
 
 ---
 
