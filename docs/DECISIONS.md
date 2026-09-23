@@ -71,6 +71,7 @@ index groups them by area instead.
 - [Warm charcoal, and the palette checked a third time](#warm-charcoal-and-the-palette-checked-a-third-time)
 - [The favicon is the one file copy of the palette](#the-favicon-is-the-one-file-copy-of-the-palette)
 - [The newer build wins](#the-newer-build-wins)
+- [The README banner is rendered, not drawn](#the-readme-banner-is-rendered-not-drawn)
 - [A top bar instead of a sidebar](#a-top-bar-instead-of-a-sidebar)
 - [Every icon-only control carries a sentence](#every-icon-only-control-carries-a-sentence)
 - [A figure is a card with an arrow, everywhere](#a-figure-is-a-card-with-an-arrow-everywhere)
@@ -1207,6 +1208,27 @@ checkout that has been packed it is also the stale one — a day old after the
 test passed. The picker now takes whichever index.html is newer. In a
 published package nothing changes; in a checkout the build you just ran is
 the one you see.
+
+---
+
+## The README banner is rendered, not drawn
+
+The banner at the top of the README is `docs/assets/banner.html`, screenshotted
+by `scripts/render-banner.mjs` into a dark and a light PNG that GitHub picks
+between with `prefers-color-scheme`. HTML rather than a design tool because the
+mark, the faces and the colours are the dashboard's own, read from the same
+font files and the same hex values, so the banner cannot drift from the
+product. PNG rather than SVG in the README because GitHub and npm both render
+it through an image proxy that does not load a font referenced from inside an
+SVG. Re-render after changing the tagline: `node scripts/render-banner.mjs`
+(needs a headless Chrome; puppeteer-core finds the one hyperframes cached, or
+set `CHROME_PATH`).
+
+The badges say only what is true and checked live: npm version and downloads,
+the Node floor from `engines`, the licence file, stars, last commit. There is
+no CI badge because there is no CI workflow yet; a badge that says "passing"
+for a check that never runs is the kind of thing the README elsewhere promises
+not to do.
 
 ---
 

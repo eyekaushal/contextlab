@@ -1,5 +1,21 @@
 # contextlab
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/eyekaushal/contextlab/main/docs/assets/banner-light.png">
+    <img src="https://raw.githubusercontent.com/eyekaushal/contextlab/main/docs/assets/banner-dark.png" alt="contextlab. See where the tokens go. A local proxy for AI coding agents: what fills the context window, what it costs, and what to change." width="100%">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/contextlab"><img src="https://img.shields.io/npm/v/contextlab?style=flat-square&label=npm" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/contextlab"><img src="https://img.shields.io/npm/dm/contextlab?style=flat-square&label=downloads" alt="npm downloads"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/contextlab?style=flat-square" alt="Node.js version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/eyekaushal/contextlab?style=flat-square" alt="License: MIT"></a>
+  <a href="https://github.com/eyekaushal/contextlab/stargazers"><img src="https://img.shields.io/github/stars/eyekaushal/contextlab?style=flat-square&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/eyekaushal/contextlab/commits/main"><img src="https://img.shields.io/github/last-commit/eyekaushal/contextlab?style=flat-square" alt="Last commit"></a>
+</p>
+
 **contextlab shows you where your tokens go when you use an AI coding agent, and what to change so you spend less.**
 
 You run your agent through it. That is the whole setup:

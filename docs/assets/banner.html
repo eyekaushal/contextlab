@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+  The README banner, as a page. scripts/render-banner.mjs opens this in
+  headless Chrome and screenshots it twice: once with data-theme="dark", once
+  with "light". Fonts are the product's own, read from apps/web/node_modules,
+  so the banner and the dashboard share a face.
+-->
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: "Inter Variable";
+        src: url("../../apps/web/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: "JetBrains Mono Variable";
+        src: url("../../apps/web/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+        font-weight: 100 800;
+      }
+      :root {
+        --bg: #0f0d0c;
+        --bg2: #1a1614;
+        --ink: #f3efe9;
+        --ink-2: #b4aca4;
+        --stroke: #5a4f46;
+        --shout: #e0673a;
+        --dot: rgba(255, 236, 214, 0.22);
+      }
+      [data-theme="light"] {
+        --bg: #f7f4ef;
+        --bg2: #ece6dd;
+        --ink: #1c1917;
+        --ink-2: #57504a;
+        --stroke: #bdb2a5;
+        --shout: #c2410c;
+        --dot: rgba(28, 25, 23, 0.16);
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1600px; height: 500px; overflow: hidden; }
+      body {
+        background: radial-gradient(ellipse 60% 90% at 26% 50%, var(--bg2) 0%, var(--bg) 70%);
+        font-family: "Inter Variable", system-ui, sans-serif;
+        color: var(--ink);
+        position: relative;
+      }
+      /* faint scatter, like light on a dark desk */
+      .dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--dot); }
+      .mark { position: absolute; left: 130px; top: 128px; width: 410px; height: 244px; }
+      .text { position: absolute; left: 660px; top: 118px; width: 880px; }
+      .name { font-size: 118px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; }
+      .shout {
+        margin-top: 26px;
+        font-family: "JetBrains Mono Variable", monospace;
+        font-size: 30px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+        color: var(--shout);
+      }
+      .line { margin-top: 22px; font-size: 30px; font-weight: 400; color: var(--ink-2); line-height: 1.35; max-width: 840px; }
+    </style>
+  </head>
+  <body>
+    <div class="dot" style="left:78px;top:64px"></div>
+    <div class="dot" style="left:1462px;top:88px;width:3px;height:3px"></div>
+    <div class="dot" style="left:1520px;top:420px"></div>
+    <div class="dot" style="left:602px;top:452px;width:3px;height:3px"></div>
+    <div class="dot" style="left:1180px;top:40px;width:3px;height:3px"></div>
+    <div class="dot" style="left:40px;top:430px;width:3px;height:3px"></div>
+
+    <!-- The mark: a context window, drawn as what it is. Same geometry as
+         apps/web/src/components/wordmark.jsx, scaled up. -->
+    <svg class="mark" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
+          <feGaussianBlur stdDeviation="0.9" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect x="0.75" y="5.75" width="22.5" height="12.5" rx="2.25" fill="none" stroke="var(--stroke)" stroke-width="1.1" />
+      <g filter="url(#glow)">
+        <rect x="2.5" y="9" width="9" height="6" rx="1" fill="#199e70" />
+        <rect x="12.5" y="9" width="5" height="6" rx="1" fill="#3987e5" />
+        <rect x="18.5" y="9" width="3" height="6" rx="1" fill="#d95926" />
+      </g>
+    </svg>
+
+    <div class="text">
+      <div class="name">contextlab</div>
+      <div class="shout">See where the tokens go.</div>
+      <div class="line">A local proxy for AI coding agents. What fills the context window, what it costs, and what to change.</div>
+    </div>
+  </body>
+</html>
