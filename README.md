@@ -9,7 +9,6 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/contextlab"><img src="https://img.shields.io/npm/v/contextlab?style=flat-square&label=npm" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/contextlab"><img src="https://img.shields.io/npm/dm/contextlab?style=flat-square&label=downloads" alt="npm downloads"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/contextlab?style=flat-square" alt="Node.js version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/eyekaushal/contextlab?style=flat-square" alt="License: MIT"></a>
   <a href="https://github.com/eyekaushal/contextlab/stargazers"><img src="https://img.shields.io/github/stars/eyekaushal/contextlab?style=flat-square&logo=github" alt="GitHub stars"></a>
