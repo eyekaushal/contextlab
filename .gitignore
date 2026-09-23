@@ -32,3 +32,6 @@ coverage/
 
 # The dashboard copied into the server package at pack time
 packages/server/web/
+
+# Claude Code session settings — local to this machine
+.claude/

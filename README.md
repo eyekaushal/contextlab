@@ -25,20 +25,91 @@ If it came from a command, redirect it to a file and read the part you need:
 
 ## Install and run
 
-```bash
-npx contextlab claude
-```
-
-Needs Node 22 or newer (`node --version`; `nvm install 22` if not). That starts a local proxy, runs Claude Code through it, and captures every API
-call. Work as normal. When you are done:
+contextlab is a single npm package. Install it once, globally, so the
+`contextlab` command is on your path:
 
 ```bash
-npx contextlab optimize     # ranked waste, and the exact change to make
-npx contextlab dashboard    # the same thing, with charts
+npm install -g contextlab
 ```
 
-Nothing is installed globally, nothing runs in the background, and nothing
-leaves your machine.
+It needs Node 22 or newer. Check with `node --version`; if you are on an
+older version, `nvm install 22` gets you there. Confirm the install:
+
+```bash
+contextlab --version
+contextlab doctor          # checks Node, the certificate, the dashboard build
+```
+
+### Run an agent through it
+
+Change into the project you are working on, then start your agent through
+contextlab instead of directly:
+
+```bash
+cd ~/code/my-project
+contextlab claude          # Claude Code
+```
+
+The same shape works for every supported agent:
+
+```bash
+contextlab codex
+contextlab gemini
+contextlab aider
+contextlab cline
+contextlab copilot
+contextlab opencode
+```
+
+That starts a local proxy, runs the agent through it, and captures every API
+call it makes. Work as normal. The project folder you started from is what
+the dashboard files the session under, so run it from inside the project,
+not from your home directory.
+
+### Look at what it captured
+
+When you are done, in the same folder:
+
+```bash
+contextlab why             # why was my last turn expensive?
+contextlab optimize        # ranked waste, and the exact change to make
+contextlab cost            # spend by day and by project
+contextlab dashboard       # all of it, with charts, at http://localhost:4041
+contextlab watch           # a live gauge while the agent runs
+```
+
+### Update
+
+```bash
+npm install -g contextlab@latest
+contextlab --version
+```
+
+If a running dashboard still shows the old version afterwards, stop it with
+Ctrl-C and start it again; the page is served by the process you started.
+
+### Try it without installing
+
+`npx` downloads the package into a cache and runs it in one step. Useful for a
+first look, and it is what the launch video shows:
+
+```bash
+npx contextlab@latest claude
+npx contextlab@latest dashboard
+```
+
+Pin `@latest` when you use `npx`: without it, npx happily reuses an older
+cached copy.
+
+### Uninstall
+
+```bash
+npm uninstall -g contextlab
+rm -rf ~/.contextlab        # captures, database and config, if you want them gone too
+```
+
+Nothing runs in the background, nothing phones home, and nothing leaves your
+machine.
 
 ---
 
